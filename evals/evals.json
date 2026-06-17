@@ -1,0 +1,41 @@
+{
+  "skill_name": "short-term-trader",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Give me my morning macro brief. What's the put/call bias today for QQQ 0DTE?",
+      "expected_output": "Runs `python3 tools/macro/macro.py` for the auto indicators (SOFR, 2Y, 10Y, TGA, RRP), fetches the manual ones (Fed cut odds, PCE nowcast) and the news-flow tone via `tools/financialjuice/fj.py`, scores each +1/0/-1, produces the formatted Macro Dashboard with total score, states CALLS/PUTS/NO TRADE bias, names specific tickers to focus on.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Get me the FinancialJuice news from market open (9:30am) to now. Any headlines on NVDA? Store it.",
+      "expected_output": "Runs `python3 tools/financialjuice/fj.py fetch --since 9:30 --ticker NVDA` (and/or `store`), reads headlines from 9:30 AM ET to current time, archives to data/news-log/ via `fj.py store` with the correct date-stamped filename, produces a news summary in the correct format, then produces an NVDA-specific News Impact Analysis with trade implication.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "NVDA just broke out above $950 on strong volume after a 3-week flag consolidation. RSI at 62. My account is $30k. How do I trade this?",
+      "expected_output": "Checks macro alignment first, then produces structured trade plan: bull flag thesis, entry zone, stop below flag, two targets, R:R calculation, position size based on $30k account with 1% risk rule, key risks including VIX context.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "AAPL earnings in 3 days. Stock at $200. IV rank is 78. What's my best options play?",
+      "expected_output": "High IVR → favor selling premium. Shows expected move calc, IV crush warning, compares iron condor vs. debit spread for the high-IV environment, break-even prices, and states what historical move data would be needed to pick the strategy.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "I've been winning 65% of my trades but losing money. What's wrong?",
+      "expected_output": "Diagnoses R:R problem — high win rate with poor R-multiple loses money. Shows EV math (e.g., 65% × 0.5R - 35% × 1R = negative EV). Explains R-multiples, suggests journaling with R-multiples, recommends minimum 2:1 R:R for swing trades.",
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "BTC dropped 8% in an hour, now at $62k. Funding rates are deeply negative. I have $10k, thinking leveraged long. Walk me through it.",
+      "expected_output": "Identifies negative funding as potential contrarian signal, checks key BTC support levels, recommends conservative leverage (3-5x max), calculates position size using 1% rule on $10k, warns about liquidation price calculation, crypto-specific risk management.",
+      "files": []
+    }
+  ]
+}

@@ -1,0 +1,173 @@
+#!/usr/bin/env bash
+# ot — OpenTrading. One command for the whole trading data stack.
+#
+# Usage:
+#   ot                          the full market report (macro+news+smart money+options+positions)
+#   ot report  [--save] [--notify] [--json]
+#   ot news    [--ticker NVDA] [--window premarket|open|today] [--minutes 60] [--category Fed]
+#   ot news store [--window open]     save a date-stamped news log to data/news-log/
+#   ot news digest [--days 7]         multi-day digest (merges the stored archive + live)
+#   ot macro   [--json]               SOFR / 2Y-10Y / TGA / RRP -> scored put/call bias
+#   ot smart   [--json]               CNN + crypto Fear&Greed, BTC funding (contrarian)
+#   ot quote   SPY QQQ ^VIX           no-key quotes incl premarket + ^VIX
+#   ot cn      600519 002594 shcomp   China A-share quotes (Eastmoney, no key) — optional
+#   ot options SPY [--dte 7]          put/call + dealer gamma (GEX) + gamma walls
+#   ot watch                          your positions: live quotes (reads watchlist.json)
+#   ot brief                          lighter daily push + macOS notification
+#   ot email   [--to a] [--subject s] [--dry-run]   email the report via SMTP (creds in .env)
+#   ot decide   TICKER [--dte N]      live CALL/PUT/NO-ACTION call (learned policy)
+#   ot schedule [hour] [min] | schedule uninstall    install/remove the daily launchd job
+#   ot doctor                         check runner / deps / network
+#   ot help
+#
+# Examples:
+#   ot                                # the morning read, one command
+#   ot news --ticker MSTR --minutes 90
+#   ot options SPY QQQ --dte 0        # 0DTE gamma
+#   ot report --save --notify         # write data/reports/<date>.md + notify
+#
+# Runner: prefers `uv run` when uv is installed (standalone CPython, PEP 723-ready,
+#   sidesteps the macOS framework-Python launchd hang), else falls back to `python3`.
+#   Override with OT_PYTHON=/path/to/python; force-disable uv with OT_NO_UV=1.
+#
+# Educational only — not financial advice.
+set -e
+
+# Resolve through symlinks (install.sh puts `ot` on PATH as a symlink) so ROOT is
+# always the repo, not the symlink's dir. Portable (macOS bash 3.2, no readlink -f).
+src="${BASH_SOURCE[0]}"
+while [ -h "$src" ]; do
+  dir="$(cd -P "$(dirname "$src")" && pwd)"
+  src="$(readlink "$src")"
+  case "$src" in /*) ;; *) src="$dir/$src" ;; esac
+done
+ROOT="$(cd -P "$(dirname "$src")/.." && pwd)"
+
+# Print the leading comment block (lines after the shebang, up to the first
+# non-comment line) as help — robust to edits in the header above.
+usage() { awk 'NR==1{next} /^#/{l=$0; sub(/^# ?/,"",l); print l; next} {exit}' "$ROOT/bin/ot"; }
+
+# --- Runner resolution (highest priority first) ----------------------------- #
+#   OT_PYTHON=<cmd>   explicit interpreter override
+#   uv (unless OT_NO_UV) -> standalone CPython; no certifi in that env, so the
+#                           tools take their curl TLS fallback (fine on macOS)
+#   python3           fallback
+OT_RUNNER="python3"
+if [ -n "${OT_PYTHON:-}" ]; then
+  OT_RUNNER="override"
+elif [ -z "${OT_NO_UV:-}" ] && command -v uv >/dev/null 2>&1; then
+  OT_RUNNER="uv"
+fi
+
+# pyrun <script.py> [args...] — exec a tool script under the resolved runner.
+pyrun() {
+  case "$OT_RUNNER" in
+    override) exec $OT_PYTHON "$@" ;;
+    uv)       exec uv run --no-project "$@" ;;
+    *)        exec python3 "$@" ;;
+  esac
+}
+
+# py_stdin [args...] — run an inline python program read from stdin (for doctor).
+py_stdin() {
+  case "$OT_RUNNER" in
+    override) $OT_PYTHON - "$@" ;;
+    uv)       uv run --no-project python - "$@" ;;
+    *)        python3 - "$@" ;;
+  esac
+}
+
+# pygen <script.py> [args...] — run a tool script and STREAM its stdout (no exec),
+# so it can be piped (used by `ot email`: report -> sender).
+pygen() {
+  case "$OT_RUNNER" in
+    override) $OT_PYTHON "$@" ;;
+    uv)       uv run --no-project "$@" ;;
+    *)        python3 "$@" ;;
+  esac
+}
+
+cmd="${1:-report}"
+[ $# -gt 0 ] && shift || true
+
+# Ergonomic alias: `--json` works on every subcommand (tools speak `--format json`).
+norm=()
+for a in "$@"; do
+  if [ "$a" = "--json" ]; then norm+=(--format json); else norm+=("$a"); fi
+done
+set -- "${norm[@]}"
+
+case "$cmd" in
+  ""|report)
+    pyrun "$ROOT/tools/report/report.py" "$@" ;;
+  news)
+    # `ot news ...` -> fetch ; `ot news store|digest ...` -> that subcommand
+    sub="fetch"
+    case "${1:-}" in store|fetch|digest) sub="$1"; shift ;; esac
+    pyrun "$ROOT/tools/financialjuice/fj.py" "$sub" "$@" ;;
+  macro)
+    pyrun "$ROOT/tools/macro/macro.py" "$@" ;;
+  smart|sm)
+    pyrun "$ROOT/tools/smartmoney/sm.py" "$@" ;;
+  quote|q)
+    pyrun "$ROOT/tools/quote/q.py" "$@" ;;
+  cn|china|ashare)
+    pyrun "$ROOT/tools/china/cn.py" "$@" ;;
+  options|opt)
+    pyrun "$ROOT/tools/options/opt.py" "$@" ;;
+  watch|positions)
+    pyrun "$ROOT/tools/quote/q.py" --watchlist "$@" ;;
+  brief)
+    pyrun "$ROOT/tools/brief/daily_brief.py" "$@" ;;
+  email)
+    # Generate the position-aware report (markdown) and email it via SMTP.
+    # SMTP creds come from a git-ignored .env (see tools/email/README.md).
+    # Default subject if the caller didn't pass one.
+    has_subj=0
+    for a in "$@"; do [ "$a" = "--subject" ] && has_subj=1; done
+    subj=()
+    [ "$has_subj" -eq 0 ] && subj=(--subject "OpenTrading — Pre-Market Read · $(date '+%a %b %d')")
+    pygen "$ROOT/tools/report/report.py" 2>/dev/null \
+      | pygen "$ROOT/tools/email/send_email.py" "${subj[@]}" "$@" ;;
+  decide)
+    pyrun "$ROOT/tools/sim/decide.py" "$@" ;;
+  schedule)
+    exec bash "$ROOT/tools/brief/install_schedule.sh" "$@" ;;
+  doctor)
+    py_stdin "$ROOT" "$OT_RUNNER" <<'PYDOC'
+import os, shutil, subprocess, sys
+root, runner = sys.argv[1], sys.argv[2]
+ok = lambda b: "\033[32mok\033[0m" if b else "\033[31mMISSING\033[0m"
+print("OpenTrading doctor")
+v = sys.version_info
+label = {"uv": "uv run", "override": "OT_PYTHON", "python3": "python3"}.get(runner, runner)
+print(f"  runner         {ok(v >= (3,9))}  {label} -> {sys.executable} ({v.major}.{v.minor}.{v.micro})")
+try:
+    import certifi  # noqa: F401
+    print(f"  certifi        {ok(True)}  (TLS verification)")
+except Exception:
+    note = "expected under uv — tools use curl" if runner == "uv" else "not installed — tools fall back to curl"
+    print(f"  certifi        \033[33moptional\033[0m  {note}")
+print(f"  curl           {ok(bool(shutil.which('curl')))}  (TLS fallback)")
+wl = os.path.join(root, "watchlist.json")
+print(f"  watchlist.json {ok(os.path.exists(wl))}  {'(positions wired)' if os.path.exists(wl) else '(copy watchlist.example.json to enable position-aware sections)'}")
+# quick network probe (best-effort, 8s)
+try:
+    r = subprocess.run(["curl","-sS","--max-time","8","-o","/dev/null","-w","%{http_code}",
+                        "https://www.financialjuice.com/feed.ashx?xy=rss"],
+                       capture_output=True, text=True, timeout=12)
+    code = r.stdout.strip()
+    print(f"  FinancialJuice {ok(code.startswith('2'))}  HTTP {code}")
+except Exception as e:
+    print(f"  FinancialJuice \033[33m?\033[0m  {e}")
+print("\nRun the morning read:  ot")
+PYDOC
+    ;;
+  -h|--help|help)
+    usage ;;
+  *)
+    echo "ot: unknown command '$cmd'" >&2
+    echo >&2
+    usage >&2
+    exit 2 ;;
+esac

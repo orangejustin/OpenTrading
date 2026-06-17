@@ -1,0 +1,72 @@
+# OpenTrading — project metadata & dependency management (uv).
+#
+# OpenTrading is a local-first toolkit + Claude skill. The data CLIs under tools/
+# are stdlib-only and run via `bin/ot`, so the repo is NOT a distributable package
+# (package = false below). This file exists to give contributors a *reproducible*
+# environment with uv — `uv sync` installs the locked deps from uv.lock — and to
+# declare the single optional runtime dependency (certifi) plus the optional
+# power-user modules.
+#
+# Quickstart (dev):
+#   uv sync                  # create .venv from uv.lock (certifi + dev tools)
+#   uv sync --extra ibkr     # + the optional IBKR power module (ib_async)
+#   uv run ruff check .      # lint
+#
+# `bin/ot` auto-prefers uv when it's installed (standalone CPython, PEP 723-ready),
+# otherwise falls back to python3 — see the "Runner" note in README.md. The runtime
+# CLI runs with `uv run --no-project`, so the plain tier stays zero-config; this
+# project env (with certifi) is for development, CI, and future dependencies.
+
+[project]
+name = "opentrading"
+version = "0.5.0"
+description = "Open-source, local-first Claude project for short-term trading analysis — macro-first, risk-first, dependency-free data CLIs (stocks, options, macro, crypto)."
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [{ name = "orangejustin", email = "zechengli@outlook.com" }]
+keywords = [
+    "trading", "options", "macro", "finance", "stocks", "crypto",
+    "claude", "claude-code", "cli", "quant",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Financial and Insurance Industry",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Office/Business :: Financial :: Investment",
+]
+
+# Runtime: stdlib-only by design. `certifi` is the *only* third-party dependency
+# (it supplies TLS root certs); when it's absent the tools fall back to system `curl`.
+dependencies = [
+    "certifi>=2024.2.2",
+]
+
+[project.optional-dependencies]
+# Optional power module — manual setup, never required by the core. Python-gated:
+# ib_async needs >=3.10 while the core supports 3.9+. Install with `uv sync --extra ibkr`.
+ibkr = [
+    "ib_async>=1.0.0; python_version >= '3.10'",
+]
+
+[project.urls]
+Homepage = "https://github.com/orangejustin/OpenTrading"
+Repository = "https://github.com/orangejustin/OpenTrading"
+Changelog = "https://github.com/orangejustin/OpenTrading/blob/main/RELEASE_NOTES.md"
+
+[dependency-groups]
+# Dev tooling — installed by `uv sync`, kept out of the runtime dependency set.
+dev = [
+    "ruff>=0.6.0",
+    "pytest>=8.0",
+]
+
+[tool.uv]
+# OpenTrading ships runnable scripts (tools/*.py via bin/ot), not an importable
+# package — so uv manages the environment without trying to build/install the project.
+package = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"

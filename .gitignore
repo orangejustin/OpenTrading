@@ -1,0 +1,28 @@
+# OS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Local trading data — never commit fetched news or personal logs
+data/news-log/*
+!data/news-log/.gitkeep
+data/briefs/*
+!data/briefs/.gitkeep
+data/reports/*
+!data/reports/.gitkeep
+
+# Personal watchlist + per-user rosters (private holdings) — commit watchlist.example.json only
+watchlist.json
+watchlist.*.json
+!watchlist.example.json
+data/watchlist.json
+
+# Secrets / local overrides
+.env
+.env.bak
+.env.*.bak
+.claude/settings.local.json

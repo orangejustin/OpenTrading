@@ -1,0 +1,13 @@
+{
+  "_comment": "Copy to watchlist.json (git-ignored) and edit with YOUR positions. For a MULTI-USER roster, save as watchlist.<id>.json (also git-ignored) and set 'owner'/'recipient'/'lang'. Fields per position: ticker (symbol, or A/HK numeric code), market US|A|HK (routes the quote source — US=Yahoo via `ot quote`, A & HK=Eastmoney via `ot cn`), shares (OPTIONAL — omit if unknown and use 'tier' instead), tier core|secondary|watch (conviction when shares are unknown: 重仓/次持仓/关注), driver/note (context). 'cash' = dry powder the desk can deploy into adds / NEW positions. Unknown US tickers still match news literally; add aliases in tools/financialjuice/fj.py.",
+  "owner": "Your Name (optional — for multi-user rosters)",
+  "recipient": "them@example.com (optional — multi-user delivery target)",
+  "lang": "en",
+  "cash": {"amount": 10000, "currency": "USD"},
+  "positions": [
+    {"ticker": "NVDA", "market": "US", "shares": 50, "driver": "AI capex", "note": "Mag-7 bellwether"},
+    {"ticker": "MSTR", "market": "US", "shares": 100, "driver": "BTC", "note": "leveraged BTC proxy"},
+    {"ticker": "688008", "name": "澜起科技", "market": "A", "tier": "core", "driver": "AI memory", "note": "shares unknown -> tier-weighted"},
+    {"ticker": "09988", "name": "Alibaba", "market": "HK", "tier": "secondary", "driver": "China tech", "note": "HK-listed via ot cn"}
+  ]
+}

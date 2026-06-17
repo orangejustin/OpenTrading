@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bin/ot:*)",
+      "Bash(./bin/ot:*)",
+      "Bash(ot:*)",
+      "Bash(python3 tools/financialjuice/fj.py:*)",
+      "Bash(python3 tools/macro/macro.py:*)",
+      "Bash(python3 tools/smartmoney/sm.py:*)",
+      "Bash(python3 tools/quote/q.py:*)",
+      "Bash(python3 tools/options/opt.py:*)",
+      "Bash(python3 tools/report/report.py:*)",
+      "Bash(python3 tools/brief/daily_brief.py:*)",
+      "WebFetch(domain:financialjuice.com)",
+      "WebFetch(domain:fred.stlouisfed.org)",
+      "WebFetch(domain:newyorkfed.org)",
+      "WebFetch(domain:treasury.gov)",
+      "WebFetch(domain:fiscaldata.treasury.gov)",
+      "WebFetch(domain:clevelandfed.org)",
+      "WebFetch(domain:polymarket.com)",
+      "WebFetch(domain:tradingview.com)"
+    ]
+  }
+}
