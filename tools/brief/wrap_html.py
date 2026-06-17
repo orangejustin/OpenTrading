@@ -51,9 +51,23 @@ CLASS = {
     "span.down": "color:#b91c1c;font-weight:600;",
     "span.flat": "color:#64748b;font-weight:600;",
 }
+# Inside a dark callout (p.regime) the light background is gone, so nested inline
+# emphasis must switch to light/high-contrast colors — otherwise a dark <strong>
+# renders navy-on-navy and vanishes (the "buried text" bug).
+REGIME_INLINE = {
+    "strong": "color:#ffffff;font-weight:700;",
+    "b": "color:#ffffff;font-weight:700;",
+    "em": "color:#cbd5e1;font-style:italic;",
+    "code": "color:#e2e8f0;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;",
+    "a": "color:#93c5fd;text-decoration:underline;",
+    "span.up": "color:#4ade80;font-weight:600;",
+    "span.down": "color:#fca5a5;font-weight:600;",
+    "span.flat": "color:#cbd5e1;font-weight:600;",
+}
 DROP = {"html", "head", "body", "meta", "title", "!doctype", "link"}   # unwrap if Claude adds them
 DROP_TREE = {"style", "script"}                                          # drop tag + contents
 BLOCK = {"p", "h1", "h2", "h3", "li", "tr", "pre", "ul", "ol", "table", "div", "hr"}
+VOID = {"br", "hr", "img", "wbr", "col", "area", "input"}                # emit, but never open a context
 
 
 def _clean_fragment(s):
@@ -68,14 +82,26 @@ def _clean_fragment(s):
 
 
 class Inliner(HTMLParser):
-    """Re-emit HTML with inline styles injected onto known tags."""
+    """Re-emit HTML with inline styles injected onto known tags.
+
+    Tracks a 'dark callout' context via a stack: inside <p class="regime"> the
+    background is dark navy, so nested inline emphasis (strong/em/span/code/a)
+    switches to light colors via REGIME_INLINE — else dark text vanishes on it.
+    """
     def __init__(self):
         super().__init__(convert_charrefs=False)
         self.out = []
         self._skip = 0
+        self._dark = []                       # stack: are we inside a dark callout?
 
-    def _style_for(self, tag, attrs_d):
+    def _style_for(self, tag, attrs_d, dark):
         classes = (attrs_d.get("class") or "").split()
+        if dark:                              # dark callout -> light/high-contrast overrides
+            for c in classes:
+                if f"{tag}.{c}" in REGIME_INLINE:
+                    return REGIME_INLINE[f"{tag}.{c}"]
+            if tag in REGIME_INLINE:
+                return REGIME_INLINE[tag]
         for c in classes:
             if f"{tag}.{c}" in CLASS:
                 return CLASS[f"{tag}.{c}"]
@@ -87,16 +113,22 @@ class Inliner(HTMLParser):
             return
         if tag in DROP:
             return
-        self._emit(tag, attrs, selfclose=False)
+        attrs_d = {k: (v or "") for k, v in attrs}
+        classes = (attrs_d.get("class") or "").split()
+        dark = self._dark[-1] if self._dark else False
+        self._emit(tag, attrs_d, dark, selfclose=False)
+        if tag not in VOID:                   # void tags hold no children -> no context
+            self._dark.append(dark or (tag == "p" and "regime" in classes))
 
     def handle_startendtag(self, tag, attrs):
         if tag in DROP or tag in DROP_TREE:
             return
-        self._emit(tag, attrs, selfclose=True)
-
-    def _emit(self, tag, attrs, selfclose):
         attrs_d = {k: (v or "") for k, v in attrs}
-        style = self._style_for(tag, attrs_d)
+        dark = self._dark[-1] if self._dark else False
+        self._emit(tag, attrs_d, dark, selfclose=True)
+
+    def _emit(self, tag, attrs_d, dark, selfclose):
+        style = self._style_for(tag, attrs_d, dark)
         if style:
             existing = attrs_d.get("style", "").strip().rstrip(";")
             attrs_d["style"] = (existing + ";" + style) if existing else style
@@ -110,8 +142,10 @@ class Inliner(HTMLParser):
         if tag in DROP_TREE:
             self._skip = max(0, self._skip - 1)
             return
-        if tag in DROP:
+        if tag in DROP or tag in VOID:
             return
+        if self._dark:
+            self._dark.pop()
         self.out.append(f"</{tag}>")
 
     def handle_data(self, data):
