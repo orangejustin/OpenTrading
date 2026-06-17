@@ -44,9 +44,11 @@ apex candidates to fold in: GLD/SLV/IBIT/TLT, NBIS/ASTS/SNDK/OKLO/RKLB, …).
    risk-on / defensive*.
 2. **持仓快照 (table)** — `标的 | 股数 | 现价 | 今日 | 占股票仓 | 操作`. Compute **weights**;
    flag any single-name > ~30–40% (concentration).
-3. **逐仓操作** — per name: `ot decide` read + the **learned discipline**: lock winners into
-   spikes (don't let them round-trip), trim the **heaviest-and-weakest**, never add into a
-   parabolic candle. Respect user-set levels (e.g. "hold ORCL to $200").
+3. **逐仓操作** — per name, emit a **range execution plan** (建仓区 / 加仓区 / 止盈区[⅓·⅓·runner] /
+   止损 / 仓位 / A–D信心 / 时限) from `ot decide TICKER` — **the user trades zones, not single
+   points**; see [[execution-plan]]. Plus the **learned discipline**: lock winners into spikes
+   (don't let them round-trip), trim the **heaviest-and-weakest**, never add into a parabolic
+   candle. Respect user-set levels (e.g. "hold ORCL to $200").
 4. **新增标的建议** — edge-name dip-buys (NVDA/AMZN/GOOG: uptrend + pullback) **plus the
    apex-predator lens (§3)**.
 5. **现金与风控** — cash plan + the governor: ≤5% premium/trade, **never size up after a
