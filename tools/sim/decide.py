@@ -73,6 +73,19 @@ def features(ticker):
         cur, t_open, prev = last["c"], None, last["c"]
         closes = [b["c"] for b in bars]
     sma20 = sum(closes[-20:]) / 20
+    # volatility unit (ATR-14) + recent structure — feeds the range execution plan
+    trs = []
+    for i in range(1, len(bars)):
+        hi, lo, pc = bars[i].get("h"), bars[i].get("l"), bars[i - 1]["c"]
+        if None in (hi, lo, pc):
+            continue
+        trs.append(max(hi - lo, abs(hi - pc), abs(lo - pc)))
+    atr = (sum(trs[-14:]) / min(len(trs), 14)) if trs else cur * 0.02
+    win = bars[-15:]
+    lows = [b["l"] for b in win if b.get("l") is not None]
+    highs = [b["h"] for b in win if b.get("h") is not None]
+    swing_lo = min(lows) if lows else cur - 2 * atr
+    swing_hi = max(highs) if highs else cur + 2 * atr
     vl = [b["c"] for b in vix]
     return dict(
         ticker=ticker.upper(), price=cur, prev=prev, t_open=t_open, has_today=has_today,
@@ -82,6 +95,7 @@ def features(ticker):
         prior5=prev / closes[-6] - 1,
         vix=vl[-1], vix_chg=vl[-1] / vl[-6] - 1 if len(vl) >= 6 else 0.0,
         is_edge=ticker.upper() in EDGE,
+        atr=atr, swing_lo=swing_lo, swing_hi=swing_hi, ext=cur / sma20 - 1,
     )
 
 
@@ -127,6 +141,83 @@ def decide_swing(ft):
     return "NO-ACTION", "n/a", ["no clear trend+momentum edge; the highest-EV action here is to pass."]
 
 
+def conviction_grade(ft, conv):
+    """A–D rating (ScaleAlpha-style), derived from the policy signal + edge."""
+    if conv == "high":
+        return "A" if ft["is_edge"] else "B"
+    if conv == "medium":
+        return "B" if (ft["trendup"] and ft["prior5"] > 0) else "C"
+    if conv == "low":
+        return "C"
+    return "D"
+
+
+def execution_plan(ft, action, conv, mode, capital):
+    """Range-first execution plan: buy/add/trim ZONES + scale-out ladder + stop +
+    risk-based sizing. Levels come from price, the 20d mean, ATR(14) and recent
+    swing hi/lo — all no-key data. The user trades zones, not single points.
+    Educational only — not financial advice."""
+    p = ft["price"]
+    atr = max(ft["atr"], p * 0.005)              # floor ATR so bands never collapse
+    sma20, slo, shi = ft["sma20"], ft["swing_lo"], ft["swing_hi"]
+    grade = conviction_grade(ft, conv)
+    horizon = "swing · 3–7+ DTE / 2–6 wk"
+
+    if action == "PUT":                           # short plan: sell into a bounce
+        side = "short"
+        z_lo, z_hi = p + 0.25 * atr, p + 1.5 * atr
+        core = (z_lo + z_hi) / 2
+        add_zone = (z_hi, p + 2.75 * atr)
+        stop = max(max(sma20, shi) + 0.3 * atr, add_zone[1] + 0.2 * atr)
+        t1, t2 = p - 1.5 * atr, p - 3.0 * atr     # cover targets (nearer first)
+        buy_zone, trim_zone = (z_lo, z_hi), (t2, t1)
+        inval, risk_per = f"> {stop:.2f} close", stop - core
+    else:                                         # long (CALL) or watch (NO-ACTION)
+        side = "long" if action == "CALL" else "watch"
+        buy_hi = p - 0.25 * atr                   # don't chase — buy the pullback
+        buy_lo = max(sma20, p - 1.5 * atr)
+        if buy_lo >= buy_hi:                       # at/under the mean → pure ATR band
+            buy_lo, buy_hi = p - 1.5 * atr, p - 0.25 * atr
+        core = (buy_lo + buy_hi) / 2
+        add_lo = max(slo, p - 3.0 * atr)
+        add_zone = (min(add_lo, buy_lo - 0.1 * atr), buy_lo)
+        stop = min(min(sma20, slo) - 0.3 * atr, add_zone[0] - 0.2 * atr)
+        t1, t2 = p + 1.5 * atr, p + 3.0 * atr     # trim targets
+        buy_zone, trim_zone = (buy_lo, buy_hi), (t1, t2)
+        inval, risk_per = f"< {stop:.2f} close", core - stop
+
+    # sizing — account-risk % by grade, capped by single-name weight
+    risk_pct = {"A": 0.0125, "B": 0.010, "C": 0.006, "D": 0.0}[grade]
+    max_wt = {"A": 0.12, "B": 0.09, "C": 0.05, "D": 0.0}[grade]
+    shares = 0
+    if risk_pct > 0 and risk_per > 0:
+        shares = int(capital * risk_pct / risk_per)
+        if shares * core > capital * max_wt:
+            shares = int(capital * max_wt / core)
+
+    scen = []
+    if ft.get("event"):
+        scen.append(f"{ft['event']} day: defer adds, hold core, size down")
+    if ft["vix"] < 16:
+        scen.append("VIX<16 chop: tighten or wait for the zone")
+    if side == "long" and ft["ext"] > 0.08:
+        scen.append(f"extended +{ft['ext']:.0%} vs 20d: wait for the pullback, don't chase")
+    if side == "watch" and not ft["trendup"]:
+        scen.insert(0, f"downtrend (below 20d): needs a reclaim > {sma20:.2f} to flip long")
+    if not scen:
+        scen.append("act only at the zones; hold core through noise")
+
+    return dict(
+        side=side, grade=grade, horizon=horizon,
+        buy_zone=[round(buy_zone[0], 2), round(buy_zone[1], 2)], core=round(core, 2),
+        add_zone=[round(add_zone[0], 2), round(add_zone[1], 2)],
+        trim_zone=[round(trim_zone[0], 2), round(trim_zone[1], 2)],
+        t1=round(t1, 2), t2=round(t2, 2), stop=round(stop, 2), invalidation=inval,
+        shares=shares, dollar=round(shares * core), risk_dollar=round(shares * risk_per),
+        risk_pct=risk_pct, scenario=scen,
+    )
+
+
 def run(ticker, dte, capital):
     ft = features(ticker)
     today = date.today()
@@ -139,10 +230,13 @@ def run(ticker, dte, capital):
     risk = round(capital * (0.05 if conv in ("high", "medium") else 0.025))
     if conv == "low":
         risk = round(capital * 0.015)
+    ft["event"] = evname if ev else None
+    plan = execution_plan(ft, action, conv, mode, capital) if mode == "swing" else None
     return dict(ticker=ft["ticker"], mode=mode, dte=dte, action=action, conviction=conv,
                 reasons=why, gap=ft["gap"], trendup=ft["trendup"], prior5=ft["prior5"],
                 vix=ft["vix"], vix_chg=ft["vix_chg"], price=ft["price"], event=evname,
-                max_premium=risk, daily_stop=round(capital * 0.10), capital=capital)
+                max_premium=risk, daily_stop=round(capital * 0.10), capital=capital,
+                plan=plan)
 
 
 def render(r, ft_event):
@@ -156,6 +250,22 @@ def render(r, ft_event):
         L.append(f"     - {w}")
     if r["action"] not in ("NO-ACTION", "WAIT"):
         L.append(f"  size: <= ${r['max_premium']:,} premium · daily stop -${r['daily_stop']:,} · never size up after a loss")
+    pl = r.get("plan")
+    if pl:
+        bz, az, tz = pl["buy_zone"], pl["add_zone"], pl["trim_zone"]
+        labels = {"short": ("Sell zone", "Add (bounce)", "Cover/Tgt"),
+                  "watch": ("Buy-if-setup", "Add zone", "Trim/Sell"),
+                  "long": ("Buy zone", "Add zone", "Trim/Sell")}[pl["side"]]
+        L.append(f"  EXECUTION PLAN (range) · grade {pl['grade']} · {pl['horizon']}")
+        L.append(f"    {labels[0]}: {bz[0]:.2f}–{bz[1]:.2f}  (core {pl['core']:.2f})")
+        L.append(f"    {labels[1]}: {az[0]:.2f}–{az[1]:.2f}  (deeper; risk-on only)")
+        L.append(f"    {labels[2]}: {tz[0]:.2f}–{tz[1]:.2f}  (⅓ {pl['t1']:.2f} · ⅓ {pl['t2']:.2f} · runner)")
+        L.append(f"    Stop/inval: {pl['invalidation']}")
+        if pl["shares"]:
+            L.append(f"    Size: ~{pl['shares']} sh (~${pl['dollar']:,}) · risk ${pl['risk_dollar']:,} ≈ {pl['risk_pct'] * 100:.2f}% acct")
+        else:
+            L.append(f"    Size: watch only — wait for the zone (grade {pl['grade']})")
+        L.append(f"    Scenario: {'; '.join(pl['scenario'])}")
     L.append(f"  confirm live (not in backtest): ot options {r['ticker']} · ot news --ticker {r['ticker']} · ot macro")
     L.append("  Educational only — not financial advice.")
     return "\n".join(L)
