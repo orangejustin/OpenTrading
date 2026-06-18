@@ -10,8 +10,10 @@ portfolio layer on top** — it scores, ranks, drops the weak, and allocates.
 
 ```bash
 ot strategy VST NBIS HOOD MSTR OKLO --style momentum --risk medium
-ot strategy --style defensive --risk low        # universe = watchlist.json (positions + watch)
-ot strategy VST NBIS --format json              # structured, for the desk/email
+ot strategy --roster jane --style balanced       # a multi-user roster (A-share + HK supported)
+ot strategy 688008 300394 --market A             # China A-shares (Yahoo .SS/.SZ)
+ot strategy --style defensive --risk low         # universe = watchlist.json (positions + watch)
+ot strategy VST NBIS --format json               # structured, for the desk/email
 ```
 
 ## How it builds the book
@@ -20,6 +22,9 @@ ot strategy VST NBIS --format json              # structured, for the desk/email
 3. **Keep long-actionable** (CALL + grade ≥ C), **rank by score**, take the **top-N** for the risk profile.
 4. **Allocate** by score, risk-adjusted (more volatile → smaller), with a **cash floor** + **per-name cap**; the remainder is cash.
 5. **Event gate:** on an FOMC/CPI/OPEX day the **cash floor is raised** automatically.
+
+## A-share / HK (multi-market)
+Yahoo carries A-shares and HK natively via suffixes (`688008`→`688008.SS`, `300394`→`.SZ`, `09988`→`9988.HK`), so the **same engine prices them with no new deps** — via the `tools/sim/symbols.py` normalizer (the TradingAgents `symbol_utils` pattern). A **roster** (`watchlist.<id>.json`) carries each name's `market` field, so `ot strategy --roster <id>` builds a mixed A/HK/US book; `ot decide CODE --market A|HK` does one name. Each pick shows its **local currency** (¥ CNY / HK$ HKD / $ USD); the **US event-gate is suppressed off-US**. *Caveat:* no China/HK event calendar yet — only US FOMC/CPI/OPEX is modeled.
 
 Each pick carries its **range execution plan** (buy/trim/stop zones) — see [[execution-plan]].
 

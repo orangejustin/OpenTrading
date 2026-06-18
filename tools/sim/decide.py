@@ -29,6 +29,7 @@ import argparse, calendar, json, sys
 from datetime import date
 
 import yfhist
+import symbols
 
 EDGE = {"NVDA", "AMZN", "GOOG", "GOOGL"}
 # verified macro events (OPEX is computed below). FOMC = federalreserve.gov; CPI = bls.gov.
@@ -218,10 +219,12 @@ def execution_plan(ft, action, conv, mode, capital):
     )
 
 
-def run(ticker, dte, capital):
-    ft = features(ticker)
+def run(ticker, dte, capital, market="US"):
+    is_us = (market or "US").upper() == "US"
+    ft = features(symbols.to_yahoo(ticker, market))
+    ft["ticker"] = ticker.upper()                       # display the original code
     today = date.today()
-    evname, ev = event_today(today)
+    evname, ev = event_today(today) if is_us else (None, False)   # US calendar only gates US names
     mode = "0DTE" if dte <= 1 else "swing"
     if mode == "0DTE":
         action, conv, why = decide_0dte(ft, evname if ev else None)
@@ -236,20 +239,25 @@ def run(ticker, dte, capital):
                 reasons=why, gap=ft["gap"], trendup=ft["trendup"], prior5=ft["prior5"],
                 vix=ft["vix"], vix_chg=ft["vix_chg"], price=ft["price"], event=evname,
                 max_premium=risk, daily_stop=round(capital * 0.10), capital=capital,
-                plan=plan)
+                market=(market or "US").upper(), ccy=symbols.ccy_symbol(market),
+                currency=symbols.currency(market), plan=plan)
 
 
 def render(r, ft_event):
+    c = r.get("ccy", "$")
+    mk = r.get("market", "US")
+    mtag = "" if mk == "US" else f"{mk}·{r.get('currency', '')} "
     g = f"{r['gap']:+.2%}" if r["gap"] is not None else "pre-open"
-    L = [f"ot decide {r['ticker']}  ({r['mode']}, {r['dte']} DTE, capital ${r['capital']:,})",
-         f"  price {r['price']:.2f} | gap {g} | trend {'UP' if r['trendup'] else 'DOWN'} (20d) | "
+    ev_txt = r["event"] or ("US-only — n/a off-US" if mk != "US" else "none known (verify FOMC/CPI)")
+    L = [f"ot decide {r['ticker']}  ({mtag}{r['mode']}, {r['dte']} DTE, capital {c}{r['capital']:,.0f})",
+         f"  price {c}{r['price']:.2f} | gap {g} | trend {'UP' if r['trendup'] else 'DOWN'} (20d) | "
          f"prior5 {r['prior5']:+.1%} | VIX {r['vix']:.1f} ({r['vix_chg']:+.0%}/wk) | "
-         f"event: {r['event'] or 'none known (verify FOMC/CPI)'}",
+         f"event: {ev_txt}",
          f"  >> {r['action']}   conviction {r['conviction'].upper()}"]
     for w in r["reasons"]:
         L.append(f"     - {w}")
     if r["action"] not in ("NO-ACTION", "WAIT"):
-        L.append(f"  size: <= ${r['max_premium']:,} premium · daily stop -${r['daily_stop']:,} · never size up after a loss")
+        L.append(f"  size: <= {c}{r['max_premium']:,} premium · daily stop -{c}{r['daily_stop']:,} · never size up after a loss")
     pl = r.get("plan")
     if pl:
         bz, az, tz = pl["buy_zone"], pl["add_zone"], pl["trim_zone"]
@@ -262,7 +270,7 @@ def render(r, ft_event):
         L.append(f"    {labels[2]}: {tz[0]:.2f}–{tz[1]:.2f}  (⅓ {pl['t1']:.2f} · ⅓ {pl['t2']:.2f} · runner)")
         L.append(f"    Stop/inval: {pl['invalidation']}")
         if pl["shares"]:
-            L.append(f"    Size: ~{pl['shares']} sh (~${pl['dollar']:,}) · risk ${pl['risk_dollar']:,} ≈ {pl['risk_pct'] * 100:.2f}% acct")
+            L.append(f"    Size: ~{pl['shares']} sh (~{c}{pl['dollar']:,}) · risk {c}{pl['risk_dollar']:,} ≈ {pl['risk_pct'] * 100:.2f}% acct")
         else:
             L.append(f"    Size: watch only — wait for the zone (grade {pl['grade']})")
         L.append(f"    Scenario: {'; '.join(pl['scenario'])}")
@@ -276,10 +284,12 @@ def main(argv=None):
     p.add_argument("ticker")
     p.add_argument("--dte", type=int, default=5, help="days to expiry you're considering (<=1 => 0DTE mode)")
     p.add_argument("--capital", type=float, default=100000)
+    p.add_argument("--market", choices=["US", "A", "HK"], default="US",
+                   help="US | A (China A-share) | HK — maps the code to Yahoo (.SS/.SZ/.HK)")
     p.add_argument("--format", choices=["text", "json"], default="text")
     a = p.parse_args(argv)
     try:
-        r = run(a.ticker, a.dte, a.capital)
+        r = run(a.ticker, a.dte, a.capital, a.market)
     except Exception as e:
         print(f"decide: {type(e).__name__}: {e}", file=sys.stderr)
         return 1
