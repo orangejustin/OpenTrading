@@ -227,6 +227,42 @@ def em_popularity(code, secid):
     return {}
 
 
+def yahoo_fundamentals(ticker):
+    """Keyless US fundamentals via the Yahoo cookie+crumb handshake (the yfinance trick)."""
+    curl = shutil.which("curl")
+    if not curl:
+        return {}
+    import os, tempfile
+    ck = tempfile.mktemp()
+    try:
+        subprocess.run([curl, "-s", "-c", ck, "-A", UA, "--max-time", "12",
+                        "https://fc.yahoo.com/", "-o", "/dev/null"], capture_output=True, timeout=15)
+        crumb = subprocess.run([curl, "-s", "-b", ck, "-A", UA, "--max-time", "12",
+                                "https://query2.finance.yahoo.com/v1/test/getcrumb"],
+                               capture_output=True, text=True, timeout=15).stdout.strip()
+        if not crumb or len(crumb) > 24:
+            return {}
+        url = (f"https://query2.finance.yahoo.com/v10/finance/quoteSummary/{urllib.parse.quote(ticker)}"
+               f"?modules=financialData,defaultKeyStatistics,summaryDetail&crumb={urllib.parse.quote(crumb)}")
+        raw = subprocess.run([curl, "-s", "-b", ck, "-A", UA, "--max-time", "12", url],
+                             capture_output=True, text=True, timeout=15).stdout
+        d = json.loads(raw)["quoteSummary"]["result"][0]
+        fd, ks, sd = d.get("financialData") or {}, d.get("defaultKeyStatistics") or {}, d.get("summaryDetail") or {}
+        g = lambda m, k: (m.get(k) or {}).get("raw")
+        pct = lambda x: _rnd(x * 100, 1) if isinstance(x, (int, float)) else None
+        return {"pe_ttm": _rnd(g(sd, "trailingPE")), "pb": _rnd(g(ks, "priceToBook")),
+                "mktcap": g(sd, "marketCap"), "gross_margin": pct(g(fd, "grossMargins")),
+                "profit_margin": pct(g(fd, "profitMargins")), "rev_yoy": pct(g(fd, "revenueGrowth")),
+                "roe": pct(g(fd, "returnOnEquity"))}
+    except Exception:
+        return {}
+    finally:
+        try:
+            os.remove(ck)
+        except OSError:
+            pass
+
+
 def research(ticker, market):
     market = (market or "US").upper()
     out = {"ticker": ticker.upper(), "market": market, "technical": yahoo_tech(to_yahoo(ticker, market))}
@@ -239,8 +275,14 @@ def research(ticker, market):
         if market == "A":
             out["chips"] = em_holders(ticker)
             out["popularity"] = em_popularity(ticker, secid)
-    else:
-        out["fundamentals_note"] = "US deep fundamentals via SEC EDGAR — later phase (technicals only here)."
+    else:  # US — keyless Yahoo cookie+crumb fundamentals
+        fund = yahoo_fundamentals(ticker)
+        if fund:
+            out["valuation"] = {"pe_ttm": fund.get("pe_ttm"), "pb": fund.get("pb"), "mktcap": fund.get("mktcap")}
+            out["financials"] = {"rev_yoy": fund.get("rev_yoy"), "gross_margin": fund.get("gross_margin"),
+                                 "roe": fund.get("roe"), "profit_margin": fund.get("profit_margin")}
+        else:
+            out["fundamentals_note"] = "US fundamentals unavailable (Yahoo crumb handshake failed)."
     return out
 
 
@@ -258,8 +300,23 @@ def render(r):
         L.append(f"  估值: PE(TTM) {v.get('pe_ttm') or 'n/a'} · PB {v.get('pb')} · 市值 {_big(v.get('mktcap'))}")
     f = r.get("financials") or {}
     if f:
-        L.append(f"  业绩 ({f.get('as_of')}): EPS {f.get('eps')} · 营收 {_big(f.get('revenue'))} (YoY {f.get('rev_yoy')}%) · "
-                 f"净利 {_big(f.get('net_profit'))} (YoY {f.get('np_yoy')}%) · 毛利 {f.get('gross_margin')}% · ROE {f.get('roe')}")
+        parts = []
+        if f.get("eps") is not None:
+            parts.append(f"EPS {f['eps']}")
+        if f.get("revenue") is not None:
+            parts.append(f"营收 {_big(f['revenue'])} (YoY {f.get('rev_yoy')}%)")
+        elif f.get("rev_yoy") is not None:
+            parts.append(f"营收增速 {f['rev_yoy']}%")
+        if f.get("net_profit") is not None:
+            parts.append(f"净利 {_big(f['net_profit'])} (YoY {f.get('np_yoy')}%)")
+        if f.get("profit_margin") is not None:
+            parts.append(f"净利率 {f['profit_margin']}%")
+        if f.get("gross_margin") is not None:
+            parts.append(f"毛利 {f['gross_margin']}%")
+        if f.get("roe") is not None:
+            parts.append(f"ROE {f['roe']}")
+        if parts:
+            L.append(f"  业绩{(' (' + f['as_of'] + ')') if f.get('as_of') else ''}: " + " · ".join(parts))
     c = r.get("chips") or {}
     if c:
         L.append(f"  筹码 ({c.get('as_of')}): 股东户数 {c.get('holder_num')} (QoQ {c.get('qoq_pct')}%) · {c.get('trend')}")
