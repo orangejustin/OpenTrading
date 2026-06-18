@@ -47,10 +47,10 @@ lang = d.get("lang") or "en"
 owner = d.get("owner") or "You"
 specs = ";".join(f"{p['ticker']}:{(p.get('market') or 'US').upper()}"
                  for p in d.get("positions", []) if p.get("ticker"))
-# alpha / new-name ideas: the 'watch' apex theme candidates (macro-ETFs/0DTE feed strategy, not ideas).
-wspecs = ";".join(f"{w['ticker']}:{(w.get('market') or 'US').upper()}"
-                  for w in d.get("watch", [])
-                  if w.get("ticker") and w.get("kind") == "apex")
+# alpha / new-name ideas: the curated 'alpha' list (preferred), else 'watch' apex theme candidates.
+_alpha = d.get("alpha") or [w for w in d.get("watch", []) if w.get("kind") == "apex"]
+wspecs = ";".join(f"{a['ticker']}:{(a.get('market') or 'US').upper()}"
+                  for a in _alpha if a.get("ticker"))
 print("\t".join([rid, recip, lang, owner, specs, wspecs]))
 PY
 )"
@@ -131,15 +131,16 @@ and classes: <p>, <h2>, <ul>/<li>, <strong>, <em>, <table>/<tr>/<th>/<td>, <span
 2. <h2>News &rarr; what it means</h2> — a 2-col <table> (Driver | Read for the book), 4-6 rows, each citing a real number.
 3. <h2>Holdings — levels &amp; call</h2> — a <table>: columns Name | Last | Day | Call | Levels (buy · trim · stop) | Read.
    One row per HELD name: tk ticker cell, num Last/Day cells, an action badge in Call, the mechanical zones FROM THE DATA, a one-line read.
-4. <h2>Alpha watch &amp; new ideas</h2> — a <table>: Name | Last | Day | Theme | Grade | Plan / levels (from the watch-universe decide data); grade badge + action badge; finish with an AVOID row for any downtrend name. (Omit this section if there is no watch data.)
+4. <h2>Alpha Watch</h2> (title in the EMAIL'S language — never append a parenthetical in the other language) — a <table>: Name (+theme sub-line) | Last | Day | Grade | Bull vs Bear &rarr; call. For EACH idea, give a brief bull-vs-bear stress-test: one <span class="bull">Bull</span> upside line, one <span class="bear">Bear</span> risk line, then the verdict badge (buy/trim/watch/avoid) + levels from the alpha decide data. Finish with an AVOID row for any downtrend name. (Omit this section if there is no alpha data.)
 5. <h2>Strategy</h2> — a short <p>: the engine's top weights + cash; flag extended names to wait on.
 6. <h2>The policy</h2> — a 2-col <table> (Principle | The rule): Selection &gt; timing · Ranges not points (never chase the green candle) · 0DTE QQQ done right · Risk governor · Apex lens · Event-aware. Tie one rule to today (name FOMC/CPI/OPEX if near).
 7. <h2>Risk — today</h2> — a <ul> of 3 points tied to today's numbers.
 8. <p class="disclaimer">Educational only — not financial advice.</p>
 
 Rules: every claim cites a real number from the data; mark moves up/down with a span; state the "so what"; no filler.
-Separate a hold thesis from a trade setup. The user trades ZONES, not single points. Prices are in each name's local
-currency (¥ A-share, HK\$ HK, \$ US) — keep them as shown. ~500-650 words.
+Write every heading and word in ONE language only (the email's) — never mix Chinese and English. Separate a hold thesis
+from a trade setup. The user trades ZONES, not single points. Prices are in each name's local currency (¥ A-share,
+HK\$ HK, \$ US) — keep them as shown. ~500-650 words.
 $LANG_INSTR
 
 DATA:

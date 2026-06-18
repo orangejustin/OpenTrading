@@ -67,6 +67,9 @@ CLASS = {
     "span.watch": "background:#dbeafe;color:#1e40af;padding:1px 6px;border-radius:4px;font-size:11px;font-weight:700;white-space:nowrap;",
     "span.avoid": "background:#fee2e2;color:#b91c1c;padding:1px 6px;border-radius:4px;font-size:11px;font-weight:700;white-space:nowrap;",
     "span.grade": "background:#0f172a;color:#ffffff;padding:1px 6px;border-radius:4px;font-size:11px;font-weight:700;white-space:nowrap;",
+    # bull / bear labels for the adversarial (左右脑互搏) alpha case.
+    "span.bull": "background:#dcfce7;color:#166534;padding:1px 6px;border-radius:4px;font-size:11px;font-weight:700;white-space:nowrap;",
+    "span.bear": "background:#fee2e2;color:#b91c1c;padding:1px 6px;border-radius:4px;font-size:11px;font-weight:700;white-space:nowrap;",
 }
 # Inside a dark callout (p.regime) the light background is gone, so nested inline
 # emphasis must switch to light/high-contrast colors — otherwise a dark <strong>
