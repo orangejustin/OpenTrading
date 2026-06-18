@@ -38,8 +38,8 @@ ot options SPY --dte 7          # put/call + dealer gamma (GEX) + walls
 ot watch                        # your positions' live quotes (reads watchlist.json)
 ot report --save --notify       # write data/reports/<date>.md + macOS notification
 ot email                        # email the report via SMTP (.env creds; see tools/email/README.md)
-ot decide   TICKER [--dte N]    # live CALL/PUT/NO-ACTION + range execution plan (learned policy)
-ot strategy [TICKERS]           # portfolio constructor: graded, allocated book (--style/--risk/--horizon)
+ot decide   TICKER [--dte N] [--market US|A|HK]  # CALL/PUT/NO-ACTION + range plan (US + China A/HK via Yahoo)
+ot strategy [TICKERS] [--roster ID]              # portfolio constructor: graded, allocated book (--style/--risk; A/HK ok)
 ot doctor                       # python / deps / network health check
 ```
 

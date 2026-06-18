@@ -14,6 +14,8 @@ Inspired by the open-source ScaleAlpha-simulation strategy-engine (generateStrat
 tools/sim/decide.py). Stdlib only. Educational only — not financial advice.
 
     ot strategy VST NBIS HOOD MSTR OKLO --style momentum --risk medium
+    ot strategy --roster jane --style balanced        # a multi-user roster (A-share + HK ok)
+    ot strategy 688008 300394 --market A              # China A-shares (Yahoo .SS/.SZ)
     ot strategy --style defensive --risk low          # universe = watchlist.json
     ot strategy VST NBIS --format json
 """
@@ -21,7 +23,8 @@ from __future__ import annotations
 import argparse, json, os, sys
 from datetime import date
 
-import decide  # same dir — reuses features / decide_swing / execution_plan / event_today
+import decide   # same dir — reuses features / decide_swing / execution_plan / event_today
+import symbols  # code + market -> Yahoo symbol (.SS / .SZ / .HK)
 
 STYLE_WEIGHTS = {
     "balanced":  {"trend": 0.30, "momentum": 0.30, "edge": 0.20, "lowrisk": 0.20},
@@ -62,13 +65,16 @@ def score_name(ft, style, risk):
     return score, grade
 
 
-def evaluate(ticker, style, risk, capital, ev_today):
-    ft = decide.features(ticker)
-    ft["event"] = ev_today
+def evaluate(item, style, risk, capital, ev_today):
+    market = item["market"]
+    ft = decide.features(symbols.to_yahoo(item["ticker"], market))
+    ft["ticker"] = item["ticker"].upper()
+    ft["event"] = ev_today if market == "US" else None      # US calendar only gates US names
     action, conv, _ = decide.decide_swing(ft)
     score, grade = score_name(ft, style, risk)
     plan = decide.execution_plan(ft, action, conv, "swing", capital)
-    return dict(ticker=ft["ticker"], price=round(ft["price"], 2), action=action,
+    return dict(ticker=ft["ticker"], market=market, ccy=symbols.currency(market),
+                price=round(ft["price"], 2), action=action,
                 score=score, grade=grade, trendup=ft["trendup"], ext=round(ft["ext"], 4),
                 atr_pct=round(ft["atr"] / ft["price"], 4) if ft["price"] else None, plan=plan)
 
@@ -76,14 +82,16 @@ def evaluate(ticker, style, risk, capital, ev_today):
 def build(universe, style, risk, horizon, capital):
     rules = RISK_RULES.get(risk, RISK_RULES["medium"])
     evname, ev = decide.event_today(date.today())
-    ev_today = evname if ev else None
+    has_us = any(i["market"] == "US" for i in universe)
+    us_event = evname if (ev and has_us) else None          # US event only matters if US names present
+    ev_today = us_event
 
     evals, errors = [], []
-    for t in universe:
+    for item in universe:
         try:
-            evals.append(evaluate(t, style, risk, capital, ev_today))
+            evals.append(evaluate(item, style, risk, capital, ev_today))
         except Exception as e:
-            errors.append({"ticker": t, "error": f"{type(e).__name__}: {e}"})
+            errors.append({"ticker": item["ticker"], "error": f"{type(e).__name__}: {e}"})
 
     longs = sorted([e for e in evals if e["grade"] != "D" and e["action"] == "CALL"],
                    key=lambda e: e["score"], reverse=True)
@@ -91,7 +99,7 @@ def build(universe, style, risk, horizon, capital):
     pick_set = {e["ticker"] for e in picks}
     dropped = [e["ticker"] for e in evals if e["ticker"] not in pick_set]
 
-    cash_floor = rules["cash_floor"] + (8 if ev else 0)   # event day -> raise cash
+    cash_floor = rules["cash_floor"] + (8 if us_event else 0)   # US event day -> raise cash
     investable = max(0.0, 100 - cash_floor)
 
     raws = [max(0.05, (e["score"] / 100) * (1.05 - (e["atr_pct"] or 0.03) / 0.06 * 0.45)) for e in picks]
@@ -109,19 +117,20 @@ def build(universe, style, risk, horizon, capital):
                     "Rebalance when a holding slips to grade C or drifts 25% from its target weight.",
                     f"Keep estimated annualized volatility near {rules['target_vol']}%.",
                     f"Per-name cap {name_cap}% · cash floor {cash_floor}%"
-                    + (" (raised for today's event)" if ev else "") + ".",
+                    + (" (raised for today's event)" if us_event else "") + ".",
                 ])
 
 
 def render(s):
-    L = [f"ot strategy — {s['style'].title()} · {s['horizon']} · risk {s['risk']}  (capital ${s['capital']:,.0f})",
+    L = [f"ot strategy — {s['style'].title()} · {s['horizon']} · risk {s['risk']}",
          f"  confidence {s['confidence']}/100 · target vol ~{s['target_vol']}% · cash {s['cash']}%"
          + (f" · ⚠ {s['event']} today (cash raised)" if s["event"] else "")]
     if not s["positions"]:
         L.append("  (no long-actionable A/B/C names in this universe now — all watch/avoid)")
     for e in s["positions"]:
         pl, bz, tz = e["plan"], e["plan"]["buy_zone"], e["plan"]["trim_zone"]
-        L.append(f"  {e['ticker']:<6} {e['grade']} · score {e['score']:>3} · {e['allocation']:>3}%   "
+        tag = "" if e.get("ccy", "USD") == "USD" else f" {e['ccy']}"
+        L.append(f"  {e['ticker']:<7} {e['grade']} · score {e['score']:>3} · {e['allocation']:>3}%{tag}   "
                  f"buy {bz[0]:.2f}–{bz[1]:.2f} · trim {tz[0]:.2f}–{tz[1]:.2f} · stop {pl['stop']:.2f}")
     if s["dropped"]:
         L.append(f"  dropped (D / not uptrend / extended): {', '.join(s['dropped'])}")
@@ -134,37 +143,67 @@ def render(s):
     return "\n".join(L)
 
 
+def _repo_root():
+    return os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
+def _items_from(wl):
+    """Pull [{ticker, market}] from a watchlist's positions + watch (market defaults US)."""
+    out, seen = [], set()
+
+    def add(t, m):
+        t = (t or "").upper()
+        if t and t not in seen:
+            seen.add(t)
+            out.append({"ticker": t, "market": (m or "US").upper()})
+
+    for p in wl.get("positions", []):
+        add(p.get("ticker"), p.get("market"))
+    for w in wl.get("watch", []):
+        add(w, "US") if isinstance(w, str) else add(w.get("ticker"), w.get("market"))
+    return out
+
+
+def load_roster(roster_id):
+    with open(os.path.join(_repo_root(), f"watchlist.{roster_id}.json")) as f:
+        return _items_from(json.load(f))
+
+
 def load_watchlist_universe():
-    root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     try:
-        with open(os.path.join(root, "watchlist.json")) as f:
-            wl = json.load(f)
+        with open(os.path.join(_repo_root(), "watchlist.json")) as f:
+            return _items_from(json.load(f))
     except Exception:
         return []
-    out, seen = [], set()
-    for p in wl.get("positions", []):
-        t = (p.get("ticker") or "").upper()
-        if t and t not in seen:
-            seen.add(t); out.append(t)
-    for w in wl.get("watch", []):
-        t = (w if isinstance(w, str) else w.get("ticker", "")).upper()
-        if t and t not in seen:
-            seen.add(t); out.append(t)
-    return out
+
+
+def resolve_universe(a):
+    if a.roster:
+        return load_roster(a.roster)
+    if a.tickers:
+        return [{"ticker": t.upper(), "market": a.market} for t in a.tickers]
+    return load_watchlist_universe()
 
 
 def main(argv=None):
     p = argparse.ArgumentParser(prog="strategy", description="Portfolio constructor (range plans + allocation).")
     p.add_argument("tickers", nargs="*", help="universe (default: watchlist.json positions + watch)")
+    p.add_argument("--roster", help="load watchlist.<ID>.json (multi-user roster) as the universe")
+    p.add_argument("--market", choices=["US", "A", "HK"], default="US",
+                   help="market for positional TICKERS (default US; a roster carries its own per-name market)")
     p.add_argument("--style", choices=list(STYLE_WEIGHTS), default="balanced")
     p.add_argument("--risk", choices=list(RISK_RULES), default="medium")
     p.add_argument("--horizon", choices=list(HORIZON), default="medium")
     p.add_argument("--capital", type=float, default=100000)
     p.add_argument("--format", choices=["text", "json"], default="text")
     a = p.parse_args(argv)
-    universe = [t.upper() for t in a.tickers] or load_watchlist_universe()
+    try:
+        universe = resolve_universe(a)
+    except Exception as e:
+        print(f"strategy: could not load universe: {type(e).__name__}: {e}", file=sys.stderr)
+        return 1
     if not universe:
-        print("strategy: no tickers given and no watchlist.json universe found", file=sys.stderr)
+        print("strategy: no tickers given and no watchlist found", file=sys.stderr)
         return 1
     try:
         s = build(universe, a.style, a.risk, a.horizon, a.capital)
