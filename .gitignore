@@ -14,6 +14,8 @@ data/briefs/*
 !data/briefs/.gitkeep
 data/reports/*
 !data/reports/.gitkeep
+data/journal/*
+!data/journal/.gitkeep
 
 # Personal watchlist + per-user rosters (private holdings) — commit watchlist.example.json only
 watchlist.json
