@@ -9,6 +9,11 @@
 #   ./install_schedule.sh email 3 0        # EMAIL job at a specific local time
 #   ./install_schedule.sh email uninstall  # remove the email job
 #
+#   ./install_schedule.sh roster           # MULTI-USER: ALL rosters, one slot (05:00 local)
+#   ./install_schedule.sh roster us        # US rosters only (05:00 local)
+#   ./install_schedule.sh roster cn 16 0   # A-share/HK rosters only (16:00 local = ~07:00 China)
+#   ./install_schedule.sh roster us uninstall   # remove a group's job
+#
 # notify job -> report.py --notify --save  (writes data/reports/<date>.md + macOS banner)
 # email  job -> bin/ot email               (emails the report via SMTP; creds in .env)
 # launchd runs missed calendar jobs on next wake.
@@ -18,11 +23,23 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 
 # --- mode: "email" as first arg switches to the email job ----------------------
 MODE="notify"
-if [ "${1:-}" = "email" ]; then MODE="email"; shift; fi
+case "${1:-}" in email) MODE="email"; shift ;; roster) MODE="roster"; shift ;; esac
+ROSTER_GROUP=""
+if [ "$MODE" = "roster" ]; then
+  case "${1:-}" in us|US) ROSTER_GROUP="US"; shift ;; cn|CN) ROSTER_GROUP="CN"; shift ;; esac
+fi
 
 if [ "$MODE" = "email" ]; then
   LABEL="com.opentrading.dailyemail"
   DEF_HOUR=8; DEF_MIN=30         # 08:30 local (Seattle/PT) — in the inbox before a 9am wake
+elif [ "$MODE" = "roster" ]; then
+  if [ "$ROSTER_GROUP" = "US" ]; then
+    LABEL="com.opentrading.rostermail.us"; DEF_HOUR=5; DEF_MIN=0    # US pre-market
+  elif [ "$ROSTER_GROUP" = "CN" ]; then
+    LABEL="com.opentrading.rostermail.cn"; DEF_HOUR=16; DEF_MIN=0   # 16:00 PT = ~07:00 China, A/HK pre-open
+  else
+    LABEL="com.opentrading.rostermail"; DEF_HOUR=5; DEF_MIN=0       # all rosters, one slot
+  fi
 else
   LABEL="com.opentrading.dailybrief"
   DEF_HOUR=5; DEF_MIN=30         # 05:30 PT == 08:30 ET
@@ -52,15 +69,20 @@ else
   RUNNER_PATH=""
 fi
 
-if [ "$MODE" = "email" ]; then
-  # Claude-written morning email: gather data -> claude -p synthesizes -> SMTP.
+if [ "$MODE" = "email" ] || [ "$MODE" = "roster" ]; then
+  # Claude-written email(s): gather data -> claude -p synthesizes -> SMTP.
   # launchd has a minimal PATH, so add the dirs holding claude/uv/node/python3.
   for b in claude uv node python3; do
     d="$(dirname "$(command -v "$b" 2>/dev/null)" 2>/dev/null)"
     [ -n "$d" ] && case ":$RUNNER_PATH:" in *":$d:"*) ;; *) RUNNER_PATH="${RUNNER_PATH}${d}:" ;; esac
   done
-  PROG_ARGS="<string>/bin/bash</string><string>$ROOT/tools/brief/daily_email_claude.sh</string>"
-  JOB_DESC="daily_email_claude.sh  (gather -> claude -p -> SMTP)"
+  if [ "$MODE" = "roster" ]; then
+    PROG_ARGS="<string>/bin/bash</string><string>$ROOT/tools/brief/roster_mailer.sh</string>"
+    JOB_DESC="roster_mailer.sh  (every roster: 7d news + strategy -> claude -p -> SMTP)"
+  else
+    PROG_ARGS="<string>/bin/bash</string><string>$ROOT/tools/brief/daily_email_claude.sh</string>"
+    JOB_DESC="daily_email_claude.sh  (gather -> claude -p -> SMTP)"
+  fi
   RUNNER_DESC="claude -p (headless) + SMTP"
 else
   SCRIPT="$ROOT/tools/report/report.py"
@@ -79,6 +101,8 @@ for wd in 1 2 3 4 5; do
   intervals+="    <dict><key>Weekday</key><integer>$wd</integer><key>Hour</key><integer>$HOUR</integer><key>Minute</key><integer>$MIN</integer></dict>
 "
 done
+ENV_EXTRA=""
+[ -n "$ROSTER_GROUP" ] && ENV_EXTRA="<key>OT_ROSTER_MARKET</key><string>$ROSTER_GROUP</string>"
 
 cat > "$PLIST" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -89,7 +113,7 @@ cat > "$PLIST" <<PLIST
   <key>ProgramArguments</key>
   <array>$PROG_ARGS</array>
   <key>EnvironmentVariables</key>
-  <dict><key>PATH</key><string>${RUNNER_PATH}/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string></dict>
+  <dict><key>PATH</key><string>${RUNNER_PATH}/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>${ENV_EXTRA}</dict>
   <key>WorkingDirectory</key><string>$ROOT</string>
   <key>StandardOutPath</key><string>$LOG</string>
   <key>StandardErrorPath</key><string>$LOG</string>
@@ -107,9 +131,11 @@ echo "  schedule : Mon-Fri ${HOUR}:$(printf '%02d' "$MIN") local"
 echo "  job      : $JOB_DESC"
 echo "  runner   : $RUNNER_DESC"
 echo "  log      : $LOG"
-if [ "$MODE" = "email" ]; then
+if [ "$MODE" != "notify" ]; then
   echo "  note     : needs a configured .env (see tools/email/README.md)"
+  [ "$MODE" = "roster" ] && echo "  rosters  : watchlist.json + watchlist.<id>.json -> each its own recipient/lang; supersedes the single-user job (remove it: ./install_schedule.sh email uninstall)"
 fi
 echo "  TCC      : launchd cannot read ~/Desktop|~/Documents|~/Downloads — move the"
 echo "             repo out of those, or grant the runner Full Disk Access."
-echo "  remove   : ./install_schedule.sh ${MODE/notify/} uninstall"
+RM="${MODE/notify/}"; [ "$MODE" = roster ] && [ -n "$ROSTER_GROUP" ] && RM="roster $(printf %s "$ROSTER_GROUP" | tr 'A-Z' 'a-z')"
+echo "  remove   : ./install_schedule.sh $RM uninstall"
