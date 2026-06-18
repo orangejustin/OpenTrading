@@ -133,6 +133,8 @@ case "$cmd" in
     pyrun "$ROOT/tools/sim/decide.py" "$@" ;;
   strategy)
     pyrun "$ROOT/tools/sim/strategy.py" "$@" ;;
+  research)
+    pyrun "$ROOT/tools/research/research.py" "$@" ;;
   schedule)
     exec bash "$ROOT/tools/brief/install_schedule.sh" "$@" ;;
   doctor)
