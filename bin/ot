@@ -131,6 +131,8 @@ case "$cmd" in
       | pygen "$ROOT/tools/email/send_email.py" "${subj[@]}" "$@" ;;
   decide)
     pyrun "$ROOT/tools/sim/decide.py" "$@" ;;
+  strategy)
+    pyrun "$ROOT/tools/sim/strategy.py" "$@" ;;
   schedule)
     exec bash "$ROOT/tools/brief/install_schedule.sh" "$@" ;;
   doctor)
