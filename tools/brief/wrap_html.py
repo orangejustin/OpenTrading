@@ -28,10 +28,13 @@ BASE = {
     "ul": "margin:8px 0;padding-left:20px;",
     "ol": "margin:8px 0;padding-left:20px;",
     "li": "margin:5px 0;font-size:13.5px;line-height:1.55;color:#1f2937;",
-    "table": "border-collapse:collapse;width:100%;margin:12px 0;font-size:12.5px;",
-    "th": "text-align:left;background:#f1f5f9;color:#0f172a;padding:7px 9px;"
-          "border-bottom:2px solid #cbd5e1;font-weight:600;white-space:nowrap;",
-    "td": "padding:7px 9px;border-bottom:1px solid #e8edf3;color:#1f2937;vertical-align:top;",
+    "table": "border-collapse:collapse;width:100%;margin:10px 0 14px;font-size:12.5px;"
+             "border:1px solid #e8edf3;",
+    "th": "text-align:left;background:#f8fafc;color:#475569;padding:8px 10px;"
+          "border-bottom:2px solid #e2e8f0;font-weight:600;font-size:10.5px;"
+          "text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;",
+    "td": "padding:8px 10px;border-bottom:1px solid #eef2f7;color:#1f2937;"
+          "vertical-align:top;line-height:1.5;",
     "strong": "color:#0f172a;",
     "b": "color:#0f172a;",
     "a": "color:#2563eb;text-decoration:none;",
@@ -47,9 +50,26 @@ CLASS = {
     "p.regime": "margin:0 0 14px;padding:13px 15px;background:#0f172a;color:#f8fafc;"
                 "border-radius:7px;font-size:14px;line-height:1.55;",
     "p.disclaimer": "margin:16px 0 0;font-size:11px;color:#94a3b8;font-style:italic;",
+    "p.sub": "margin:-4px 0 8px;font-size:11.5px;color:#64748b;line-height:1.5;",
     "span.up": "color:#15803d;font-weight:600;",
     "span.down": "color:#b91c1c;font-weight:600;",
     "span.flat": "color:#64748b;font-weight:600;",
+    # number / ticker cells — base + extra so the row's padding/border survives.
+    "td.num": BASE["td"] + "text-align:right;white-space:nowrap;"
+              "font-variant-numeric:tabular-nums;font-feature-settings:'tnum';",
+    "th.num": BASE["th"] + "text-align:right;",
+    "td.tk":  BASE["td"] + "font-weight:700;color:#0f172a;white-space:nowrap;",
+    # action / grade badges — a colored chip that degrades to bold colored text
+    # in Outlook (which drops padding/radius but keeps color+weight).
+    "span.buy":   "background:#dcfce7;color:#166534;padding:1px 6px;border-radius:4px;font-size:11px;font-weight:700;white-space:nowrap;",
+    "span.trim":  "background:#fef3c7;color:#b45309;padding:1px 6px;border-radius:4px;font-size:11px;font-weight:700;white-space:nowrap;",
+    "span.hold":  "background:#e2e8f0;color:#334155;padding:1px 6px;border-radius:4px;font-size:11px;font-weight:700;white-space:nowrap;",
+    "span.watch": "background:#dbeafe;color:#1e40af;padding:1px 6px;border-radius:4px;font-size:11px;font-weight:700;white-space:nowrap;",
+    "span.avoid": "background:#fee2e2;color:#b91c1c;padding:1px 6px;border-radius:4px;font-size:11px;font-weight:700;white-space:nowrap;",
+    "span.grade": "background:#0f172a;color:#ffffff;padding:1px 6px;border-radius:4px;font-size:11px;font-weight:700;white-space:nowrap;",
+    # bull / bear labels for the adversarial (左右脑互搏) alpha case.
+    "span.bull": "background:#dcfce7;color:#166534;padding:1px 6px;border-radius:4px;font-size:11px;font-weight:700;white-space:nowrap;",
+    "span.bear": "background:#fee2e2;color:#b91c1c;padding:1px 6px;border-radius:4px;font-size:11px;font-weight:700;white-space:nowrap;",
 }
 # Inside a dark callout (p.regime) the light background is gone, so nested inline
 # emphasis must switch to light/high-contrast colors — otherwise a dark <strong>

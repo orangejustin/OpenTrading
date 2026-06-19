@@ -35,7 +35,8 @@ for ROSTER in "$ROOT/watchlist.json" "$ROOT"/watchlist.*.json; do
   [ "$base" = "watchlist.example.json" ] && continue
   [ -f "$ROSTER" ] || continue
 
-  # meta: rid \t recipient \t lang \t owner \t "code:MARKET;code:MARKET;..."
+  # meta: rid \t recipient \t lang \t owner \t positions-specs \t watch-specs
+  #   specs = "code:MARKET;code:MARKET;..."  (positions);  wspecs = the 'watch' apex universe.
   META="$(OT_NO_UV=1 python3 - "$ROSTER" <<'PY' 2>/dev/null || true
 import json, os, sys
 d = json.load(open(sys.argv[1]))
@@ -46,11 +47,15 @@ lang = d.get("lang") or "en"
 owner = d.get("owner") or "You"
 specs = ";".join(f"{p['ticker']}:{(p.get('market') or 'US').upper()}"
                  for p in d.get("positions", []) if p.get("ticker"))
-print("\t".join([rid, recip, lang, owner, specs]))
+# alpha / new-name ideas: the curated 'alpha' list (preferred), else 'watch' apex theme candidates.
+_alpha = d.get("alpha") or [w for w in d.get("watch", []) if w.get("kind") == "apex"]
+wspecs = ";".join(f"{a['ticker']}:{(a.get('market') or 'US').upper()}"
+                  for a in _alpha if a.get("ticker"))
+print("\t".join([rid, recip, lang, owner, specs, wspecs]))
 PY
 )"
   [ -z "$META" ] && continue
-  IFS=$'\t' read -r RID RECIP RLANG OWNER SPECS <<<"$META"
+  IFS=$'\t' read -r RID RECIP RLANG OWNER SPECS WSPECS <<<"$META"
   [ -n "${OT_ROSTER_ONLY:-}" ] && [ "$RID" != "$OT_ROSTER_ONLY" ] && continue
   # market group: CN if any A-share/HK holding, else US (lets a split schedule target each)
   GROUP="US"; case ";$SPECS;" in *":A;"*|*":HK;"*) GROUP="CN" ;; esac
@@ -66,13 +71,25 @@ PY
   # Engine-constructed strategy + per-name range plans.
   if [ "$RID" = "own" ]; then STRAT="$("$OT" strategy 2>/dev/null || true)"
   else STRAT="$("$OT" strategy --roster "$RID" 2>/dev/null || true)"; fi
+  GREP='price |>> |Buy zone|Sell zone|Buy-if|Trim|Cover|Stop/|Scenario|grade'
   PLANS=""; USTICK=""
   IFS=';' read -ra ARR <<<"$SPECS"
   for s in "${ARR[@]}"; do
     [ -z "$s" ] && continue
     code="${s%%:*}"; mkt="${s##*:}"
     PLANS+="--- $code ($mkt) ---
-$("$OT" decide "$code" --market "$mkt" 2>/dev/null | grep -E 'price |>> |Buy zone|Sell zone|Buy-if|Trim|Cover|Stop/|Scenario' || true)
+$("$OT" decide "$code" --market "$mkt" 2>/dev/null | grep -E "$GREP" || true)
+"
+    [ "$mkt" = "US" ] && USTICK="$USTICK $code"
+  done
+  # Alpha / new-name ideas — the watch universe (apex theme candidates), same range engine.
+  ALPHA=""
+  IFS=';' read -ra WARR <<<"$WSPECS"
+  for s in "${WARR[@]}"; do
+    [ -z "$s" ] && continue
+    code="${s%%:*}"; mkt="${s##*:}"
+    ALPHA+="--- $code ($mkt) ---
+$("$OT" decide "$code" --market "$mkt" 2>/dev/null | grep -E "$GREP" || true)
 "
     [ "$mkt" = "US" ] && USTICK="$USTICK $code"
   done
@@ -90,6 +107,8 @@ $SMART
 $STRAT
 ### PER-NAME RANGE PLANS (ot decide — local currency)
 $PLANS
+### ALPHA / NEW-NAME IDEAS (ot decide — watch universe)
+$ALPHA
 ### OPTIONS / DEALER GAMMA (US names only)
 $OPTS"
 
@@ -101,19 +120,27 @@ $OPTS"
 
   read -r -d '' PROMPT <<PROMPT || true
 You are OpenTrading, a macro-first, risk-first analyst. Today is $DATESTR. Write a DAILY
-PRE-MARKET email for $OWNER's portfolio as a clean HTML FRAGMENT (no <html>/<head>/<body>,
-no markdown, no code fences — HTML only). Use only: <p>, <h2>, <ul>/<li>, <strong>,
-<span class="up">, <span class="down">, <p class="regime">, <p class="disclaimer">. Order:
+PRE-MARKET DESK NOTE for $OWNER's portfolio as a clean HTML FRAGMENT (no <html>/<head>/<body>,
+no markdown, no code fences — HTML only). TABLES for everything scannable. Use only these tags
+and classes: <p>, <h2>, <ul>/<li>, <strong>, <em>, <table>/<tr>/<th>/<td>, <span class="up">,
+<span class="down">, <td class="num"> (number cells, right-aligned), <td class="tk"> (ticker cell),
+<span class="buy"|"trim"|"hold"|"watch"|"avoid"> (action badges), <span class="grade"> (A/B/C/D),
+<p class="regime">, <p class="disclaimer">. Section order (this is the contract):
 
-1. <p class="regime"><strong>...</strong> one-sentence regime naming the single biggest driver + its number.</p>
-2. <h2>News (7d)</h2><ul> 4-6 of the 7-day headlines MOST relevant to THESE holdings; each li = headline + implication for the name(s) it touches.</ul>
-3. <h2>Holdings</h2><ul> per held name: the range execution plan FROM THE DATA — buy/建仓 zone, trim/止盈, stop/止损 — plus a one-line read. The user trades ZONES, not single points; mark up/down with span.</ul>
-4. <h2>Strategy</h2><p> summarize the engine-constructed allocation (top weights + cash); flag extended names to wait on.</p>
-5. <h2>Risk</h2><ul> 3 discipline points tied to today's data.</ul>
-6. <p class="disclaimer">Educational only — not financial advice.</p>
+1. <p class="regime"><strong>...</strong></p> — one dark callout: the single biggest driver + its number + the read.
+2. <h2>News &rarr; what it means</h2> — a 2-col <table> (Driver | Read for the book), 4-6 rows, each citing a real number.
+3. <h2>Holdings — levels &amp; call</h2> — a <table>: columns Name | Last | Day | Call | Levels (buy · trim · stop) | Read.
+   One row per HELD name: tk ticker cell, num Last/Day cells, an action badge in Call, the mechanical zones FROM THE DATA, a one-line read.
+4. <h2>Alpha Watch</h2> (title in the EMAIL'S language — never append a parenthetical in the other language) — a <table>: Name (+theme sub-line) | Last | Day | Grade | Bull vs Bear &rarr; call. For EACH idea, give a brief bull-vs-bear stress-test: one <span class="bull">Bull</span> upside line, one <span class="bear">Bear</span> risk line, then the verdict badge (buy/trim/watch/avoid) + levels from the alpha decide data. Finish with an AVOID row for any downtrend name. (Omit this section if there is no alpha data.)
+5. <h2>Strategy</h2> — a short <p>: the engine's top weights + cash; flag extended names to wait on.
+6. <h2>The policy</h2> — a 2-col <table> (Principle | The rule): Selection &gt; timing · Ranges not points (never chase the green candle) · 0DTE QQQ done right · Risk governor · Apex lens · Event-aware. Tie one rule to today (name FOMC/CPI/OPEX if near).
+7. <h2>Risk — today</h2> — a <ul> of 3 points tied to today's numbers.
+8. <p class="disclaimer">Educational only — not financial advice.</p>
 
-Rules: every claim cites a real number from the data; state the "so what"; no filler. Prices are
-in each name's local currency (¥ A-share, HK\$ HK, \$ US) — keep them as shown. ~450-650 words.
+Rules: every claim cites a real number from the data; mark moves up/down with a span; state the "so what"; no filler.
+Write every heading and word in ONE language only (the email's) — never mix Chinese and English. Separate a hold thesis
+from a trade setup. The user trades ZONES, not single points. Prices are in each name's local currency (¥ A-share,
+HK\$ HK, \$ US) — keep them as shown. ~500-650 words.
 $LANG_INSTR
 
 DATA:
