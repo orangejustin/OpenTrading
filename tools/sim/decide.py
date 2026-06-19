@@ -25,7 +25,7 @@ so it points you at `ot options` / `ot news` / `ot macro` to confirm before acti
 Educational only — not financial advice. Stdlib only.
 """
 from __future__ import annotations
-import argparse, calendar, json, sys
+import argparse, calendar, json, os, sys
 from datetime import date
 
 import yfhist
@@ -279,6 +279,29 @@ def render(r, ft_event):
     return "\n".join(L)
 
 
+def _journal_append(r):
+    """Auto-log this call to the reflect journal (best-effort; one row per name per day)."""
+    try:
+        jdir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+                            "data", "journal")
+        jf = os.path.join(jdir, "decisions.jsonl")
+        today = date.today().isoformat()
+        if os.path.exists(jf):
+            with open(jf) as fh:
+                for line in fh:
+                    if f'"{r["ticker"]}"' in line and f'"{today}"' in line and '"decide"' in line:
+                        return
+        os.makedirs(jdir, exist_ok=True)
+        plan = r.get("plan") or {}
+        with open(jf, "a") as fh:
+            fh.write(json.dumps({"date": today, "id": f'{r["ticker"]}-{today}', "ticker": r["ticker"],
+                                 "market": r.get("market", "US"), "action": r["action"],
+                                 "conviction": r.get("conviction"), "grade": plan.get("grade"),
+                                 "entry_price": r.get("price"), "source": "decide"}, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(prog="decide", description="Live CALL/PUT/NO-ACTION engine (backtest-learned).")
     p.add_argument("ticker")
@@ -293,6 +316,7 @@ def main(argv=None):
     except Exception as e:
         print(f"decide: {type(e).__name__}: {e}", file=sys.stderr)
         return 1
+    _journal_append(r)
     print(json.dumps(r, indent=2) if a.format == "json" else render(r, None))
     return 0
 
