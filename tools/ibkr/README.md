@@ -1,41 +1,55 @@
-# IBKR integration — planned (not yet implemented)
+# IBKR integration
 
-Interactive Brokers connectivity for live market data and (paper) execution.
+Interactive Brokers connectivity for live market data and (guarded) paper execution,
+via [`ib_async`](https://github.com/ib-api-reloaded/ib_async) (the maintained successor
+to `ib_insync`) against a locally running **TWS** or **IB Gateway** with the API enabled.
 
-> **Status: stub.** No code here yet — see [`ROADMAP.md`](../../ROADMAP.md). This
-> README is the design contract so the implementation lands consistently.
+> **Status: read-only commands implemented + a guarded order path.** Live data and
+> execution require a running gateway — see prerequisites.
 
-## Planned approach
+## Prerequisites (one-time, broker side)
 
-Use [`ib_async`](https://github.com/ib-api-reloaded/ib_async) (the maintained
-successor to `ib_insync`) against a locally running **TWS** or **IB Gateway** with
-the API enabled.
+1. An IBKR account with a **paper-trading account** enabled (Account Settings → Paper Trading).
+2. **IB Gateway** (lighter) or **TWS** installed and logged in to the **paper** account.
+3. API enabled: **Configure → Settings → API → Settings → "Enable ActiveX and Socket Clients"**.
+   Note the **Socket port**: paper Gateway `4002`, paper TWS `7497` (live `4001`/`7496`).
+
+No pip step under `uv` — the script's PEP 723 header auto-installs `ib_async`. For the
+plain `python3` path: `pip install ib_async`.
+
+## Usage
 
 ```bash
-# (planned) prerequisites
-pip install ib_async
-# Start TWS or IB Gateway, enable: Configure > API > Enable ActiveX and Socket Clients
+ot ibkr quote SPY QQQ ^VIX            # live/delayed NBBO + % change
+ot ibkr positions                     # current positions
+ot ibkr pnl                           # account NLV / cash / uPnL + per-position P&L
+ot ibkr bars MSTR --tf 5m --lookback 1d   # historical bars (technicals)
+ot ibkr chain SPY                     # list expiries + strike range
+ot ibkr chain SPY --expiry 20260717 --width 5   # ATM window with IV + Greeks
+ot ibkr order MSTR --side buy --qty 10              # DRY-RUN preview (no submit)
+ot ibkr order MSTR --side buy --qty 10 --submit     # submit — PAPER port only
+ot ibkr quote SPY --json              # machine-readable (any subcommand)
 ```
 
-## Planned scope
+## Connection (env or flags; flags win)
 
-Read-only first:
+| Var / flag                        | Default       | Notes                       |
+|-----------------------------------|---------------|-----------------------------|
+| `IBKR_HOST` / `--host`            | `127.0.0.1`   | gateway host                |
+| `IBKR_PORT` / `--port`            | `4002`        | **paper Gateway**           |
+| `IBKR_CLIENT_ID` / `--client-id`  | `17`          | any unused client id        |
+| `IBKR_ACCOUNT` / `--account`      | first managed | for multi-account logins    |
+| `--live-data`                     | off (delayed) | realtime needs a subscription |
 
-- `ibkr.py quote SYM` — live quote / NBBO
-- `ibkr.py chain SYM [--expiry ...]` — option chain with Greeks + IV
-- `ibkr.py bars SYM --tf 5m --lookback 1d` — historical bars for the technicals workflow
-- `ibkr.py positions` / `ibkr.py pnl` — current positions and P&L (feeds Workflow 6)
+## Safety rules (enforced)
 
-Then execution, gated:
+- The connection is opened **read-only** (`readonly=True`); market-data defaults to
+  **delayed-frozen** so it works without a realtime subscription.
+- `order` **dry-runs by default** — printing the plan, submitting nothing. `--submit`
+  is required to place.
+- A submit is **refused on any non-paper port** unless `--allow-live` is *also* given.
+  Default config targets paper, so live is never one keystroke away.
+- Submitted orders are appended to `data/ibkr/orders.log` (git-ignored).
 
-- `ibkr.py order ... --paper` — paper-trade only by default; live requires an explicit
-  flag **and** an interactive confirm. Never auto-submit live orders.
-
-## Safety rules
-
-- Default to **read-only**; default any order to the **paper** account.
-- A live order path must be opt-in, confirmed, and logged.
-- Connection params (host/port/clientId) come from env or flags — never hard-code, never commit.
-
-Output mirrors the other tools: human table by default, `--format json` for piping
-into the skill.
+Output mirrors the other tools: a human table by default, `--format json` (`--json`
+via `ot`) for piping into the skill.

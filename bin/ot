@@ -16,6 +16,7 @@
 #   ot brief                          lighter daily push + macOS notification
 #   ot email   [--to a] [--subject s] [--dry-run]   email the report via SMTP (creds in .env)
 #   ot decide   TICKER [--dte N]      live CALL/PUT/NO-ACTION call (learned policy)
+#   ot ibkr     quote SYM | positions | pnl | bars SYM | chain SYM | order ...   (needs TWS/IB Gateway)
 #   ot schedule [hour] [min] | schedule uninstall    install/remove the daily launchd job
 #   ot doctor                         check runner / deps / network
 #   ot help
@@ -135,6 +136,11 @@ case "$cmd" in
     pyrun "$ROOT/tools/sim/strategy.py" "$@" ;;
   research)
     pyrun "$ROOT/tools/research/research.py" "$@" ;;
+  ibkr|ib)
+    # Interactive Brokers — needs a local TWS/IB Gateway with the API enabled.
+    # ib_async is provisioned via the script's PEP 723 header under `uv run`;
+    # for the python3 path: `pip install ib_async`.
+    pyrun "$ROOT/tools/ibkr/ibkr.py" "$@" ;;
   schedule)
     exec bash "$ROOT/tools/brief/install_schedule.sh" "$@" ;;
   doctor)
@@ -153,6 +159,12 @@ except Exception:
     note = "expected under uv — tools use curl" if runner == "uv" else "not installed — tools fall back to curl"
     print(f"  certifi        \033[33moptional\033[0m  {note}")
 print(f"  curl           {ok(bool(shutil.which('curl')))}  (TLS fallback)")
+try:
+    import ib_async  # noqa: F401
+    print(f"  ib_async       {ok(True)}  (optional — `ot ibkr`)")
+except Exception:
+    uvnote = "auto-installed under `uv run` via PEP 723" if runner == "uv" else "pip install ib_async to use `ot ibkr`"
+    print(f"  ib_async       \033[33moptional\033[0m  {uvnote}")
 wl = os.path.join(root, "watchlist.json")
 print(f"  watchlist.json {ok(os.path.exists(wl))}  {'(positions wired)' if os.path.exists(wl) else '(copy watchlist.example.json to enable position-aware sections)'}")
 # quick network probe (best-effort, 8s)
