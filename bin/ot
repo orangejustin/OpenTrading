@@ -141,6 +141,8 @@ case "$cmd" in
     # ib_async is provisioned via the script's PEP 723 header under `uv run`;
     # for the python3 path: `pip install ib_async`.
     pyrun "$ROOT/tools/ibkr/ibkr.py" "$@" ;;
+  reflect)
+    pyrun "$ROOT/tools/reflect/reflect.py" "$@" ;;
   schedule)
     exec bash "$ROOT/tools/brief/install_schedule.sh" "$@" ;;
   doctor)
