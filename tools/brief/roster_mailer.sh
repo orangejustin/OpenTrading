@@ -45,11 +45,11 @@ rid = fn[len("watchlist."):-len(".json")] if fn != "watchlist.json" else "own"
 recip = d.get("recipient") or os.environ.get("OT_EMAIL_TO", "")
 lang = d.get("lang") or "en"
 owner = d.get("owner") or "You"
-specs = ";".join(f"{p['ticker']}:{(p.get('market') or 'US').upper()}"
+specs = ";".join(f"{p['ticker']}:{(p.get('market') or 'US').upper()}:{p.get('name') or p['ticker']}"
                  for p in d.get("positions", []) if p.get("ticker"))
 # alpha / new-name ideas: the curated 'alpha' list (preferred), else 'watch' apex theme candidates.
 _alpha = d.get("alpha") or [w for w in d.get("watch", []) if w.get("kind") == "apex"]
-wspecs = ";".join(f"{a['ticker']}:{(a.get('market') or 'US').upper()}"
+wspecs = ";".join(f"{a['ticker']}:{(a.get('market') or 'US').upper()}:{a.get('name') or a['ticker']}"
                   for a in _alpha if a.get("ticker"))
 print("\t".join([rid, recip, lang, owner, specs, wspecs]))
 PY
@@ -58,7 +58,7 @@ PY
   IFS=$'\t' read -r RID RECIP RLANG OWNER SPECS WSPECS <<<"$META"
   [ -n "${OT_ROSTER_ONLY:-}" ] && [ "$RID" != "$OT_ROSTER_ONLY" ] && continue
   # market group: CN if any A-share/HK holding, else US (lets a split schedule target each)
-  GROUP="US"; case ";$SPECS;" in *":A;"*|*":HK;"*) GROUP="CN" ;; esac
+  GROUP="US"; case ";$SPECS;" in *":A:"*|*":HK:"*) GROUP="CN" ;; esac
   if [ -n "${OT_ROSTER_MARKET:-}" ]; then
     case "$OT_ROSTER_MARKET" in
       US|us) [ "$GROUP" = "US" ] || continue ;;
@@ -76,8 +76,8 @@ PY
   IFS=';' read -ra ARR <<<"$SPECS"
   for s in "${ARR[@]}"; do
     [ -z "$s" ] && continue
-    code="${s%%:*}"; mkt="${s##*:}"
-    PLANS+="--- $code ($mkt) ---
+    code="${s%%:*}"; rest="${s#*:}"; mkt="${rest%%:*}"; name="${rest#*:}"; [ "$name" = "$mkt" ] && name=""
+    PLANS+="--- $code ${name:+$name }($mkt) ---
 $("$OT" decide "$code" --market "$mkt" 2>/dev/null | grep -E "$GREP" || true)
 "
     [ "$mkt" = "US" ] && USTICK="$USTICK $code"
@@ -87,8 +87,8 @@ $("$OT" decide "$code" --market "$mkt" 2>/dev/null | grep -E "$GREP" || true)
   IFS=';' read -ra WARR <<<"$WSPECS"
   for s in "${WARR[@]}"; do
     [ -z "$s" ] && continue
-    code="${s%%:*}"; mkt="${s##*:}"
-    ALPHA+="--- $code ($mkt) ---
+    code="${s%%:*}"; rest="${s#*:}"; mkt="${rest%%:*}"; name="${rest#*:}"; [ "$name" = "$mkt" ] && name=""
+    ALPHA+="--- $code ${name:+$name }($mkt) ---
 $("$OT" decide "$code" --market "$mkt" 2>/dev/null | grep -E "$GREP" || true)
 "
     [ "$mkt" = "US" ] && USTICK="$USTICK $code"
@@ -130,7 +130,7 @@ and classes: <p>, <h2>, <ul>/<li>, <strong>, <em>, <table>/<tr>/<th>/<td>, <span
 1. <p class="regime"><strong>...</strong></p> — one dark callout: the single biggest driver + its number + the read.
 2. <h2>News &rarr; what it means</h2> — a 2-col <table> (Driver | Read for the book), 4-6 rows, each citing a real number.
 3. <h2>Holdings — levels &amp; call</h2> — a <table>: columns Name | Last | Day | Call | Levels (buy · trim · stop) | Read.
-   One row per HELD name: tk ticker cell, num Last/Day cells, an action badge in Call, the mechanical zones FROM THE DATA, a one-line read.
+   One row per HELD name: in the Name column use the DISPLAY NAME shown in the range-plan header (e.g. "300394 天孚通信" → show "天孚通信"), never the bare code alone; tk ticker cell, num Last/Day cells, an action badge in Call, the mechanical zones FROM THE DATA, a one-line read.
 4. <h2>Alpha Watch</h2> (title in the EMAIL'S language — never append a parenthetical in the other language) — a <table>: Name (+theme sub-line) | Last | Day | Grade | Bull vs Bear &rarr; call. For EACH idea, give a brief bull-vs-bear stress-test: one <span class="bull">Bull</span> upside line, one <span class="bear">Bear</span> risk line, then the verdict badge (buy/trim/watch/avoid) + levels from the alpha decide data. Finish with an AVOID row for any downtrend name. (Omit this section if there is no alpha data.)
 5. <h2>Strategy</h2> — a short <p>: the engine's top weights + cash; flag extended names to wait on.
 6. <h2>The policy</h2> — a 2-col <table> (Principle | The rule): Selection &gt; timing · Ranges not points (never chase the green candle) · 0DTE QQQ done right · Risk governor · Apex lens · Event-aware. Tie one rule to today (name FOMC/CPI/OPEX if near).
