@@ -1,0 +1,21 @@
+{
+  "_comment": "Curated market catalysts. CONFIRMED dates come from official sources; recurring events (OPEX, quad-witching, quarter-end) and rule-estimated data prints (CPI/PCE/NFP) are computed by catalysts.py. To upgrade an 'est' print to confirmed, paste the official date here from bls.gov/schedule (CPI/NFP), bea.gov/news/schedule (PCE), federalreserve.gov/monetarypolicy/fomccalendars.htm (FOMC). Tier: high = move-the-tape / event-gate; med = flow/technical; low = minor.",
+  "_sources": {
+    "fomc": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
+    "cpi": "https://www.bls.gov/schedule/news_release/cpi.htm",
+    "nfp": "https://www.bls.gov/schedule/news_release/empsit.htm",
+    "pce": "https://www.bea.gov/news/schedule"
+  },
+  "fixed": [
+    {"date": "2026-01-28", "event": "FOMC decision", "kind": "fomc", "tier": "high"},
+    {"date": "2026-03-18", "event": "FOMC decision (+SEP / dot plot)", "kind": "fomc", "tier": "high"},
+    {"date": "2026-04-29", "event": "FOMC decision", "kind": "fomc", "tier": "high"},
+    {"date": "2026-06-17", "event": "FOMC decision (+SEP / dot plot)", "kind": "fomc", "tier": "high"},
+    {"date": "2026-07-29", "event": "FOMC decision", "kind": "fomc", "tier": "high"},
+    {"date": "2026-09-16", "event": "FOMC decision (+SEP / dot plot)", "kind": "fomc", "tier": "high"},
+    {"date": "2026-10-28", "event": "FOMC decision", "kind": "fomc", "tier": "high"},
+    {"date": "2026-12-09", "event": "FOMC decision (+SEP / dot plot)", "kind": "fomc", "tier": "high"},
+
+    {"date": "2026-07-14", "event": "CPI (Jun) 8:30 ET", "kind": "cpi", "tier": "high"}
+  ]
+}
