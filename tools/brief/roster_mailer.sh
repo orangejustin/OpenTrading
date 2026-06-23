@@ -115,7 +115,7 @@ $OPTS"
   LANG_FLAG="en"; LANG_INSTR=""
   case "$RLANG" in
     zh|cn|zh-CN|zh_CN|chinese) LANG_FLAG="zh"
-      LANG_INSTR="IMPORTANT: write the ENTIRE email in fluent native Simplified Chinese (简体中文); keep tickers/codes/numbers and the HTML tags/class names exactly as-is." ;;
+      LANG_INSTR="IMPORTANT: write the ENTIRE email in fluent native Simplified Chinese (简体中文); keep tickers/codes/numbers and the HTML tag/class NAMES exactly as-is — but the VISIBLE TEXT inside every badge MUST be Chinese, not English. Map action badges (keep the class, translate the label): <span class=\"buy\">买入</span>, <span class=\"trim\">减仓</span>, <span class=\"hold\">持有</span>, <span class=\"watch\">观察</span>, <span class=\"avoid\">回避</span>; bull/bear labels: <span class=\"bull\">看多</span>, <span class=\"bear\">看空</span>. Grade badges stay A/B/C/D. NEVER emit an English word like hold/trim/buy/watch/avoid/Bull/Bear as visible text in a Chinese email." ;;
   esac
 
   read -r -d '' PROMPT <<PROMPT || true
