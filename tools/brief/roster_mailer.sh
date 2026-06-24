@@ -27,6 +27,8 @@ MODEL_ARG=()
 NEWS7="$("$OT" news digest --days 7 2>/dev/null | head -90 || true)"
 MACRO="$("$OT" macro 2>/dev/null || true)"
 SMART="$("$OT" smart 2>/dev/null || true)"
+# Step-0 event gate: FOMC / CPI / PCE / NFP / OPEX / quarter-end + ⚠️/✅ verdict.
+CATAL="$("$OT" catalysts --days 10 2>/dev/null || true)"
 DATESTR="$(date '+%A %b %d, %Y')"
 
 shopt -s nullglob
@@ -97,6 +99,8 @@ $("$OT" decide "$code" --market "$mkt" 2>/dev/null | grep -E "$GREP" || true)
   [ -n "$USTICK" ] && OPTS="$("$OT" options SPY $USTICK --dte 7 2>/dev/null || true)"
 
   DATA="### OWNER: $OWNER
+### EVENT GATE (ot catalysts — Step 0: is a binary macro print near?)
+$CATAL
 ### 7-DAY NEWS DIGEST (FinancialJuice)
 $NEWS7
 ### MACRO (rates / liquidity)
@@ -115,7 +119,7 @@ $OPTS"
   LANG_FLAG="en"; LANG_INSTR=""
   case "$RLANG" in
     zh|cn|zh-CN|zh_CN|chinese) LANG_FLAG="zh"
-      LANG_INSTR="IMPORTANT: write the ENTIRE email in fluent native Simplified Chinese (简体中文); keep tickers/codes/numbers and the HTML tag/class NAMES exactly as-is — but the VISIBLE TEXT inside every badge MUST be Chinese, not English. Map action badges (keep the class, translate the label): <span class=\"buy\">买入</span>, <span class=\"trim\">减仓</span>, <span class=\"hold\">持有</span>, <span class=\"watch\">观察</span>, <span class=\"avoid\">回避</span>; bull/bear labels: <span class=\"bull\">看多</span>, <span class=\"bear\">看空</span>. Grade badges stay A/B/C/D. NEVER emit an English word like hold/trim/buy/watch/avoid/Bull/Bear as visible text in a Chinese email." ;;
+      LANG_INSTR="IMPORTANT: write the ENTIRE email in fluent native Simplified Chinese (简体中文); keep tickers/codes/numbers and the HTML tag/class NAMES exactly as-is — but the VISIBLE TEXT inside every badge MUST be Chinese, not English. Map action badges (keep the class, translate the label): <span class=\"buy\">买入</span>, <span class=\"trim\">减仓</span>, <span class=\"hold\">持有</span>, <span class=\"watch\">观察</span>, <span class=\"avoid\">回避</span>; bull/bear labels: <span class=\"bull\">看多</span>, <span class=\"bear\">看空</span>. In the hedge section, write calls/puts/cash in Chinese: 买Call → '买入看涨期权' or '买Call', 买Put / hedge → '买入看跌期权 / 对冲', raise cash → '加现金 / 减仓避险'. Grade badges stay A/B/C/D. NEVER emit an English word like hold/trim/buy/watch/avoid/Bull/Bear/Calls/Puts/Cash as visible text in a Chinese email." ;;
   esac
 
   read -r -d '' PROMPT <<PROMPT || true
@@ -127,17 +131,21 @@ and classes: <p>, <h2>, <ul>/<li>, <strong>, <em>, <table>/<tr>/<th>/<td>, <span
 <span class="buy"|"trim"|"hold"|"watch"|"avoid"> (action badges), <span class="grade"> (A/B/C/D),
 <p class="regime">, <p class="disclaimer">. Section order (this is the contract):
 
-1. <p class="regime"><strong>...</strong></p> — one dark callout: the single biggest driver + its number + the read.
+1. <p class="regime"><strong>...</strong></p> — one dark callout: the single biggest driver + its number + the read. CONSULT THE EVENT GATE FIRST: if it shows ⚠️ (a binary print — FOMC/CPI/PCE/NFP — within range), LEAD with it and bias the whole note to caution. Read the tape's direction honestly: if breadth is risk-off (VIX rising, broad de-risk, dealer gamma negative, "sell-the-news" — in-line is sold, good-but-not-good-enough is sold, bad is sold harder), say so and make the note DEFENSIVE — do not force a bullish dip-buy frame onto a falling tape.
 2. <h2>News &rarr; what it means</h2> — a 2-col <table> (Driver | Read for the book), 4-6 rows, each citing a real number.
 3. <h2>Holdings — levels &amp; call</h2> — a <table>: columns Name | Last | Day | Call | Levels (buy · trim · stop) | Read.
    One row per HELD name: in the Name column use the DISPLAY NAME shown in the range-plan header (e.g. "300394 天孚通信" → show "天孚通信"), never the bare code alone; tk ticker cell, num Last/Day cells, an action badge in Call, the mechanical zones FROM THE DATA, a one-line read.
 4. <h2>Alpha Watch</h2> (the 观望/watch recommendation; title in the EMAIL'S language, e.g. "今日观望 · Top 3" for zh / "Watchlist — Top 3" for en — never append a parenthetical in the other language) — the candidate pool may hold many names, but DO NOT give every candidate a row. RANK them and feature ONLY THE TOP 3 FOR TODAY (best grade / closest to buy zone / best fit for TODAY's regime) as <table> rows: Name (+theme sub-line) | Last | Day | <span class="grade">A/B/C/D</span> | Bull vs Bear | Action. For EACH of the 3: a one-line stress-test (one <span class="bull">Bull</span> line, one <span class="bear">Bear</span> line), a real letter grade, and an EXPLICIT action badge — either <span class="buy">买入 / Enter</span> when Last is AT/INSIDE its buy zone NOW, or <span class="watch">等待 / Wait</span> WITH THE EXACT buy-zone price to wait for (e.g. "等回调至 14.50–15.49"); never a vague watch with no number. Then ONE short <p> naming the remaining candidates as "也在候选池，今日不占优 / also watching, not today" — no rows for them. (Omit this section entirely if there is no candidate data.)
 5. <h2>Strategy</h2> — a short <p>: the engine's top weights + cash; flag extended names to wait on.
-6. <h2>The policy</h2> — a 2-col <table> (Principle | The rule): Selection &gt; timing · Ranges not points (never chase the green candle) · 0DTE QQQ done right · Risk governor · Apex lens · Event-aware. Tie one rule to today (name FOMC/CPI/OPEX if near).
-7. <h2>Risk — today</h2> — a <ul> of 3 points tied to today's numbers.
-8. <p class="disclaimer">Educational only — not financial advice.</p>
+6. <h2>Hedge &amp; options — calls / puts / cash</h2> (title in the email's language, e.g. "对冲与期权 — 买Call / 买Put / 加现金" for zh) — a <ul> of 2-4 EXPLICIT, actionable lines grounded in the OPTIONS / DEALER GAMMA data and the event gate. Cover, as the tape warrants: (a) PUTS / hedge — name a concrete structure when downside risk is live (e.g. a short-dated QQQ/SPY put-spread near the put-wall through the next event) with the strike anchored to a real gamma wall; use <span class="watch">对冲/Hedge</span>. (b) CALLS — only when the regime is constructive AND a level holds; name the strike/expiry, use <span class="buy">买Call/Calls</span>; if it's NOT the day for calls, say "今日不买call / no calls today" and why. (c) CASH — if the tape is risk-off or a binary print is near, RAISING CASH or trimming high-beta to defense is a valid, first-class recommendation — say it plainly with <span class="trim">加现金/Raise cash</span>; do not default to "stay fully invested." Every line cites a wall price, VIX level, or the gate. (Omit only if there is genuinely no options data AND no risk to hedge.)
+7. <h2>The policy</h2> — a 2-col <table> (Principle | The rule): Selection &gt; timing · Ranges not points (never chase the green candle) · 0DTE QQQ done right · Risk governor · Apex lens · Event-aware. Tie one rule to today (name FOMC/CPI/PCE/OPEX if near, from the event gate).
+8. <h2>Risk — today</h2> — a <ul> of 3 points tied to today's numbers, incl. the hard gate (e.g. VIX&gt;30 = defense) and the next dated catalyst from the gate.
+9. <p class="disclaimer">Educational only — not financial advice.</p>
 
 Rules: every claim cites a real number from the data; mark moves up/down with a span; state the "so what"; no filler.
+Capital preservation outranks chasing upside: near a binary catalyst or on a risk-off tape, recommending HOLD / TRIM /
+RAISE CASH / HEDGE is the right call, not a cop-out — "sell-the-news" means in-line and not-good-enough both get sold, so
+do not manufacture a buy. Only recommend adds/calls when the regime AND a level genuinely support it.
 Write every heading and word in ONE language only (the email's) — never mix Chinese and English. Separate a hold thesis
 from a trade setup. The user trades ZONES, not single points. Prices are in each name's local currency (¥ A-share,
 HK\$ HK, \$ US) — keep them as shown. ~500-650 words.
