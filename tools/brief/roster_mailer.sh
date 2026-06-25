@@ -97,10 +97,15 @@ $("$OT" decide "$code" --market "$mkt" 2>/dev/null | grep -E "$GREP" || true)
   done
   OPTS=""
   [ -n "$USTICK" ] && OPTS="$("$OT" options SPY $USTICK --dte 7 2>/dev/null || true)"
+  # Per-name earnings (财报) gate — does any held/watched US name report soon?
+  EARN=""
+  [ -n "$USTICK" ] && EARN="$("$OT" earnings $USTICK --days 14 2>/dev/null || true)"
 
   DATA="### OWNER: $OWNER
 ### EVENT GATE (ot catalysts — Step 0: is a binary macro print near?)
 $CATAL
+### EARNINGS GATE (ot earnings — 财报: held/watched names reporting soon; take the call BEFORE the print)
+$EARN
 ### 7-DAY NEWS DIGEST (FinancialJuice)
 $NEWS7
 ### MACRO (rates / liquidity)
@@ -131,7 +136,7 @@ and classes: <p>, <h2>, <ul>/<li>, <strong>, <em>, <table>/<tr>/<th>/<td>, <span
 <span class="buy"|"trim"|"hold"|"watch"|"avoid"> (action badges), <span class="grade"> (A/B/C/D),
 <p class="regime">, <p class="disclaimer">. Section order (this is the contract):
 
-1. <p class="regime"><strong>...</strong></p> — one dark callout: the single biggest driver + its number + the read. CONSULT THE EVENT GATE FIRST: if it shows ⚠️ (a binary print — FOMC/CPI/PCE/NFP — within range), LEAD with it and bias the whole note to caution. Read the tape's direction honestly: if breadth is risk-off (VIX rising, broad de-risk, dealer gamma negative, "sell-the-news" — in-line is sold, good-but-not-good-enough is sold, bad is sold harder), say so and make the note DEFENSIVE — do not force a bullish dip-buy frame onto a falling tape.
+1. <p class="regime"><strong>...</strong></p> — one dark callout: the single biggest driver + its number + the read. CONSULT THE EVENT GATE FIRST: if it shows ⚠️ (a binary print — FOMC/CPI/PCE/NFP — within range), LEAD with it and bias the whole note to caution. Read the tape's direction honestly: if breadth is risk-off (VIX rising, broad de-risk, dealer gamma negative, "sell-the-news" — in-line is sold, good-but-not-good-enough is sold, bad is sold harder), say so and make the note DEFENSIVE — do not force a bullish dip-buy frame onto a falling tape. CONVERSELY, when trend + news + flows genuinely align (a sector leader's earnings beat, a held name reclaiming a key level), state a DECISIVE directional view and the call to express it — do not hedge a high-conviction setup into mush. Either way COMMIT to a direction; no fence-sitting.
 2. <h2>News &rarr; what it means</h2> — a 2-col <table> (Driver | Read for the book), 4-6 rows, each citing a real number.
 3. <h2>Holdings — levels &amp; call</h2> — a <table>: columns Name | Last | Day | Call | Levels (buy · trim · stop) | Read.
    One row per HELD name: in the Name column use the DISPLAY NAME shown in the range-plan header (e.g. "300394 天孚通信" → show "天孚通信"), never the bare code alone; tk ticker cell, num Last/Day cells, an action badge in Call, the mechanical zones FROM THE DATA, a one-line read.
@@ -146,6 +151,11 @@ Rules: every claim cites a real number from the data; mark moves up/down with a 
 Capital preservation outranks chasing upside: near a binary catalyst or on a risk-off tape, recommending HOLD / TRIM /
 RAISE CASH / HEDGE is the right call, not a cop-out — "sell-the-news" means in-line and not-good-enough both get sold, so
 do not manufacture a buy. Only recommend adds/calls when the regime AND a level genuinely support it.
+Take a stance: every name gets ONE clear call (long / short / trim / flat) and the note commits to it — no fence-sitting.
+Be earnings-aware: if a held or watched name reports (财报 / earnings) within the window — check the news digest and the
+event gate — flag it EXPLICITLY and pre-decide the call (buy-the-call into conviction, trim/hedge into uncertainty, or hold
+through). Never get caught flat-footed by a known print, and read the sector through it (a memory leader's beat lifts the
+whole memory/storage complex; a bellwether miss drags peers).
 Write every heading and word in ONE language only (the email's) — never mix Chinese and English. Separate a hold thesis
 from a trade setup. The user trades ZONES, not single points. Prices are in each name's local currency (¥ A-share,
 HK\$ HK, \$ US) — keep them as shown. ~500-650 words.

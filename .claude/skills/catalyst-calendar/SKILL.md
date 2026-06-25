@@ -7,7 +7,8 @@ description: >
   rebalancing, or "is it safe to size up before X", or whenever you are about to recommend a NEW
   position or add size and need to check whether a known high-impact print is imminent. Powered by the
   keyless `ot catalysts` command — confirmed FOMC/OPEX dates plus rule-estimated CPI/PCE/NFP, with an
-  explicit gate verdict. Educational only — not financial advice.
+  explicit gate verdict. Its per-name companion `ot earnings` covers single-stock earnings (财报) — use
+  it whenever a held/watched name's report could be near. Educational only — not financial advice.
 ---
 
 # Catalyst calendar — the event gate (Step 0)
@@ -35,6 +36,23 @@ ot catalysts --format json   # structured — fold into the pre-market email / d
 4. **Respect the `·est` flag:** FOMC and OPEX/quad-witching are exact. CPI/PCE/NFP are
    rule-estimated (they drift a day or two for holidays/scheduling) — treat them as a *window*
    ("CPI due ~mid-July"), and say "verify the exact day" before sizing into one.
+
+## The other half — per-name earnings (财报)
+
+The macro gate above is **blind to single-stock earnings.** A name can rip or gap on its own report
+with nothing on the macro calendar (e.g. MU +15% AH dragging the whole memory complex). For any
+held/watched name, run the companion:
+
+```bash
+ot earnings MU SNDK WDC       # next 14 days for these names + ⚠️/✅ gate
+ot earnings --watchlist       # US tickers from watchlist.json (positions + watch pool)
+ot earnings SNDK --json       # fold into the email / decision pipeline
+```
+
+When the earnings gate is ⚠️ (a name reports within the window), **take the call BEFORE the print** —
+don't get caught flat-footed: conviction = buy-the-call, doubt = trim/hedge, otherwise hold through.
+And **read the sector through it** — a memory leader's beat lifts the whole memory/storage complex; a
+bellwether miss drags peers. US listings only (A-share/HK is a future extension).
 
 ## Tiers
 
