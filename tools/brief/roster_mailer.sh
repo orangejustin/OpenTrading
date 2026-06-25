@@ -97,10 +97,15 @@ $("$OT" decide "$code" --market "$mkt" 2>/dev/null | grep -E "$GREP" || true)
   done
   OPTS=""
   [ -n "$USTICK" ] && OPTS="$("$OT" options SPY $USTICK --dte 7 2>/dev/null || true)"
+  # Per-name earnings (财报) gate — does any held/watched US name report soon?
+  EARN=""
+  [ -n "$USTICK" ] && EARN="$("$OT" earnings $USTICK --days 14 2>/dev/null || true)"
 
   DATA="### OWNER: $OWNER
 ### EVENT GATE (ot catalysts — Step 0: is a binary macro print near?)
 $CATAL
+### EARNINGS GATE (ot earnings — 财报: held/watched names reporting soon; take the call BEFORE the print)
+$EARN
 ### 7-DAY NEWS DIGEST (FinancialJuice)
 $NEWS7
 ### MACRO (rates / liquidity)

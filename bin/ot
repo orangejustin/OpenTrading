@@ -9,6 +9,7 @@
 #   ot news digest [--days 7]         multi-day digest (merges the stored archive + live)
 #   ot macro   [--json]               SOFR / 2Y-10Y / TGA / RRP -> scored put/call bias
 #   ot catalysts [--days N] [--json]  FOMC / OPEX / CPI / PCE / NFP calendar + event-gate verdict
+#   ot earnings [TICKERS] [--watchlist] [--days N] [--json]  per-name earnings (财报) dates + gate
 #   ot smart   [--json]               CNN + crypto Fear&Greed, BTC funding (contrarian)
 #   ot quote   SPY QQQ ^VIX           no-key quotes incl premarket + ^VIX
 #   ot cn      600519 002594 shcomp   China A-share quotes (Eastmoney, no key) — optional
@@ -111,6 +112,8 @@ case "$cmd" in
     pyrun "$ROOT/tools/macro/macro.py" "$@" ;;
   catalysts|cal|events)
     pyrun "$ROOT/tools/catalysts/catalysts.py" "$@" ;;
+  earnings|er)
+    pyrun "$ROOT/tools/earnings/earnings.py" "$@" ;;
   smart|sm)
     pyrun "$ROOT/tools/smartmoney/sm.py" "$@" ;;
   quote|q)
