@@ -3,7 +3,7 @@
 #
 # Usage:
 #   ot                          the full market report (macro+news+smart money+options+positions)
-#   ot report  [--save] [--notify] [--json]
+#   ot report  [--save] [--notify] [--json] [--deep]   (--deep = parallel-desk dispatch manifest)
 #   ot news    [--ticker NVDA] [--window premarket|open|today] [--minutes 60] [--category Fed]
 #   ot news store [--window open]     save a date-stamped news log to data/news-log/
 #   ot news digest [--days 7]         multi-day digest (merges the stored archive + live)

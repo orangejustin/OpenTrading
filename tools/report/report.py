@@ -222,6 +222,61 @@ def build_markdown(bundle, now):
     return "\n".join(L)
 
 
+def md_tape(bundle):
+    L = list(md_quotes(bundle.get("quotes")))
+    btc = bundle.get("btc")
+    if btc:
+        L.append(f"- **BTC** ${btc['px']:,.0f} ({btc['chg']:+.1f}% 24h, "
+                 f"range ${btc['lo']:,.0f}–${btc['hi']:,.0f})")
+    return L
+
+
+# Each desk is an INDEPENDENT analyst: it sees only its own data slice (fewer
+# tokens), returns a short note + an EDGE tag. A final synthesis pass fuses them.
+DESKS = [
+    ("Macro desk", "rates & liquidity strategist", lambda b: md_macro(b.get("macro")),
+     "From these rates/liquidity indicators alone, what's the directional tilt and the single "
+     "most important signal or threshold today?"),
+    ("Smart-money desk", "contrarian positioning analyst", lambda b: md_smart(b.get("smart")),
+     "Read sentiment & funding contrarily — where is the crowd offside, and does that cut bull or bear?"),
+    ("Options desk", "dealer-gamma / flow specialist", lambda b: md_options(b.get("options")),
+     "Pin or trend today? Name the gamma walls that matter and what a break of each implies."),
+    ("Tape desk", "price-action reader", md_tape,
+     "What is price actually doing across the indices, VIX, your names and BTC — leaders vs laggards?"),
+    ("News desk", "catalyst filter", lambda b: md_news(b.get("news")),
+     "Which 1–3 headlines actually change positioning, and for which names?"),
+]
+
+
+def build_deep(bundle, now):
+    """A multi-agent DISPATCH MANIFEST: run each desk as an independent agent
+    (it sees only its slice), then run the synthesis pass over their notes.
+    This is the prototype of the parallel-desk / mastermind-synthesis flow."""
+    tilt, _ = regime(bundle)
+    sess = "PRE-MARKET" if now.weekday() < 5 and now.hour < 9 else "SESSION"
+    L = [f"# OpenTrading — Deep Report Dispatch · {now:%Y-%m-%d %H:%M ET} ({sess})", "",
+         "> **Protocol.** Run each **Desk** below as a *separate* agent — each sees only its own",
+         "> data slice, so no single context holds everything (fewer tokens, more focus). Collect the",
+         "> desk notes, then run the **Synthesis** pass as the mastermind. Desks are independent →",
+         f"> dispatch them in parallel. Auto-regime seed: **{tilt}**.", ""]
+    for i, (title, role, render, ask) in enumerate(DESKS, 1):
+        L += [f"## Desk {i} — {title}",
+              f"*Role:* {role}.  *You get only the data below.*", ""]
+        L += list(render(bundle))
+        L += ["",
+              f"**Task:** {ask}",
+              f"**Return:** a 2–4 sentence note tagged `[{title}]`, ending with "
+              "`EDGE: <calls|puts|neutral|n/a> — conviction <1–5>`.", ""]
+    L += ["---", "## Synthesis (mastermind)",
+          "You receive the five desk notes above. Do **not** re-fetch data. Fuse them into:",
+          "1. **One regime call** — RISK-ON / RISK-OFF / MIXED, and why (cite which desks agree/conflict).",
+          "2. **The key tension** — where two desks disagree is where the edge (or the trap) is.",
+          "3. **Per-position game plan** — for each name in the Tape desk, one call: add / hold / trim / hedge.",
+          "4. **One trade & one level to watch** — highest-conviction expression + the line that invalidates it.",
+          "Weight desks by conviction. Macro-first, risk-first. Educational only — not financial advice.", ""]
+    return "\n".join(L)
+
+
 def notify(title, subtitle, msg):
     def esc(s):
         return s.replace("\\", "").replace('"', "'")
@@ -241,6 +296,8 @@ def main(argv=None):
     p.add_argument("--json", dest="format", action="store_const", const="json",
                    help="Alias for --format json.")
     p.add_argument("--save", action="store_true", help="Also write data/reports/<date>.md")
+    p.add_argument("--deep", action="store_true",
+                   help="Emit a multi-agent dispatch manifest (parallel desks + synthesis) instead of the flat pack.")
     p.add_argument("--notify", action="store_true", help="Fire a macOS notification with the headline read.")
     a = p.parse_args(argv)
     now = datetime.now(ET) if ET else datetime.now()
@@ -263,11 +320,12 @@ def main(argv=None):
     if a.format == "json":
         print(json.dumps(bundle, indent=2))
         return
-    md = build_markdown(bundle, now)
+    md = build_deep(bundle, now) if a.deep else build_markdown(bundle, now)
     print(md)
     if a.save:
         REPORTS.mkdir(parents=True, exist_ok=True)
-        path = REPORTS / f"{now:%Y-%m-%d}.md"
+        suffix = "-deep" if a.deep else ""
+        path = REPORTS / f"{now:%Y-%m-%d}{suffix}.md"
         path.write_text(md + "\n", encoding="utf-8")
         print(f"\n[report] saved {path}", file=sys.stderr)
 
