@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
 import ssl
 import subprocess
@@ -80,7 +81,9 @@ def quote(sym):
 
 
 def load_watchlist_syms():
-    p = ROOT / "watchlist.json"
+    # OT_WATCHLIST overrides the default path — lets the GitHub Actions market
+    # email point at a position-free list without touching a real watchlist.json.
+    p = Path(os.environ.get("OT_WATCHLIST") or (ROOT / "watchlist.json"))
     if p.exists():
         try:
             data = json.loads(p.read_text(encoding="utf-8"))
@@ -125,6 +128,14 @@ def main(argv=None):
         syms += load_watchlist_syms()
     if not syms:
         syms = ["SPY", "QQQ", "^VIX"]
+    # de-dupe (case-insensitive, order-preserving) so a symbol is never quoted twice
+    seen, uniq = set(), []
+    for s in syms:
+        k = s.upper()
+        if k not in seen:
+            seen.add(k)
+            uniq.append(s)
+    syms = uniq
     rows = get_many(syms)
     print(json.dumps(rows, indent=2) if a.format == "json" else render_table(rows))
 
