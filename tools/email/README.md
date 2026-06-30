@@ -66,6 +66,44 @@ ot schedule email uninstall
 > (e.g. `~/OpenTrading`) or grant the runner **Full Disk Access**. See
 > `tools/brief/README.md` for the full caveat.
 
+## Deploy on GitHub Actions (position-free, no laptop)
+
+`market_email.sh` + [`.github/workflows/daily-market.yml`](../../.github/workflows/daily-market.yml)
+run the daily brief **from the cloud** on a cron — so it fires even when your Mac
+is asleep. It sends a **position-free** market read (macro · news · smart money ·
+options · a *public* watch list) — **no positions, shares, P&L, cash, or secrets
+in the repo** — so it is safe in a **public** repo. Keyless: the reasoning is
+`report.py`'s deterministic fusion (no LLM, no API key).
+
+**Setup** — *Settings → Secrets and variables → Actions*:
+
+| Kind | Name | Example |
+|------|------|---------|
+| Secret | `OT_SMTP_PROVIDER` | `gmail` |
+| Secret | `OT_SMTP_USER` | `you@gmail.com` |
+| Secret | `OT_SMTP_PASS` | *(app password)* |
+| Secret | `OT_EMAIL_TO` | `you@example.com` |
+| Secret | *(optional)* `OT_SMTP_HOST`/`PORT`/`SECURITY`, `OT_EMAIL_FROM` | — |
+| Variable | `STOCK_LIST` | `SPY,QQQ,DIA,IWM,^VIX,GLD,TLT,BTC-USD` *(public tickers only)* |
+| Variable | *(optional)* `OT_EMAIL_LANG` | `en` or `zh` |
+
+Then **Actions → Daily market email → Run workflow** to test, or wait for the
+cron (`0 11 * * 1-5` ≈ 6–7am ET pre-market — UTC-fixed, so it drifts ±1h with
+US DST; edit to taste).
+
+**Privacy:** the script builds an *ephemeral* position-free list in a temp file
+and points `OT_WATCHLIST` at it, so it **never reads or writes your real
+`watchlist.json`**. Run it locally to see exactly what would send:
+
+```bash
+STOCK_LIST="SPY,QQQ,^VIX,GLD,TLT" tools/email/market_email.sh --dry-run
+```
+
+> **Want Claude-written prose** (like the hand-crafted briefs) instead of the
+> deterministic report? That is the opt-in upgrade: add an `ANTHROPIC_API_KEY`
+> secret and a small `tools/llm/` step — keyless stays the default, prose only
+> when a key is present. Tracked on the roadmap.
+
 ## Security notes
 - `.env` is in `.gitignore`; `send_email.py` never echoes the password.
 - The password is accepted **only** via env/`.env`, never as a CLI flag (shell history).

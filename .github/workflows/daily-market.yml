@@ -1,0 +1,65 @@
+name: Daily market email
+
+# Position-FREE daily market brief, delivered from the cloud — no laptop required.
+# Keyless by default: report.py's deterministic fusion (macro + news + smart money
+# + options + a PUBLIC watch list), rendered as a branded HTML email. Carries no
+# positions, P&L, or secrets in the repo — SMTP creds live in GitHub Secrets, the
+# ticker list in a repo Variable.
+#
+# SETUP (Settings → Secrets and variables → Actions):
+#   Secrets   OT_SMTP_PROVIDER (e.g. gmail) · OT_SMTP_USER · OT_SMTP_PASS (app password)
+#             · OT_EMAIL_TO            (and optionally OT_SMTP_HOST/PORT/SECURITY, OT_EMAIL_FROM)
+#   Variables STOCK_LIST  e.g. "SPY,QQQ,DIA,IWM,^VIX,GLD,TLT,BTC-USD"  (public tickers only)
+#             OT_EMAIL_LANG  en | zh   (optional)
+
+on:
+  schedule:
+    # 11:00 UTC on weekdays ≈ 6–7am US-Eastern pre-market. NOTE: GitHub cron is
+    # UTC and does NOT observe DST, so the local time drifts ±1h seasonally —
+    # adjust to taste when you fork.
+    - cron: '0 11 * * 1-5'
+  workflow_dispatch: {}        # manual "Run workflow" button for testing
+
+concurrency:
+  group: daily-market-email
+  cancel-in-progress: false
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install TLS certs (keyless; curl is the fallback)
+        run: pip install --quiet certifi
+
+      - name: Jitter — avoid a fixed-time access pattern on public endpoints
+        run: sleep $(( RANDOM % 60 ))
+
+      - name: Send the position-free market brief
+        env:
+          OT_SMTP_PROVIDER: ${{ secrets.OT_SMTP_PROVIDER }}
+          OT_SMTP_HOST:     ${{ secrets.OT_SMTP_HOST }}
+          OT_SMTP_PORT:     ${{ secrets.OT_SMTP_PORT }}
+          OT_SMTP_SECURITY: ${{ secrets.OT_SMTP_SECURITY }}
+          OT_SMTP_USER:     ${{ secrets.OT_SMTP_USER }}
+          OT_SMTP_PASS:     ${{ secrets.OT_SMTP_PASS }}
+          OT_EMAIL_FROM:    ${{ secrets.OT_EMAIL_FROM }}
+          OT_EMAIL_TO:      ${{ secrets.OT_EMAIL_TO }}
+          STOCK_LIST:       ${{ vars.STOCK_LIST }}
+          OT_EMAIL_LANG:    ${{ vars.OT_EMAIL_LANG }}
+        run: bash tools/email/market_email.sh
+
+      - name: Upload the rendered brief (artifact)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: market-report
+          path: data/reports/
+          retention-days: 14
+          if-no-files-found: ignore
