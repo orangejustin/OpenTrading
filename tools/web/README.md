@@ -29,17 +29,25 @@ Everything runs **on your machine** — positions never leave `localhost`.
 - **Keyless (default).** The strip, indices, sparklines, watchlist, technicals
   (MA10/MA20/RSI), and news all work with **no key** — same public endpoints as
   the rest of `ot`.
-- **AI analysis (optional).** The per-ticker summary + action + sniper levels use
-  **Gemini**. Add a key to `.env` (a free key works — <https://aistudio.google.com>):
+- **AI analysis (optional).** The per-ticker summary + action + sniper levels run
+  on **your choice of engine** — switch live from the header dropdown, and pick a
+  model per engine. Results are cached 10 min per (ticker, engine, model); the
+  **↻ Re-run** button forces a fresh call.
+
+  | Engine | Setup | Models |
+  |---|---|---|
+  | **Gemini** | `GEMINI_API_KEY` in `.env` (free — <https://aistudio.google.com>) | `gemini-2.5-flash` (default), `-pro`, … |
+  | **OpenRouter** | `OPENROUTER_API_KEY` in `.env` (<https://openrouter.ai/settings/keys>) | **one key → any model**: GLM 5.2, DeepSeek v4, GPT-5.5/4o, Claude, Gemini, Grok, Qwen… pick from the list or type any slug |
+  | **Claude Code** | **no key** — appears automatically when the `claude` CLI is on PATH | your Claude subscription (default / sonnet / opus / haiku) |
 
   ```env
-  GEMINI_API_KEY=your_key_here
-  GEMINI_MODEL=gemini-2.5-flash          # optional (default shown)
-  GEMINI_MODEL_FALLBACK=gemini-2.0-flash # optional, comma-separated
+  GEMINI_API_KEY=...                 # engine 1
+  OPENROUTER_API_KEY=sk-or-v1-...    # engine 2 (OPENROUTER_MODEL=z-ai/glm-5.2 to set the default slug)
+  OT_LLM_ENGINE=gemini               # default engine: gemini | openrouter | claude
   ```
 
-  Without a key the analysis page still shows the keyless data panels (price,
-  technicals, news) and a hint to set the key.
+  Without any engine the analysis page still shows the keyless data panels
+  (price, technicals, news) and a hint to set one up.
 
 ## Privacy
 
@@ -52,11 +60,14 @@ Everything runs **on your machine** — positions never leave `localhost`.
 ## How it's built
 
 - `server.py` — stdlib `ThreadingHTTPServer`; routes `/api/overview`,
-  `/api/watchlist`, `/api/analyze`, `/api/news`. Data comes from the existing `ot`
-  tools (via `--format json`) and Yahoo's no-key chart endpoint (quotes + sparklines).
+  `/api/watchlist`, `/api/analyze`, `/api/engines`, `/api/news`. Data comes from the
+  existing `ot` tools (via `--format json`) and Yahoo's no-key chart endpoint
+  (quotes + sparklines).
 - `index.html` — a single dependency-free page (vanilla JS + inline CSS); SVG
   sparklines and the sentiment gauge are hand-rolled (no chart library, no build step).
-- `../llm/gemini.py` — a tiny stdlib Gemini client (urllib + curl fallback) used only
-  when `GEMINI_API_KEY` is present.
+- `../llm/llm.py` — the engine dispatcher, over three tiny stdlib clients:
+  `gemini.py` (urllib + curl fallback), `openrouter.py` (OpenAI-compatible
+  `/chat/completions`), and `claude_cli.py` (headless `claude -p` on your
+  subscription — the same pattern as the daily-email pipeline).
 
 Educational only — not financial advice.

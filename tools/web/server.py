@@ -8,8 +8,11 @@ per-ticker analysis (summary · action · trend · Fear&Greed · entry/stop/targ
 sectors · risks · news).
 
 Data is keyless (the same public endpoints as the rest of `ot`). The per-ticker
-*AI analysis* uses Gemini IF `GEMINI_API_KEY` is set, and degrades to the keyless
-data panels otherwise.
+*AI analysis* runs on your choice of engine — Gemini (`GEMINI_API_KEY`),
+OpenRouter (`OPENROUTER_API_KEY`, one key → any model incl. GLM/DeepSeek/GPT/
+Claude), or your Claude Code subscription via the `claude` CLI (no key) — and
+degrades to the keyless data panels when none is configured. Switch engines
+from the header dropdown; results are cached 10 min per (ticker, engine, model).
 
     python3 tools/web/server.py                 # serve on 127.0.0.1:8787
     python3 tools/web/server.py --port 9000 --no-open
@@ -26,6 +29,8 @@ import shutil
 import ssl
 import subprocess
 import sys
+import threading
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -40,9 +45,9 @@ PY = sys.executable or "python3"
 UA = "Mozilla/5.0 (OpenTrading web)"
 sys.path.insert(0, str(ROOT / "tools" / "llm"))
 try:
-    import gemini  # tools/llm/gemini.py
+    import llm  # tools/llm/llm.py — engine dispatcher (Gemini / OpenRouter / Claude Code CLI)
 except Exception:  # noqa: BLE001
-    gemini = None
+    llm = None
 
 STRIP = [("GC=F", "Gold"), ("BTC-USD", "Bitcoin"), ("ETH-USD", "Ethereum")]
 INDICES = [("SPY", "S&P 500"), ("QQQ", "Nasdaq 100"), ("DIA", "Dow Jones"), ("IWM", "Russell 2000")]
@@ -267,7 +272,21 @@ RECENT HEADLINES:
 Return a JSON analysis: a 2-3 sentence summary; an action (one of {ACTIONS}); a trend call with timeframe; a 0-100 sentiment_score + sentiment_label for THIS name; concrete entry levels in `entries` (ideal_buy, secondary_buy, stop_loss, take_profit) as short strings with a $ level AND a one-phrase reason (e.g. "~$190 — near MA10 / prior support"); a one-line technicals read; 2-4 related sectors/themes; 2-4 concrete risks (events, invalidation); and one-paragraph advice. Risk-first: define the stop. Educational only, not financial advice."""
 
 
-def analyze(ticker: str) -> dict:
+# Re-analyzing the same name is expensive (LLM call) — cache per (ticker, engine,
+# model) for 10 minutes; the UI's ↻ Re-run sends fresh=1 to bypass.
+_CACHE: dict = {}
+_CACHE_LOCK = threading.Lock()
+_CACHE_TTL = 600
+
+
+def analyze(ticker: str, engine: str | None = None, model: str | None = None,
+            fresh: bool = False) -> dict:
+    key = (ticker.upper(), engine or "", model or "")
+    if not fresh:
+        with _CACHE_LOCK:
+            hit = _CACHE.get(key)
+        if hit and time.time() - hit[0] < _CACHE_TTL:
+            return hit[1]
     q = yahoo(ticker, "3mo", "1d")
     tech = technicals(q.get("series", []))
     smart = ot_json(ROOT / "tools/smartmoney/sm.py") or {}
@@ -277,13 +296,20 @@ def analyze(ticker: str) -> dict:
         "series": q.get("series", []), "technicals": tech,
         "market_fng": _extract_fng(smart), "news": _news_for(ticker), "ai": False,
     }
-    if not (gemini and gemini.have_key()):
-        ctx["note"] = "Set GEMINI_API_KEY in .env to enable the AI analysis (data panels work without it)."
+    if not (llm and llm.any_ok()):
+        ctx["note"] = ("Set GEMINI_API_KEY or OPENROUTER_API_KEY in .env — or install "
+                       "the claude CLI — to enable the AI analysis (data panels work without it).")
         return ctx
     try:
-        ai = gemini.generate_json(_analysis_prompt(ctx), ANALYSIS_SCHEMA)
+        t0 = time.time()
+        ai, meta = llm.generate_json(_analysis_prompt(ctx), ANALYSIS_SCHEMA,
+                                     engine=engine, model=model)
         ctx.update(ai)
         ctx["ai"] = True
+        ctx["engine"] = meta
+        ctx["elapsed"] = round(time.time() - t0, 1)
+        with _CACHE_LOCK:
+            _CACHE[key] = (time.time(), ctx)
     except Exception as e:  # noqa: BLE001
         ctx["error"] = f"AI analysis unavailable: {e}"
     return ctx
@@ -320,9 +346,17 @@ class Handler(BaseHTTPRequestHandler):
                 tk = (qs.get("ticker", [""])[0] or "").strip()
                 if not tk:
                     return self._send(400, json.dumps({"error": "ticker required"}))
-                return self._send(200, json.dumps(analyze(tk)))
+                eng = (qs.get("engine", [None])[0] or None)
+                mdl = (qs.get("model", [None])[0] or None)
+                fresh = qs.get("fresh", ["0"])[0] in ("1", "true")
+                return self._send(200, json.dumps(analyze(tk, eng, mdl, fresh)))
+            if u.path == "/api/engines":
+                return self._send(200, json.dumps({
+                    "engines": llm.engines() if llm else [],
+                    "default": llm.default_engine() if llm else None,
+                }))
             if u.path == "/api/health":
-                return self._send(200, json.dumps({"ok": True, "ai": bool(gemini and gemini.have_key())}))
+                return self._send(200, json.dumps({"ok": True, "ai": bool(llm and llm.any_ok())}))
             return self._send(404, json.dumps({"error": "not found"}))
         except Exception as e:  # noqa: BLE001
             return self._send(500, json.dumps({"error": f"{type(e).__name__}: {e}"}))
@@ -345,8 +379,9 @@ def main(argv=None):
 
     srv = ThreadingHTTPServer((a.host, a.port), Handler)
     url = f"http://{a.host}:{a.port}"
-    ai = "on" if (gemini and gemini.have_key()) else "off (set GEMINI_API_KEY for AI analysis)"
-    print(f"OpenTrading dashboard → {url}   (AI analysis: {ai})")
+    ai = llm.status_line() if llm else "off (tools/llm missing)"
+    print(f"OpenTrading dashboard → {url}")
+    print(f"AI engines: {ai}")
     print("Ctrl-C to stop.")
     if not a.no_open:
         try:
