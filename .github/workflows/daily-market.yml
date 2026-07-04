@@ -13,12 +13,12 @@ name: Daily market email
 #             OT_EMAIL_LANG  en | zh   (optional)
 
 on:
-  schedule:
-    # 11:00 UTC on weekdays ≈ 6–7am US-Eastern pre-market. NOTE: GitHub cron is
-    # UTC and does NOT observe DST, so the local time drifts ±1h seasonally —
-    # adjust to taste when you fork.
-    - cron: '0 11 * * 1-5'
-  workflow_dispatch: {}        # manual "Run workflow" button for testing
+  # Manual-only: the daily cron is intentionally OFF — the local Claude Code
+  # pre-market email already covers the daily need, so the cloud brief is kept
+  # as an on-demand backup. To re-enable a daily send, restore:
+  #   schedule:
+  #     - cron: '0 11 * * 1-5'   # 11:00 UTC weekdays ≈ 6-7am ET pre-market (no DST)
+  workflow_dispatch: {}        # manual "Run workflow" button
 
 concurrency:
   group: daily-market-email
