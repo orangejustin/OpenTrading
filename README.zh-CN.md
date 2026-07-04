@@ -18,16 +18,20 @@
 
 ## 产品预览
 
-**`ot web` —— 本地、无需 API key 的仪表盘**：实时行情条、指数卡片 + 迷你走势图、你的
-自选清单，以及一键 AI 个股分析 —— **AI 引擎随时切换**（Gemini、OpenRouter 任意模型、
-或直接用你的 Claude Code 订阅，一个 key 都不用配）：
+**`ot web` —— 本地、无需 API key 的仪表盘**：滚动行情带（黄金 · 原油 · BTC · 美债10Y ·
+美元指数……，点击直达 TradingView）、指数卡片 + 迷你走势图、**宏观与资金流** 面板
+（宏观评分 · 恐惧贪婪 · BTC 资金费率 · SPY 做市商 gamma）、你的自选清单，以及带
+时间窗滑块和「AI 解读盘面」的 **新闻页** —— AI 引擎随时切换（Gemini、OpenRouter
+任意模型、或直接用你的 Claude Code 订阅，一个 key 都不用配）：
 
-<p align="center"><img src="docs/assets/web-overview.png" alt="ot web —— 市场总览（演示数据）" width="780"></p>
+<p align="center"><img src="docs/assets/web-overview.png" alt="ot web —— 市场总览与宏观资金流（演示数据）" width="780"></p>
 
-**个股 AI 分析** —— 操作建议、情绪仪表盘、**狙击点位**（理想买点 · 次级买点 · 止损 ·
-止盈）、风险提示与操作建议，每次分析都标注所用引擎与耗时：
+**个股页秒开、纯免 key 数据** —— 手绘 K 线图（1M/3M/6M/1Y）、关键指标、个股新闻 ——
+AI 分析则 **按需一键生成**：操作建议、情绪仪表盘、**狙击点位**（理想买点 · 次级买点 ·
+止损 · 止盈）、风险与操作建议，每次分析标注引擎 · 耗时 · 完成时间（美东），缓存至你
+重新生成为止：
 
-<p align="center"><img src="docs/assets/web-analysis.png" alt="ot web —— 个股 AI 分析与狙击点位（演示数据）" width="780"></p>
+<p align="center"><img src="docs/assets/web-analysis.png" alt="ot web —— 个股页：K线图、AI 分析与狙击点位（演示数据）" width="780"></p>
 
 **每日盘前邮件** —— 感知持仓、由 Claude 撰写、兼容 Outlook 的 HTML 简报：市场状态判断、
 持仓关键价位、评级后的 **Top-3 观察名单**（买入 / 等待到具体价格）、对冲计划与事件闸门：

@@ -12,21 +12,36 @@ ot web --port 9000 --no-open                  # pick a port / don't auto-open
 ```
 
 Deep links work too: `http://127.0.0.1:8787/#NVDA` opens straight into the
-NVDA analysis.
+NVDA page, and `/#/news` opens the News tab.
 
 Everything runs **on your machine** — positions never leave `localhost`.
 
 ## What you get
 
-- **Ticker strip** — Gold · Bitcoin · Ethereum · VIX, live.
+- **Scrolling ticker tape** — Gold · Silver · Oil · Bitcoin · Ethereum · US 10Y ·
+  DXY · SPY · QQQ · GLD · TLT · VIX, live; every chip links out to the matching
+  TradingView symbol page (pauses on hover).
 - **Market Indices** — SPY / QQQ / DIA / IWM cards with a 1-month sparkline and the
   day change (colored by direction).
+- **Macro & Flow** — the `ot` stack as dashboard cards: macro score (SOFR/TGA/2Y/10Y
+  pills), equity + crypto Fear&Greed, BTC funding, and SPY dealer gamma (<7 DTE,
+  net GEX + call/put walls). Cached 15 min.
 - **My Watchlist** — every name in `watchlist.json` (positions + watch), with live
-  quotes. Click any row to analyze it.
-- **Ticker analysis** — search or click a ticker for: an AI summary, an **action**
-  (BUY/ADD/HOLD/WATCH/REDUCE/SELL/AVOID/ALERT), a **trend** call, a Fear&Greed
-  **gauge**, **sniper levels** (ideal buy · secondary buy · stop · take-profit),
-  related sectors, risk alerts, and a news feed.
+  quotes. Click any row to open it.
+- **Ticker page — instant, keyless** — a hand-rolled SVG **candlestick chart**
+  (1M/3M/6M/1Y + volume + 52-week range), key stats (prev close, MA10/20, RSI 14),
+  and per-name news. The AI analysis runs **on demand** via the ⚡ Analyze button
+  (staged progress + elapsed timer): summary, **action**
+  (BUY/ADD/HOLD/WATCH/REDUCE/SELL/AVOID/ALERT), **trend**, sentiment **gauge**,
+  **sniper levels** (ideal buy · secondary buy · stop · take-profit), sectors,
+  risks, advice — stamped `engine · model · elapsed · finished (ET)` and **cached
+  until you ↻ Re-run**.
+- **News page** — the market tape with a time-window slider (6h–72h) and an
+  optional ticker filter, plus a **🧠 AI read of the tape** button (summary ·
+  RISK-ON/OFF/MIXED bias · drivers · portfolio tilt · what to watch next).
+- **Per-name news fallback chain** — FinancialJuice ticker-tagged → Yahoo per-name
+  RSS → the general tape (clearly labeled), so "Related News" is never empty on a
+  quiet name.
 
 ## Two tiers
 

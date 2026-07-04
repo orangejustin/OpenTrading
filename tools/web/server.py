@@ -23,6 +23,7 @@ Stdlib only. Educational only — not financial advice.
 from __future__ import annotations
 
 import argparse
+import email.utils
 import json
 import os
 import shutil
@@ -35,9 +36,19 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import webbrowser
+import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from zoneinfo import ZoneInfo
+
+NY = ZoneInfo("America/New_York")
+
+
+def _now_et() -> str:
+    d = datetime.now(NY)
+    return f"{d:%b} {d.day} · {d.hour % 12 or 12}:{d:%M} {d:%p} ET"
 
 ROOT = Path(__file__).resolve().parents[2]
 HERE = Path(__file__).resolve().parent
@@ -49,7 +60,11 @@ try:
 except Exception:  # noqa: BLE001
     llm = None
 
-STRIP = [("GC=F", "Gold"), ("BTC-USD", "Bitcoin"), ("ETH-USD", "Ethereum")]
+# The scrolling tape — the same macro set the daily email watches. ^TNX is the
+# 10Y yield ×10 (the UI divides and renders %).
+STRIP = [("GC=F", "Gold"), ("SI=F", "Silver"), ("CL=F", "Oil"), ("BTC-USD", "Bitcoin"),
+         ("ETH-USD", "Ethereum"), ("^TNX", "US 10Y"), ("DX-Y.NYB", "DXY"),
+         ("SPY", "S&P 500"), ("QQQ", "Nasdaq 100"), ("GLD", "GLD"), ("TLT", "TLT")]
 INDICES = [("SPY", "S&P 500"), ("QQQ", "Nasdaq 100"), ("DIA", "Dow Jones"), ("IWM", "Russell 2000")]
 
 ACTIONS = ["BUY", "ADD", "HOLD", "WATCH", "REDUCE", "SELL", "AVOID", "ALERT"]
@@ -144,6 +159,39 @@ def yahoo(sym: str, rng: str = "1mo", interval: str = "1d") -> dict:
                 "chg_pct": None, "series": [], "error": str(e)}
 
 
+def yahoo_ohlc(sym: str, rng: str = "3mo", interval: str = "1d") -> dict:
+    """Full OHLCV series + key stats for the ticker page's hand-rolled chart."""
+    url = ("https://query1.finance.yahoo.com/v8/finance/chart/"
+           f"{urllib.parse.quote(sym)}?range={rng}&interval={interval}&includePrePost=false")
+    j = json.loads(_get(url))
+    res = (j.get("chart", {}).get("result") or [{}])[0]
+    meta = res.get("meta", {}) or {}
+    q = (res.get("indicators", {}).get("quote") or [{}])[0]
+    ts = res.get("timestamp") or []
+    rows = []
+    for i, t in enumerate(ts):
+        c = (q.get("close") or [None])[i] if i < len(q.get("close") or []) else None
+        if c is None:
+            continue
+        rows.append({
+            "t": t,
+            "o": (q.get("open") or [None])[i], "h": (q.get("high") or [None])[i],
+            "l": (q.get("low") or [None])[i], "c": c,
+            "v": (q.get("volume") or [0])[i] or 0,
+        })
+    last = meta.get("regularMarketPrice") or (rows[-1]["c"] if rows else None)
+    prev = meta.get("previousClose") or (rows[-2]["c"] if len(rows) >= 2 else None)
+    return {
+        "symbol": sym.upper(), "name": meta.get("shortName") or sym,
+        "last": last, "prev": prev,
+        "chg_pct": ((last - prev) / prev * 100) if (last is not None and prev) else None,
+        "rows": rows,
+        "hi52": meta.get("fiftyTwoWeekHigh"), "lo52": meta.get("fiftyTwoWeekLow"),
+        "volume": meta.get("regularMarketVolume"),
+        "currency": meta.get("currency"), "exchange": meta.get("fullExchangeName"),
+    }
+
+
 def technicals(series: list) -> dict:
     """MA10 / MA20 / 20d hi-lo / RSI14 from a daily close series — grounding for the LLM."""
     s = [x for x in series if isinstance(x, (int, float))]
@@ -181,23 +229,67 @@ def _extract_fng(smart) -> dict:
     return out
 
 
-def _news_for(ticker: str | None) -> list:
-    args = [ROOT / "tools/financialjuice/fj.py", "fetch", "--minutes", "1440"]
+def _fj_items(minutes: int, ticker: str | None = None, limit: int = 12) -> list:
+    args = [ROOT / "tools/financialjuice/fj.py", "fetch", "--minutes", str(minutes)]
     if ticker:
         args += ["--ticker", ticker]
     raw = ot_json(*args) or []
     items = raw if isinstance(raw, list) else (raw.get("items") or raw.get("headlines") or [])
     out = []
-    for it in items[:12]:
+    for it in items[:limit]:
         if isinstance(it, dict):
             out.append({
                 "title": it.get("title") or it.get("headline") or it.get("text") or "",
                 "url": it.get("url") or it.get("link") or "",
-                "time": it.get("time") or it.get("published") or it.get("date") or "",
+                "time": it.get("time") or (it.get("time_et") and f"{it['time_et']} ET")
+                        or it.get("published") or it.get("date") or "",
+                "cat": it.get("category") or it.get("cat") or "",
+                "src": "FinancialJuice",
             })
         elif isinstance(it, str):
-            out.append({"title": it, "url": "", "time": ""})
+            out.append({"title": it, "url": "", "time": "", "cat": "", "src": "FinancialJuice"})
     return [o for o in out if o["title"]]
+
+
+def _yahoo_rss(ticker: str, limit: int = 10) -> list:
+    """Per-name headlines from Yahoo's keyless RSS — the fallback when the
+    FinancialJuice squawk has no ticker-tagged items (common for quiet names)."""
+    url = ("https://feeds.finance.yahoo.com/rss/2.0/headline?"
+           + urllib.parse.urlencode({"s": ticker, "region": "US", "lang": "en-US"}))
+    try:
+        root = ET.fromstring(_get(url))
+    except Exception:  # noqa: BLE001
+        return []
+    out = []
+    for item in root.iter("item"):
+        title = (item.findtext("title") or "").strip()
+        if not title:
+            continue
+        when = ""
+        try:
+            dt = email.utils.parsedate_to_datetime(item.findtext("pubDate") or "").astimezone(NY)
+            when = f"{dt:%b} {dt.day} {dt.hour % 12 or 12}:{dt:%M}{dt:%p} ET".replace("AM", "am").replace("PM", "pm")
+        except Exception:  # noqa: BLE001
+            pass
+        out.append({"title": title, "url": (item.findtext("link") or "").strip(),
+                    "time": when, "cat": "", "src": "Yahoo"})
+        if len(out) >= limit:
+            break
+    return out
+
+
+def _news_for(ticker: str | None, minutes: int = 1440) -> tuple[list, str]:
+    """Headlines + scope. Fallback chain for a name: FJ ticker-tagged →
+    Yahoo per-name RSS → the general market tape (labeled as such)."""
+    if not ticker:
+        return _fj_items(minutes, limit=40), "market"
+    items = _fj_items(minutes, ticker)
+    if items:
+        return items, "name"
+    items = _yahoo_rss(ticker)
+    if items:
+        return items, "name"
+    return _fj_items(minutes, limit=8), "market"
 
 
 # --------------------------------------------------------------------------- #
@@ -226,6 +318,77 @@ def overview() -> dict:
         "sentiment": fng,
         "regime": regime,
     }
+
+
+_MACRO_CACHE: dict = {}
+
+
+def macro_flow() -> dict:
+    """The Macro & Flow panel: ot macro score + Fear&Greed + BTC funding + SPY GEX.
+    All keyless; cached 15 min (opt.py's CBOE fetch is the slow leg)."""
+    with _CACHE_LOCK:
+        hit = _MACRO_CACHE.get("v")
+    if hit and time.time() - hit[0] < 900:
+        return hit[1]
+    mac = ot_json(ROOT / "tools/macro/macro.py") or {}
+    smart = ot_json(ROOT / "tools/smartmoney/sm.py") or {}
+    opt = ot_json(ROOT / "tools/options/opt.py", "SPY", "--dte", "7") or []
+    g = opt[0] if isinstance(opt, list) and opt else {}
+    eq = smart.get("equity_fng") or {}
+    cr = smart.get("crypto_fng") or {}
+    fu = smart.get("btc_funding") or {}
+    out = {
+        "macro_score": mac.get("auto_score"),
+        "macro_bias": mac.get("bias"),
+        "indicators": [{"label": i.get("label"), "value": i.get("value"), "score": i.get("score")}
+                       for i in (mac.get("auto_indicators") or [])],
+        "equity_fng": {"score": round(eq["score"]) if isinstance(eq.get("score"), (int, float)) else None,
+                       "rating": eq.get("rating")},
+        "crypto_fng": {"score": cr.get("value"), "rating": cr.get("rating")},
+        "btc_funding": {"rate_8h_pct": fu.get("rate_8h_pct"), "read": fu.get("read")},
+        "gex": {"sign": g.get("gex_sign"),
+                "net_usd_bn": round(g["net_gex_usd_per_1pct"] / 1e9, 2)
+                if isinstance(g.get("net_gex_usd_per_1pct"), (int, float)) else None,
+                "call_wall": g.get("call_wall"), "put_wall": g.get("put_wall"),
+                "spot": g.get("spot")},
+        "as_of": _now_et(),
+    }
+    with _CACHE_LOCK:
+        _MACRO_CACHE["v"] = (time.time(), out)
+    return out
+
+
+NEWS_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "summary": {"type": "string"},
+        "macro_bias": {"type": "string", "enum": ["RISK-ON", "RISK-OFF", "MIXED"]},
+        "drivers": {"type": "array", "items": {"type": "string"}},
+        "portfolio_tilt": {"type": "string"},
+        "watch": {"type": "array", "items": {"type": "string"}},
+    },
+    "required": ["summary", "macro_bias", "drivers", "portfolio_tilt", "watch"],
+}
+
+
+def news_analysis(minutes: int, engine: str | None, model: str | None) -> dict:
+    if not (llm and llm.any_ok()):
+        return {"error": "no LLM engine configured"}
+    items, _ = _news_for(None, minutes)
+    heads = "\n".join(f"- [{i.get('time', '')}] {i['title']}" for i in items[:40]) or "- (empty tape)"
+    prompt = f"""You are a disciplined, macro-first market strategist. Below is the last {minutes // 60}h of market headlines. Read the TAPE as a whole — do not summarize item by item.
+
+{heads}
+
+Return JSON: a 2-4 sentence summary of what the tape is really saying; macro_bias (RISK-ON / RISK-OFF / MIXED); 3-5 concrete drivers (each one line, tied to specific headlines); a one-paragraph portfolio_tilt (what a risk-first swing trader should tilt toward/away from — sectors, factors, hedges); and 2-4 watch items (upcoming catalysts or confirmations to look for). Educational only, not financial advice."""
+    try:
+        t0 = time.time()
+        data, meta = llm.generate_json(prompt, NEWS_SCHEMA, engine=engine, model=model)
+        data.update({"engine": meta, "elapsed": round(time.time() - t0, 1),
+                     "finished_at": _now_et(), "headline_count": len(items)})
+        return data
+    except Exception as e:  # noqa: BLE001
+        return {"error": f"news analysis failed: {e}"}
 
 
 def watchlist() -> dict:
@@ -272,34 +435,40 @@ RECENT HEADLINES:
 Return a JSON analysis: a 2-3 sentence summary; an action (one of {ACTIONS}); a trend call with timeframe; a 0-100 sentiment_score + sentiment_label for THIS name; concrete entry levels in `entries` (ideal_buy, secondary_buy, stop_loss, take_profit) as short strings with a $ level AND a one-phrase reason (e.g. "~$190 — near MA10 / prior support"); a one-line technicals read; 2-4 related sectors/themes; 2-4 concrete risks (events, invalidation); and one-paragraph advice. Risk-first: define the stop. Educational only, not financial advice."""
 
 
-# Re-analyzing the same name is expensive (LLM call) — cache per (ticker, engine,
-# model) for 10 minutes; the UI's ↻ Re-run sends fresh=1 to bypass.
+# The LLM call is expensive, so a generated analysis is cached per (ticker,
+# engine, model) and stays until the user hits ↻ Re-run (24h safety TTL).
 _CACHE: dict = {}
 _CACHE_LOCK = threading.Lock()
-_CACHE_TTL = 600
+_CACHE_TTL = 24 * 3600
 
 
 def analyze(ticker: str, engine: str | None = None, model: str | None = None,
-            fresh: bool = False) -> dict:
+            fresh: bool = False, mode: str = "auto") -> dict:
+    """mode=auto → cached analysis if one exists, else the INSTANT keyless data
+    view (price/technicals/news — no LLM). mode=ai → run the LLM on demand."""
     key = (ticker.upper(), engine or "", model or "")
     if not fresh:
         with _CACHE_LOCK:
             hit = _CACHE.get(key)
         if hit and time.time() - hit[0] < _CACHE_TTL:
-            return hit[1]
+            return dict(hit[1], cached=True)
     q = yahoo(ticker, "3mo", "1d")
     tech = technicals(q.get("series", []))
-    smart = ot_json(ROOT / "tools/smartmoney/sm.py") or {}
+    news, scope = _news_for(ticker)
     ctx = {
         "symbol": q["symbol"], "name": q.get("name"), "last": q.get("last"),
         "chg_pct": round(q["chg_pct"], 2) if q.get("chg_pct") is not None else None,
         "series": q.get("series", []), "technicals": tech,
-        "market_fng": _extract_fng(smart), "news": _news_for(ticker), "ai": False,
+        "news": news, "news_scope": scope, "ai": False,
+        "can_ai": bool(llm and llm.any_ok()),
     }
-    if not (llm and llm.any_ok()):
+    if not ctx["can_ai"]:
         ctx["note"] = ("Set GEMINI_API_KEY or OPENROUTER_API_KEY in .env — or install "
                        "the claude CLI — to enable the AI analysis (data panels work without it).")
+    if mode != "ai" or not ctx["can_ai"]:
         return ctx
+    smart = ot_json(ROOT / "tools/smartmoney/sm.py") or {}
+    ctx["market_fng"] = _extract_fng(smart)
     try:
         t0 = time.time()
         ai, meta = llm.generate_json(_analysis_prompt(ctx), ANALYSIS_SCHEMA,
@@ -308,6 +477,7 @@ def analyze(ticker: str, engine: str | None = None, model: str | None = None,
         ctx["ai"] = True
         ctx["engine"] = meta
         ctx["elapsed"] = round(time.time() - t0, 1)
+        ctx["finished_at"] = _now_et()
         with _CACHE_LOCK:
             _CACHE[key] = (time.time(), ctx)
     except Exception as e:  # noqa: BLE001
@@ -341,7 +511,24 @@ class Handler(BaseHTTPRequestHandler):
             if u.path == "/api/watchlist":
                 return self._send(200, json.dumps(watchlist()))
             if u.path == "/api/news":
-                return self._send(200, json.dumps({"items": _news_for(qs.get("ticker", [None])[0])}))
+                minutes = max(60, min(int(qs.get("minutes", ["720"])[0] or 720), 4320))
+                items, scope = _news_for(qs.get("ticker", [None])[0], minutes)
+                return self._send(200, json.dumps({"items": items, "scope": scope,
+                                                   "minutes": minutes, "as_of": _now_et()}))
+            if u.path == "/api/news_analysis":
+                minutes = max(60, min(int(qs.get("minutes", ["720"])[0] or 720), 4320))
+                return self._send(200, json.dumps(news_analysis(
+                    minutes, qs.get("engine", [None])[0], qs.get("model", [None])[0])))
+            if u.path == "/api/chart":
+                tk = (qs.get("ticker", [""])[0] or "").strip()
+                if not tk:
+                    return self._send(400, json.dumps({"error": "ticker required"}))
+                rng = qs.get("range", ["3mo"])[0]
+                if rng not in ("1mo", "3mo", "6mo", "1y"):
+                    rng = "3mo"
+                return self._send(200, json.dumps(yahoo_ohlc(tk, rng, "1d")))
+            if u.path == "/api/macro":
+                return self._send(200, json.dumps(macro_flow()))
             if u.path == "/api/analyze":
                 tk = (qs.get("ticker", [""])[0] or "").strip()
                 if not tk:
@@ -349,7 +536,8 @@ class Handler(BaseHTTPRequestHandler):
                 eng = (qs.get("engine", [None])[0] or None)
                 mdl = (qs.get("model", [None])[0] or None)
                 fresh = qs.get("fresh", ["0"])[0] in ("1", "true")
-                return self._send(200, json.dumps(analyze(tk, eng, mdl, fresh)))
+                mode = (qs.get("mode", ["auto"])[0] or "auto")
+                return self._send(200, json.dumps(analyze(tk, eng, mdl, fresh, mode)))
             if u.path == "/api/engines":
                 return self._send(200, json.dumps({
                     "engines": llm.engines() if llm else [],
