@@ -69,8 +69,11 @@ ot schedule email uninstall
 ## Deploy on GitHub Actions (position-free, no laptop)
 
 `market_email.sh` + [`.github/workflows/daily-market.yml`](../../.github/workflows/daily-market.yml)
-run the daily brief **from the cloud** on a cron — so it fires even when your Mac
-is asleep. It sends a **position-free** market read (macro · news · smart money ·
+run the brief **from the cloud**. It ships **manual-only** (the "Run workflow"
+button on the Actions tab); the daily cron line is commented out in the workflow —
+re-enable it if you want a scheduled send that fires even when your Mac is asleep,
+but skip it if a local pipeline (e.g. the Claude Code pre-market email) already
+covers the daily need. It sends a **position-free** market read (macro · news · smart money ·
 options · a *public* watch list) — **no positions, shares, P&L, cash, or secrets
 in the repo** — so it is safe in a **public** repo. Keyless: the reasoning is
 `report.py`'s deterministic fusion (no LLM, no API key).
