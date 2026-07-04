@@ -1,6 +1,6 @@
 # Stage 1 — Direction: supply-chain decomposition & bottleneck hunting
 
-**Lineage:** Serenity Skill — https://github.com/muxuuu/serenity-skill (拆产业链，找供应链瓶颈).
+**Lineage:** Serenity Skill — https://github.com/muxuuu/serenity-skill (supply-chain teardown: find the bottleneck).
 Use this stage when the user hands you a **theme**, not a list. Goal: turn a narrative into a concrete
 architecture change, walk the chain, and surface the **under-priced chokepoint company** — *that's*
 where candidates come from. Keep **"scarce layer"** and **"which company"** as two distinct questions.

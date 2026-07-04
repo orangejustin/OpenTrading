@@ -1,6 +1,6 @@
 # Stage 4 — Traps: red-flag & value-trap kill screen
 
-**Lineage:** UZI-Skill — https://github.com/wbh604/UZI-Skill (22维 × 180条量化规则). Run on every
+**Lineage:** UZI-Skill — https://github.com/wbh604/UZI-Skill (22 dimensions × 180 quantitative rules). Run on every
 quality survivor. **Killing a trap is a win, not a loss** — this stage exists to *reject*. It has two
 distinct layers; run both. Especially load-bearing for **A-share / HK** names.
 
@@ -10,7 +10,7 @@ Every flag must be grounded in real data (filing, quote, search result). If a da
 detail, goodwill figure) isn't available, mark it **"unverified"** and treat the name as *higher risk*
 — never invent a clean reading. UZI gates its own output on a 13-check anti-fabrication review; mirror that.
 
-## Layer 1 — 杀猪盘 / pump-and-dump detector (8 signals, sentiment/promotion-pattern based)
+## Layer 1 — pump-and-dump ("杀猪盘") detector (8 signals, sentiment/promotion-pattern based)
 
 Score the *promotion pattern*, not the chart. Count signals present:
 
@@ -33,7 +33,7 @@ Assemble this from UZI's deep-analysis dimension + standard ratios (there is no 
 
 | Check | Red flag → action |
 |---|---|
-| **Receivables vs revenue** | 应收账款/营收 **> 60%**, OR receivables YoY growth > revenue growth by **>20%** → stage-2 deep check |
+| **Receivables vs revenue** | receivables / revenue **> 60%**, OR receivables YoY growth > revenue growth by **>20%** → stage-2 deep check |
 | **Cash vs profit** | **FCF negative while net profit positive** → stage-2 deep check (earnings quality) |
 | **Leverage** | debt ratio materially **> ~30%** → warn |
 | **Inventory** | inventory accumulating faster than revenue → demand/channel-stuffing risk |

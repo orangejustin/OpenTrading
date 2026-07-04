@@ -37,7 +37,7 @@ ot catalysts --format json   # structured — fold into the pre-market email / d
    rule-estimated (they drift a day or two for holidays/scheduling) — treat them as a *window*
    ("CPI due ~mid-July"), and say "verify the exact day" before sizing into one.
 
-## The other half — per-name earnings (财报)
+## The other half — per-name earnings
 
 The macro gate above is **blind to single-stock earnings.** A name can rip or gap on its own report
 with nothing on the macro calendar (e.g. MU +15% AH dragging the whole memory complex). For any

@@ -18,7 +18,8 @@
 #   ot brief                          lighter daily push + macOS notification
 #   ot email   [--to a] [--subject s] [--dry-run]   email the report via SMTP (creds in .env)
 #   ot decide   TICKER [--dte N]      live CALL/PUT/NO-ACTION call (learned policy)
-#   ot web      [--port N] [--no-open]   local dashboard: market + watchlist + AI ticker analysis (Gemini optional)
+#   ot web      [--port N] [--no-open] [--engine gemini|openrouter|claude] [--model SLUG]
+#               local dashboard: market + watchlist + AI ticker analysis (engines optional)
 #   ot ibkr     quote SYM | positions | pnl | bars SYM | chain SYM | order ...   (needs TWS/IB Gateway)
 #   ot schedule [hour] [min] | schedule uninstall    install/remove the daily launchd job
 #   ot doctor                         check runner / deps / network

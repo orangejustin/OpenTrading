@@ -9,6 +9,8 @@
 
 **English** | [简体中文](README.zh-CN.md)
 
+**[Preview](#product-preview) · [Quickstart](#quickstart) · [Features](#what-you-get) · [Web dashboard](#ot-web--the-local-dashboard) · [Daily email](#daily-pre-market-email) · [Privacy](#privacy)**
+
 OpenTrading fuses **macro, news, smart-money positioning, and options gamma** into one
 opinionated read — then turns it into a concrete **CALL / PUT / NO-ACTION** through a
 decision engine that follows a learned, risk-first policy. Everything runs on your
@@ -17,6 +19,31 @@ closed alpha-simulation platforms** — pair the trading *skill* (the expertise)
 dependency-free *data CLIs* (the live data), and let Claude drive both.
 
 > ⚠️ **Educational only — not financial advice.** Trading carries substantial risk of loss.
+
+---
+
+## Product preview
+
+**`ot web` — a local, keyless dashboard** over the same data stack: live ticker strip,
+index cards with sparklines, your watchlist — and one-click AI analysis on
+**switchable engines** (pick Gemini, any OpenRouter model, or your Claude Code
+subscription straight from the header):
+
+<p align="center"><img src="docs/assets/web-overview.png" alt="ot web — market overview (demo data)" width="780"></p>
+
+**Per-ticker AI analysis** — action chip, sentiment gauge, **sniper levels**
+(ideal buy · secondary buy · stop · target), risk alerts, operation advice — with
+the engine and latency stamped on every run (`gemini-2.5-flash · 13.7s`):
+
+<p align="center"><img src="docs/assets/web-analysis.png" alt="ot web — per-ticker AI analysis with sniper levels (demo data)" width="780"></p>
+
+**The daily pre-market email** — position-aware, Claude-written, Outlook-safe HTML:
+regime call, your book with levels, a graded **Top-3 watchlist** (Enter / Wait at an
+exact price), hedge plan, and the event gate:
+
+<p align="center"><img src="docs/assets/email-sample.png" alt="daily pre-market email (sample, demo data)" width="700"></p>
+
+<sub>All screenshots use a fictional demo book — your real positions never leave your machine.</sub>
 
 ---
 
@@ -56,6 +83,9 @@ safe to size up?*, and *grade my book* — each is one command plus one prompt t
   (selection > timing, 0DTE done right, a hard daily-loss stop) — auditable in the repo.
 - **Claude-native.** An embedded skill activates on any trading question and pulls live
   data through `ot` for you. Open it in Claude Code and just ask.
+- **Bring-your-own-AI.** The AI layer is optional and engine-agnostic: a free Gemini key,
+  one OpenRouter key for *any* model (GLM · DeepSeek · GPT · Claude · Grok …), or your
+  existing **Claude Code subscription with no key at all** — switchable per request.
 - **Private by design.** Your positions and secrets are git-ignored and never shippable
   (see [Privacy](#privacy)).
 
@@ -71,10 +101,11 @@ safe to size up?*, and *grade my book* — each is one command plus one prompt t
 | **Macro** | `ot macro` | SOFR / 2s10s / TGA / RRP → scored put/call bias |
 | **Smart money** | `ot smart` | CNN + crypto Fear&Greed, BTC funding (contrarian) |
 | **Options** | `ot options` | Put/Call + dealer gamma (GEX) + gamma walls (CBOE) |
-| **Event gate** | `ot catalysts` / `ot earnings` | FOMC/CPI/PCE/NFP/OPEX + per-name 财报 → size-up verdict |
+| **Event gate** | `ot catalysts` / `ot earnings` | FOMC/CPI/PCE/NFP/OPEX + per-name earnings → size-up verdict |
 | **Quotes** | `ot quote` | No-key quotes incl premarket + `^VIX`; `ot cn` for China A-shares |
 | **Decision engine** | `ot decide` | CALL / PUT / NO-ACTION + conviction + size, from the learned policy |
 | **Daily email** | `ot email` / `ot schedule` | Position-aware, Outlook-safe HTML pre-market brief via SMTP |
+| **Web dashboard** | `ot web` | Local dashboard: indices + watchlist + per-ticker AI analysis on switchable engines |
 
 Add `--json` to any tool for machine-readable output. Full help: `ot help`.
 
@@ -112,6 +143,31 @@ ot schedule email          # weekdays 08:30 local (macOS launchd) · `… email 
 
 > macOS: launchd can't read repos under `~/Desktop`, `~/Documents`, or `~/Downloads` (TCC)
 > — keep the repo elsewhere (e.g. `~/OpenTrading`). Details: [`tools/email/README.md`](tools/email/README.md).
+
+---
+
+## `ot web` — the local dashboard
+
+The same data stack as a clean local web app — stdlib `http.server`, vanilla JS,
+no build step, bound to `127.0.0.1` (see the [preview](#product-preview) above):
+
+```bash
+ot web                                          # http://127.0.0.1:8787
+ot web --engine claude                          # boot on the no-key Claude Code engine
+ot web --engine openrouter --model z-ai/glm-5.2 # boot on GLM 5.2
+```
+
+The data panels are **keyless**; the per-ticker AI analysis runs on your choice of
+engine, switchable live from the header:
+
+| Engine | Key | Models |
+|---|---|---|
+| **Gemini** | `GEMINI_API_KEY` (free tier) | gemini-2.5-flash / -pro |
+| **OpenRouter** | `OPENROUTER_API_KEY` — one key, any model | GLM 5.2 · DeepSeek v4 · GPT-5.5 · Claude · Grok · any slug |
+| **Claude Code** | **none** — your existing subscription | headless `claude -p` (default / sonnet / opus / haiku) |
+
+Deep links (`/#NVDA`), a 10-minute per-(ticker, engine, model) cache, and a ↻ Re-run
+button. Details: [`tools/web/README.md`](tools/web/README.md).
 
 ---
 
@@ -171,8 +227,12 @@ are **optional** and need manual setup — nothing in the core depends on them.
 
 Where it's headed (shipped history in [`RELEASE_NOTES.md`](RELEASE_NOTES.md); detail in [`ROADMAP.md`](ROADMAP.md)):
 
-- **From email → web.** An interactive, local dashboard over the same data/news fusion —
-  charts, the event calendar, opportunity cards, and a personalized strategy lab.
+- **Web dashboard v2.** (v1 shipped: `ot web`.) Price charts in the analysis view, the
+  event calendar as cards, sector aggregation, and a personalized strategy lab.
+- **Multi-engine debate.** The three AI engines argue a ticker — one bull, one bear,
+  one judge (assigned stances, 5-tier verdict) — distilling
+  [TradingAgents](https://github.com/TauricResearch/TradingAgents)' debate protocol
+  into three keyless-friendly LLM calls.
 - **Personalized simulation.** A transparent, local strategy simulator that tunes the
   decision policy to *your* trading — open, auditable, on your own machine.
 - **Multi-agent research desk.** Claude/Codex as the mastermind: specialist agents

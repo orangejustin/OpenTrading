@@ -363,10 +363,15 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main(argv=None):
-    p = argparse.ArgumentParser(prog="ot web", description="Local OpenTrading dashboard.")
+    p = argparse.ArgumentParser(
+        prog="ot web", description="Local OpenTrading dashboard.",
+        epilog="examples:  ot web --engine claude   ·   ot web --engine openrouter --model z-ai/glm-5.2")
     p.add_argument("--port", type=int, default=int(os.environ.get("OT_WEB_PORT") or 8787))
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--no-open", action="store_true", help="don't open a browser")
+    p.add_argument("--engine", choices=["gemini", "openrouter", "claude"],
+                   help="default AI engine (overrides OT_LLM_ENGINE; still switchable in the UI)")
+    p.add_argument("--model", help="default model for the chosen engine (e.g. z-ai/glm-5.2, sonnet)")
     a = p.parse_args(argv)
 
     # load .env so GEMINI_API_KEY / OT_* are visible (reuse send_email's loader)
@@ -376,6 +381,17 @@ def main(argv=None):
         send_email.load_env_file(str(ROOT / ".env"))
     except Exception:  # noqa: BLE001
         pass
+
+    # CLI flags win over .env: pick the default engine/model for this run.
+    if a.engine:
+        os.environ["OT_LLM_ENGINE"] = a.engine
+    if a.model:
+        eng = a.engine or (os.environ.get("OT_LLM_ENGINE") or "").lower() \
+            or (llm.default_engine() if llm else "")
+        envkey = {"gemini": "GEMINI_MODEL", "openrouter": "OPENROUTER_MODEL",
+                  "claude": "OT_CLAUDE_MODEL"}.get(eng)
+        if envkey:
+            os.environ[envkey] = a.model
 
     srv = ThreadingHTTPServer((a.host, a.port), Handler)
     url = f"http://{a.host}:{a.port}"

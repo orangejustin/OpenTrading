@@ -42,7 +42,7 @@ Load the relevant file(s) for each task:
 | `references/risk.md` | Position sizing, stop placement, portfolio heat, drawdown rules |
 | `references/portfolio-desk.md` | Portfolio review, share +/- adjustments, concentration & factor limits, the bull/bear desk |
 | `references/learned-strategy.md` | The winning policy (selection > timing, 0DTE done right, risk governor); applied live via `ot decide` |
-| `references/intraday-email.md` | Intraday (盘中) on-demand analysis + Chinese email template; the apex-predator (asymmetric multibagger) lens for new ideas |
+| `references/intraday-email.md` | Intraday on-demand analysis + email template (English base; zh rendering map for zh rosters); the apex-predator (asymmetric multibagger) lens for new ideas |
 | `references/crypto.md` | Crypto mechanics, perpetuals, funding rates, DeFi, on-chain signals |
 
 ---
