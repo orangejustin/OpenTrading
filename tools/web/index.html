@@ -198,6 +198,41 @@
   .nrow .cat{font-size:10px;font-weight:700;background:#eef2f7;color:#64748b;border-radius:999px;
     padding:2px 8px;white-space:nowrap;text-transform:uppercase;letter-spacing:.3px}
   .drv{margin:0;padding-left:18px;font-size:13.5px;line-height:1.65;color:#334155}
+  .nrow.hot{border-left:3px solid var(--down);padding-left:10px;background:#fffafa}
+
+  /* catalysts strip */
+  .calrow{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0 2px}
+  .cal{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px;
+    box-shadow:var(--shadow);display:flex;align-items:baseline;gap:9px}
+  .cal .d{font-size:11px;font-weight:700;color:#94a3b8;font-variant-numeric:tabular-nums}
+  .cal .e{font-size:13px;font-weight:700}
+  .cal .away{font-size:10.5px;font-weight:700;border-radius:999px;padding:2px 8px}
+  .cal .away.high{background:var(--downbg);color:var(--down)}
+  .cal .away.med{background:var(--amberbg);color:var(--amber)}
+  .cal .away.low{background:#eef2f7;color:#64748b}
+
+  /* strategy cards */
+  .sgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+  @media(max-width:820px){.sgrid{grid-template-columns:1fr}}
+  .scard{background:#fff;border:1px solid var(--line);border-left:4px solid #cbd5e1;border-radius:12px;
+    padding:14px 16px;box-shadow:var(--shadow);cursor:pointer}
+  .scard:hover{border-color:#cdd9ea;border-left-color:inherit}
+  .scard.long{border-left-color:#15803d}.scard.short{border-left-color:#dc2626}.scard.watch{border-left-color:#b45309}
+  .scard .h{display:flex;align-items:center;gap:9px}
+  .scard .tk{font-size:16px;font-weight:800;color:var(--accent)}
+  .heldtag{font-size:9.5px;font-weight:800;background:#eef2f7;color:#475569;border-radius:999px;
+    padding:2px 7px;text-transform:uppercase;letter-spacing:.4px}
+  .sbadge{font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;text-transform:uppercase;letter-spacing:.4px}
+  .sbadge.long{background:var(--upbg);color:var(--up)} .sbadge.short{background:var(--downbg);color:var(--down)}
+  .sbadge.watch{background:var(--amberbg);color:var(--amber)}
+  .gbadge{font-size:11px;font-weight:800;background:#0f172a;color:#fff;border-radius:6px;padding:2px 7px}
+  .scard .zones{font-size:12.5px;color:#334155;margin-top:9px;line-height:1.7}
+  .scard .zones b{font-variant-numeric:tabular-nums}
+  .scard .why{font-size:12px;color:#64748b;margin-top:7px;line-height:1.5}
+  .scard .px{margin-left:auto;font-size:13px;font-weight:700}
+  .tvsw{display:flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;color:#64748b;
+    margin-left:12px;cursor:pointer;user-select:none}
+  .chnote{font-size:11.5px;color:#94a3b8;margin-top:6px}
 
   footer{max-width:1180px;margin:0 auto;padding:18px 24px 40px;color:#94a3b8;font-size:11px;line-height:1.5}
 </style>
@@ -210,6 +245,7 @@
   <span id="regime" class="regime">—</span>
   <nav class="nav">
     <a id="nav-dash" href="#" onclick="location.hash='';return false">Dashboard</a>
+    <a id="nav-strat" href="#/strategy">Strategy</a>
     <a id="nav-news" href="#/news" >News</a>
   </nav>
   <div class="engctl" id="engctl" style="display:none">
@@ -233,17 +269,28 @@
   </section>
 
   <section id="view-news" style="display:none">
+    <div class="sec-h" style="margin-top:18px">Event Gate <span class="sub">scheduled catalysts — size down into the red ones</span></div>
+    <div class="calrow" id="calrow"><div class="loading" style="padding:10px">Loading calendar…</div></div>
     <div class="sec-h" style="margin-top:18px">Market News <span class="sub" id="n-asof"></span></div>
     <div class="ntools">
       <div class="win"><span style="font-size:12px;color:#64748b;font-weight:600">Window</span>
-        <input type="range" id="nwin" min="0" max="4" step="1" value="1">
+        <input type="range" id="nwin" min="0" max="5" step="1" value="1">
         <b id="nwinlbl">12h</b></div>
-      <input type="text" id="ntick" placeholder="Filter by ticker (optional)">
+      <input type="text" id="nfilter" placeholder="Filter — ticker or keyword" oninput="filterNews()">
       <button class="nbtn" onclick="loadNews()">Refresh</button>
       <button class="nbtn" style="background:linear-gradient(135deg,#7c3aed,#2563eb)" onclick="tapeRead()">🧠 AI read of the tape</button>
     </div>
     <div id="nai"></div>
     <div class="card pad" id="nlist"><div class="loading">Loading headlines…</div></div>
+  </section>
+
+  <section id="view-strat" style="display:none">
+    <div class="sec-h" style="margin-top:18px">Strategy — the action board
+      <span class="sub" id="s-asof"></span>
+      <span class="rerun" style="margin-left:auto" onclick="loadStrategy(true)">↻ Refresh reads</span></div>
+    <div class="sub" style="font-size:12px;color:#94a3b8;margin:0 4px 12px">
+      One deterministic <b>ot decide</b> read per name — direction · grade · zones · stop. No LLM, no waiting; the learned risk-first policy. Click a card for the full page.</div>
+    <div class="sgrid" id="sgrid"><div class="card pad loading" style="grid-column:1/-1">Running the decision engine over your book + watchlist…</div></div>
   </section>
 
   <section id="view-ticker" style="display:none"></section>
@@ -396,14 +443,18 @@ async function showTicker(tk){
       <a class="tvlink" href="${tvUrl(tk,'ticker-page')}" target="_blank" rel="noopener">TradingView ↗</a>
       <span class="px mono" id="t-px"></span></div>
     <div class="card pad"><div style="display:flex;align-items:center"><div class="lbl" style="margin:0">Price</div>
+      <label class="tvsw" title="Swap in TradingView's interactive chart — loads tradingview.com (external); off = the built-in dependency-free chart">
+        <input type="checkbox" id="tvsw" onchange="tvToggle()"> TV chart</label>
       <div class="rtabs" id="rtabs">${['1mo','3mo','6mo','1y'].map(r=>`<span class="rtab ${r==='3mo'?'on':''}" data-r="${r}" onclick="setRange('${r}')">${r.replace('mo','M').replace('y','Y').toUpperCase()}</span>`).join('')}</div></div>
       <div id="chart" style="margin-top:8px"><div class="loading">Loading chart…</div></div>
+      <div class="chnote" id="chnote"></div>
       <div class="stats" id="t-stats"></div></div>
     <div id="ai-area"></div>
     <div class="sec-h" style="margin-top:18px" id="news-h">Related News</div>
     <div class="card pad news" id="t-news"><div class="loading">Loading headlines…</div></div>`;
   window.scrollTo(0,0);
   CHART={tk,rng:'3mo'};
+  $('#tvsw').checked=localStorage.getItem('ot_tv')==='1';
   loadChart();
   const d=await fetch(`/api/analyze?ticker=${encodeURIComponent(tk)}&mode=auto${engQS()}`).then(r=>r.json()).catch(()=>null);
   if(!d){$('#ai-area').innerHTML='<div class="banner">Failed to load data.</div>';return;}
@@ -416,9 +467,15 @@ async function showTicker(tk){
 }
 async function loadChart(){
   const {tk,rng}=CHART;
+  if(localStorage.getItem('ot_tv')==='1'){renderTV();return;}
+  $('#chart').innerHTML='<div class="loading" style="padding:24px">Loading chart…</div>';
   const c=await fetch(`/api/chart?ticker=${encodeURIComponent(tk)}&range=${rng}`).then(r=>r.json()).catch(()=>null);
   if(!c||!c.rows||CHART.tk!==tk) { if(CHART.tk===tk) $('#chart').innerHTML='<div class="loading">No chart data.</div>'; return; }
   drawChart($('#chart'),c.rows);
+  // A young listing returns the same short history for every range — say so
+  // instead of looking like the range tabs are broken.
+  $('#chnote').textContent=(rng!=='1mo'&&c.rows.length<22)
+    ?`Young listing — only ${c.rows.length} sessions of history exist, so every range shows the full picture.`:'';
   const t=technicalsFromRows(c.rows);
   $('#t-stats').innerHTML=[
     ['Prev close',fmt(c.prev)],['Volume',c.volume?Intl.NumberFormat('en',{notation:'compact'}).format(c.volume):'—'],
@@ -427,6 +484,16 @@ async function loadChart(){
   ].map(([k,v])=>`<div class="st"><div class="k">${k}</div><div class="v mono">${v}</div></div>`).join('');
 }
 function setRange(r){CHART.rng=r;document.querySelectorAll('.rtab').forEach(x=>x.classList.toggle('on',x.dataset.r===r));loadChart();}
+function renderTV(){
+  const s=TV[CHART.tk]||CHART.tk;
+  $('#chnote').textContent='Interactive chart served by tradingview.com (external) — toggle off for the built-in dependency-free chart.';
+  $('#chart').innerHTML=`<iframe src="https://s.tradingview.com/widgetembed/?symbol=${encodeURIComponent(s)}&interval=D&theme=light&style=1&hide_side_toolbar=1&saveimage=0&utm_source=opentrading&utm_medium=widget&utm_campaign=chart"
+    style="width:100%;height:430px;border:0;border-radius:10px" loading="lazy" title="TradingView chart"></iframe>`;
+}
+function tvToggle(){
+  localStorage.setItem('ot_tv',$('#tvsw').checked?'1':'0');
+  loadChart();
+}
 function technicalsFromRows(rows){
   const s=rows.map(r=>r.c), out={};
   if(s.length>=10) out.ma10=s.slice(-10).reduce((a,b)=>a+b,0)/10;
@@ -523,20 +590,42 @@ function renderAnalysis(d){
 }
 
 /* ---------- news page ---------- */
-const WINS=[6,12,24,48,72];
-let NEWSLOADED=false;
+const WINS=[6,12,24,48,72,168];
+const winLbl=v=>v<24?v+'h':(v/24)+'d';
+let NEWSLOADED=false, NEWSITEMS=[];
 function winMinutes(){return WINS[+$('#nwin').value]*60;}
 async function loadNews(){
   NEWSLOADED=true;
   $('#nlist').innerHTML='<div class="loading">Loading headlines…</div>';
-  const tk=($('#ntick').value||'').trim();
-  const d=await fetch(`/api/news?minutes=${winMinutes()}${tk?('&ticker='+encodeURIComponent(tk)):''}`).then(r=>r.json()).catch(()=>null);
+  loadCal();
+  const d=await fetch(`/api/news?minutes=${winMinutes()}`).then(r=>r.json()).catch(()=>null);
   if(!d){$('#nlist').innerHTML='<div class="loading">Failed to load news.</div>';return;}
-  $('#n-asof').textContent=`${d.items.length} headlines · last ${d.minutes/60}h · ${d.as_of||''}`;
-  $('#nlist').innerHTML=d.items.length?d.items.map(n=>`<div class="nrow">
+  NEWSITEMS=d.items||[];
+  $('#n-asof').textContent=`${NEWSITEMS.length} headlines · last ${winLbl(d.minutes/60)} · ${d.as_of||''}`
+    +(d.minutes>1440?' · deep windows merge the local news archive (ot news store)':'');
+  filterNews();
+}
+function filterNews(){
+  const q=($('#nfilter').value||'').trim().toLowerCase();
+  const items=q?NEWSITEMS.filter(n=>(n.title+' '+(n.cat||'')).toLowerCase().includes(q)):NEWSITEMS;
+  $('#nlist').innerHTML=items.length?items.map(n=>`<div class="nrow${n.hot?' hot':''}">
       <span class="tm mono">${n.time||''}</span>
       <a class="ti" href="${n.url||'#'}" target="_blank" rel="noopener">${n.title}</a>
-      ${n.cat?`<span class="cat">${n.cat}</span>`:''}</div>`).join(''):'<div class="loading">Quiet tape in this window.</div>';
+      ${n.cat?`<span class="cat">${n.cat}</span>`:''}</div>`).join('')
+    :`<div class="loading">${q?'No headlines matching “'+q+'” in this window — widen the window or clear the filter.':'Quiet tape in this window.'}</div>`;
+}
+let CAL=null;
+async function loadCal(){
+  if(CAL) return renderCal();
+  CAL=await fetch('/api/catalysts').then(r=>r.json()).catch(()=>({events:[]}));
+  renderCal();
+}
+function renderCal(){
+  const evs=(CAL&&CAL.events)||[];
+  $('#calrow').innerHTML=evs.length?evs.slice(0,8).map(e=>`<div class="cal">
+      <span class="d mono">${e.date}</span><span class="e">${e.event}</span>
+      <span class="away ${e.tier||'low'}">${e.days_away}d</span></div>`).join('')
+    :'<div class="cal"><span class="e" style="color:#64748b;font-weight:600">No scheduled high-tier catalysts on the rule calendar.</span></div>';
 }
 function tapeRead(){
   const t0=Date.now();
@@ -559,23 +648,55 @@ function tapeRead(){
   }).catch(()=>{clearInterval(tick);$('#nai').innerHTML='<div class="banner">Tape read failed — try again.</div>';});
 }
 
+/* ---------- strategy page ---------- */
+let STRATLOADED=false;
+const zfmt=z=>Array.isArray(z)&&z.length===2?`${fmt(z[0])}–${fmt(z[1])}`:'—';
+async function loadStrategy(fresh){
+  STRATLOADED=true;
+  if(fresh) $('#sgrid').innerHTML='<div class="card pad loading" style="grid-column:1/-1">Re-running the decision engine…</div>';
+  const d=await fetch('/api/strategy'+(fresh?'?fresh=1':'')).then(r=>r.json()).catch(()=>null);
+  if(!d||!d.cards){$('#sgrid').innerHTML='<div class="card pad loading" style="grid-column:1/-1">Strategy board unavailable.</div>';return;}
+  $('#s-asof').textContent=`${d.cards.length} names · ${d.as_of||''}${d.cached?' · cached':''}`;
+  $('#sgrid').innerHTML=d.cards.map(c=>{
+    if(c.error) return `<div class="scard watch" onclick="location.hash='${c.ticker}'">
+      <div class="h"><span class="tk">${c.ticker}</span>${c.held?'<span class="heldtag">held</span>':''}
+        <span class="sbadge watch">Wait</span></div>
+      <div class="why">${c.error}</div></div>`;
+    const side=(c.side||'watch').toLowerCase(), dir=side==='long'?'Long':side==='short'?'Short':'Wait';
+    const badge=side==='long'?'long':side==='short'?'short':'watch';
+    return `<div class="scard ${badge}" onclick="location.hash='${c.ticker}'">
+      <div class="h"><span class="tk">${c.ticker}</span>${c.held?'<span class="heldtag">held</span>':''}
+        <span class="sbadge ${badge}">${side==='watch'&&c.action&&c.action!=='NO-ACTION'?c.action:dir}</span>
+        ${c.grade?`<span class="gbadge">${c.grade}</span>`:''}
+        ${c.event?`<span class="cat" style="background:var(--downbg);color:var(--down)">${c.event}</span>`:''}
+        <span class="px mono">${fmt(c.price)}</span></div>
+      <div class="zones">buy <b>${zfmt(c.buy_zone)}</b> (core <b>${fmt(c.core)}</b>) · add <b>${zfmt(c.add_zone)}</b><br>
+        trim <b>${zfmt(c.trim_zone)}</b> · stop <b>&lt;${fmt(c.stop)}</b>${c.horizon?` · ${c.horizon}`:''}</div>
+      ${c.reason?`<div class="why">${c.reason}</div>`:''}
+      ${c.scenario?`<div class="why">⚠ ${c.scenario}</div>`:''}</div>`;
+  }).join('');
+}
+
 /* ---------- routing ---------- */
 function setView(v){
   $('#view-dash').style.display=v==='dash'?'block':'none';
   $('#view-news').style.display=v==='news'?'block':'none';
+  $('#view-strat').style.display=v==='strat'?'block':'none';
   $('#view-ticker').style.display=v==='ticker'?'block':'none';
   $('#nav-dash').classList.toggle('on',v==='dash');
   $('#nav-news').classList.toggle('on',v==='news');
+  $('#nav-strat').classList.toggle('on',v==='strat');
 }
 function route(){
   const h=decodeURIComponent(location.hash.slice(1));
   if(h==='/news'){setView('news');if(!NEWSLOADED)loadNews();window.scrollTo(0,0);return;}
+  if(h==='/strategy'){setView('strat');if(!STRATLOADED)loadStrategy(false);window.scrollTo(0,0);return;}
   if(h){showTicker(h.toUpperCase());return;}
   setView('dash');window.scrollTo(0,0);
 }
 window.addEventListener('hashchange',route);
 $('#q').addEventListener('keydown',e=>{if(e.key==='Enter'){const v=e.target.value.trim();if(v){location.hash=v.toUpperCase();e.target.value='';}}});
-$('#nwin').addEventListener('input',()=>{$('#nwinlbl').textContent=WINS[+$('#nwin').value]+'h';});
+$('#nwin').addEventListener('input',()=>{$('#nwinlbl').textContent=winLbl(WINS[+$('#nwin').value]);});
 $('#nwin').addEventListener('change',loadNews);
 
 (async()=>{

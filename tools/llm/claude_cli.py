@@ -27,6 +27,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 MODELS = ["default", "sonnet", "opus", "haiku"]
 
+# The exact model id the CLI actually used on the last run (e.g.
+# "claude-opus-4-8"), parsed from the result envelope — aliases like
+# "sonnet"/"default" resolve to whatever the CLI picks.
+LAST_MODEL_ID: str | None = None
+
 
 def have_cli() -> bool:
     return bool(shutil.which("claude"))
@@ -89,6 +94,15 @@ def _run(prompt: str, model: str | None, timeout: int) -> str:
     if isinstance(env, dict):
         if env.get("is_error"):
             raise RuntimeError(f"claude CLI error: {str(env.get('result'))[:300]}")
+        global LAST_MODEL_ID
+        mu = env.get("modelUsage")
+        if isinstance(mu, dict) and mu:
+            def _out_tokens(k):
+                v = mu[k]
+                return v.get("outputTokens", 0) if isinstance(v, dict) else 0
+            LAST_MODEL_ID = max(mu, key=_out_tokens)
+        elif env.get("model"):
+            LAST_MODEL_ID = str(env["model"])
         if env.get("result") is not None:
             return str(env["result"])
     return out.stdout

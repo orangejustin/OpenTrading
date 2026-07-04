@@ -26,6 +26,7 @@ import argparse
 import email.utils
 import json
 import os
+import re
 import shutil
 import ssl
 import subprocess
@@ -229,25 +230,62 @@ def _extract_fng(smart) -> dict:
     return out
 
 
+# Headlines that read as market-moving flashes get a red edge in the UI (the
+# public RSS carries no importance flag, so this is an honest heuristic).
+_HOT = re.compile(r"attack|strike|missile|\bwar\b|breaking|emergency|halt|crash|nuclear"
+                  r"|invasion|explosion|assassinat|ceasefire|\bcoup\b|escalat", re.I)
+
+
+def _fmt_iso(iso: str) -> str:
+    try:
+        dt = datetime.fromisoformat(iso).astimezone(NY)
+        ap = "am" if dt.hour < 12 else "pm"
+        return f"{dt:%b} {dt.day} · {dt.hour % 12 or 12}:{dt:%M}{ap} ET"
+    except Exception:  # noqa: BLE001
+        return ""
+
+
+def _iso_ts(it: dict) -> float:
+    try:
+        return datetime.fromisoformat(it.get("iso") or "").timestamp()
+    except Exception:  # noqa: BLE001
+        return 0.0
+
+
 def _fj_items(minutes: int, ticker: str | None = None, limit: int = 12) -> list:
-    args = [ROOT / "tools/financialjuice/fj.py", "fetch", "--minutes", str(minutes)]
-    if ticker:
-        args += ["--ticker", ticker]
-    raw = ot_json(*args) or []
-    items = raw if isinstance(raw, list) else (raw.get("items") or raw.get("headlines") or [])
+    """FinancialJuice headlines. The public RSS only holds the ~40 latest items,
+    so windows past 24h merge the local news-log archive via `fj.py digest`
+    (populated by `ot news store` / the scheduled email runs)."""
+    if minutes > 1440 and not ticker:
+        days = min(7, max(2, -(-minutes // 1440)))
+        raw = ot_json(ROOT / "tools/financialjuice/fj.py", "digest", "--days", str(days)) or {}
+        items = raw.get("items") if isinstance(raw, dict) else raw
+        items = [i for i in (items or []) if isinstance(i, dict)]
+        cutoff = time.time() - minutes * 60
+        items = [i for i in items if _iso_ts(i) >= cutoff]
+        items.sort(key=_iso_ts, reverse=True)
+    else:
+        args = [ROOT / "tools/financialjuice/fj.py", "fetch", "--minutes", str(minutes)]
+        if ticker:
+            args += ["--ticker", ticker]
+        raw = ot_json(*args) or []
+        items = raw if isinstance(raw, list) else (raw.get("items") or raw.get("headlines") or [])
     out = []
     for it in items[:limit]:
         if isinstance(it, dict):
+            title = it.get("title") or it.get("headline") or it.get("text") or ""
             out.append({
-                "title": it.get("title") or it.get("headline") or it.get("text") or "",
+                "title": title,
                 "url": it.get("url") or it.get("link") or "",
-                "time": it.get("time") or (it.get("time_et") and f"{it['time_et']} ET")
-                        or it.get("published") or it.get("date") or "",
+                "time": _fmt_iso(it.get("iso") or "") or it.get("time")
+                        or (it.get("time_et") and f"{it['time_et']} ET") or "",
                 "cat": it.get("category") or it.get("cat") or "",
                 "src": "FinancialJuice",
+                "hot": bool(_HOT.search(title)),
             })
         elif isinstance(it, str):
-            out.append({"title": it, "url": "", "time": "", "cat": "", "src": "FinancialJuice"})
+            out.append({"title": it, "url": "", "time": "", "cat": "", "src": "FinancialJuice",
+                        "hot": bool(_HOT.search(it))})
     return [o for o in out if o["title"]]
 
 
@@ -282,7 +320,7 @@ def _news_for(ticker: str | None, minutes: int = 1440) -> tuple[list, str]:
     """Headlines + scope. Fallback chain for a name: FJ ticker-tagged →
     Yahoo per-name RSS → the general market tape (labeled as such)."""
     if not ticker:
-        return _fj_items(minutes, limit=40), "market"
+        return _fj_items(minutes, limit=120), "market"
     items = _fj_items(minutes, ticker)
     if items:
         return items, "name"
@@ -371,16 +409,28 @@ NEWS_SCHEMA = {
 }
 
 
+def catalysts() -> dict:
+    """The event gate: scheduled FOMC/CPI/PCE/NFP/OPEX-class catalysts (rule-based, keyless)."""
+    return ot_json(ROOT / "tools/catalysts/catalysts.py") or {"events": []}
+
+
 def news_analysis(minutes: int, engine: str | None, model: str | None) -> dict:
     if not (llm and llm.any_ok()):
         return {"error": "no LLM engine configured"}
     items, _ = _news_for(None, minutes)
-    heads = "\n".join(f"- [{i.get('time', '')}] {i['title']}" for i in items[:40]) or "- (empty tape)"
-    prompt = f"""You are a disciplined, macro-first market strategist. Below is the last {minutes // 60}h of market headlines. Read the TAPE as a whole — do not summarize item by item.
+    heads = "\n".join(f"- [{i.get('time', '')}] {i['title']}" for i in items[:60]) or "- (empty tape)"
+    cal = catalysts()
+    ev = "\n".join(f"- {e.get('date')} ({e.get('days_away')}d away): {e.get('event')} [{e.get('tier')}]"
+                   for e in (cal.get("events") or [])[:8]) or "- none scheduled"
+    prompt = f"""You are a disciplined, macro-first market strategist. Below is the last {minutes // 60}h of market headlines plus the scheduled event calendar. Read the TAPE as a whole — do not summarize item by item.
 
+SCHEDULED CATALYSTS (the event gate — fold this risk into everything):
+{ev}
+
+HEADLINES:
 {heads}
 
-Return JSON: a 2-4 sentence summary of what the tape is really saying; macro_bias (RISK-ON / RISK-OFF / MIXED); 3-5 concrete drivers (each one line, tied to specific headlines); a one-paragraph portfolio_tilt (what a risk-first swing trader should tilt toward/away from — sectors, factors, hedges); and 2-4 watch items (upcoming catalysts or confirmations to look for). Educational only, not financial advice."""
+Return JSON: a 2-4 sentence summary of what the tape is really saying; macro_bias (RISK-ON / RISK-OFF / MIXED); 3-5 concrete drivers (each one line, tied to specific headlines); a one-paragraph portfolio_tilt (what a risk-first swing trader should tilt toward/away from — sectors, factors, hedges — respecting the event gate above); and 2-4 watch items (upcoming catalysts or confirmations to look for, with dates where known). Educational only, not financial advice."""
     try:
         t0 = time.time()
         data, meta = llm.generate_json(prompt, NEWS_SCHEMA, engine=engine, model=model)
@@ -389,6 +439,61 @@ Return JSON: a 2-4 sentence summary of what the tape is really saying; macro_bia
         return data
     except Exception as e:  # noqa: BLE001
         return {"error": f"news analysis failed: {e}"}
+
+
+_STRAT_CACHE: dict = {}
+
+
+def strategy(fresh: bool = False) -> dict:
+    """The action board: one `ot decide` card per book/watch name — direction,
+    grade, zones, stop — deterministic (no LLM), cached 30 min."""
+    with _CACHE_LOCK:
+        hit = _STRAT_CACHE.get("v")
+    if hit and not fresh and time.time() - hit[0] < 1800:
+        return dict(hit[1], cached=True)
+    path = Path(os.environ.get("OT_WATCHLIST") or (ROOT / "watchlist.json"))
+    held, names = set(), []
+    if path.exists():
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            for pos in (data.get("positions") or []):
+                t = (pos.get("ticker") or "").upper()
+                if t and t not in names:
+                    held.add(t)
+                    names.append(t)
+            for w in (data.get("watch") or []):
+                t = (w.get("ticker") or "").upper()
+                if t and t not in names:
+                    names.append(t)
+        except Exception:  # noqa: BLE001
+            pass
+    names = names[:14]
+
+    def one(t):
+        d = ot_json(ROOT / "tools/sim/decide.py", t) or {}
+        if not d.get("ticker"):
+            return {"ticker": t, "held": t in held,
+                    "error": "no read — thin history or fetch failed"}
+        p = d.get("plan") or {}
+        return {"ticker": t, "held": t in held, "action": d.get("action"),
+                "conviction": d.get("conviction"), "price": d.get("price"),
+                "event": d.get("event"), "reason": (d.get("reasons") or [""])[0],
+                "side": p.get("side"), "grade": p.get("grade"), "horizon": p.get("horizon"),
+                "buy_zone": p.get("buy_zone"), "core": p.get("core"),
+                "add_zone": p.get("add_zone"), "trim_zone": p.get("trim_zone"),
+                "stop": p.get("stop"), "scenario": p.get("scenario")}
+
+    with ThreadPoolExecutor(max_workers=6) as ex:
+        cards = list(ex.map(one, names))
+    side_rank = {"long": 0, "buy": 0, "short": 1, "sell": 1}
+    grade_rank = {"A": 0, "B": 1, "C": 2, "D": 3}
+    cards.sort(key=lambda c: (not c["held"],
+                              side_rank.get((c.get("side") or "watch"), 2),
+                              grade_rank.get(c.get("grade") or "D", 3)))
+    out = {"cards": cards, "as_of": _now_et()}
+    with _CACHE_LOCK:
+        _STRAT_CACHE["v"] = (time.time(), out)
+    return out
 
 
 def watchlist() -> dict:
@@ -511,14 +616,19 @@ class Handler(BaseHTTPRequestHandler):
             if u.path == "/api/watchlist":
                 return self._send(200, json.dumps(watchlist()))
             if u.path == "/api/news":
-                minutes = max(60, min(int(qs.get("minutes", ["720"])[0] or 720), 4320))
+                minutes = max(60, min(int(qs.get("minutes", ["720"])[0] or 720), 10080))
                 items, scope = _news_for(qs.get("ticker", [None])[0], minutes)
                 return self._send(200, json.dumps({"items": items, "scope": scope,
                                                    "minutes": minutes, "as_of": _now_et()}))
             if u.path == "/api/news_analysis":
-                minutes = max(60, min(int(qs.get("minutes", ["720"])[0] or 720), 4320))
+                minutes = max(60, min(int(qs.get("minutes", ["720"])[0] or 720), 10080))
                 return self._send(200, json.dumps(news_analysis(
                     minutes, qs.get("engine", [None])[0], qs.get("model", [None])[0])))
+            if u.path == "/api/catalysts":
+                return self._send(200, json.dumps(catalysts()))
+            if u.path == "/api/strategy":
+                fresh = qs.get("fresh", ["0"])[0] in ("1", "true")
+                return self._send(200, json.dumps(strategy(fresh)))
             if u.path == "/api/chart":
                 tk = (qs.get("ticker", [""])[0] or "").strip()
                 if not tk:
