@@ -13,8 +13,9 @@ description: >-
 
 # Deep single-stock research (个股深度研究)
 
-Produce an evidence-anchored verdict on ONE stock across two tracks — **能否长拿**
-(fundamental hold-thesis) and **现在能不能做** (technical trade-setup) — graded
+Produce an evidence-anchored verdict on ONE stock across two tracks — **hold-thesis
+(能否长拿 — can it be held long?)** and **trade-setup (现在能不能做 — is the entry
+good now?)** — graded
 A–D and stress-tested by a bull-vs-bear pass. Multi-region: the data sources and
 the *weighting* differ by market; the cognition is shared. Educational only —
 not financial advice.
@@ -39,16 +40,16 @@ Region extras:
 
 ## 2. Two-track analysis (the core)
 
-**Track A — 能否长拿 (hold-thesis · fundamental).** *"Would I own this 9–24 months?"*
-- **护城河 (moat):** pricing power (sustained high 毛利), ROE durability, scale / switching costs / network effects. *A 毛利 ~70% held for years is itself a moat tell.*
-- **管理层 / 资本配置 (management):** ROE vs cost of capital; buyback/dividend discipline; insider / major-holder behavior (A-share: **股东户数 trend — falling = big-money accumulation**); guidance-vs-delivery.
-- **业绩 / 成长 (earnings/growth):** revenue + net-profit YoY, margin trajectory, durability — flag **low-base distortions** (净利 +500% off a tiny base ≠ structural).
-- **估值 (valuation):** PE / PB vs the name's *own history* and peers — cheap / fair / rich? A great business at a nosebleed multiple is a **Quality-A / Valuation-D split — say so.**
+**Track A — hold-thesis (fundamental · 能否长拿).** *"Would I own this 9–24 months?"*
+- **Moat (护城河):** pricing power (sustained high gross margin), ROE durability, scale / switching costs / network effects. *A ~70% gross margin held for years is itself a moat tell.*
+- **Management & capital allocation (管理层):** ROE vs cost of capital; buyback/dividend discipline; insider / major-holder behavior (A-share: **股东户数 trend — falling holder count = big-money accumulation**); guidance-vs-delivery.
+- **Earnings & growth (业绩):** revenue + net-profit YoY, margin trajectory, durability — flag **low-base distortions** (net profit +500% off a tiny base ≠ structural).
+- **Valuation (估值):** PE / PB vs the name's *own history* and peers — cheap / fair / rich? A great business at a nosebleed multiple is a **Quality-A / Valuation-D split — say so.**
 → emit a **Quality grade + a Valuation grade.**
 
-**Track B — 现在能不能做 (trade-setup · technical).** *"Is the entry good right now?"*
-- Trend (vs 20-day), **乖离 BIAS 6/12/24** (extended ⇒ don't chase; deeply negative ⇒ **错杀/oversold** candidate), **量比** (confirmation / anomaly), the **buy/trim/stop zones** from `ot decide`, catalyst timing.
-- US adds **dealer gamma / walls** (pin vs squeeze) + **Fear&Greed**; A-share adds **人气榜 rank** (surging = retail crowding = over-extension risk) + **筹码** (dispersing vs tightening).
+**Track B — trade-setup (technical · 现在能不能做).** *"Is the entry good right now?"*
+- Trend (vs 20-day), **BIAS 6/12/24 (乖离)** (extended ⇒ don't chase; deeply negative ⇒ **oversold (错杀)** candidate), **volume-ratio (量比)** (confirmation / anomaly), the **buy/trim/stop zones** from `ot decide`, catalyst timing.
+- US adds **dealer gamma / walls** (pin vs squeeze) + **Fear&Greed**; A-share adds **popularity rank (人气榜)** (surging = retail crowding = over-extension risk) + **holder concentration (筹码)** (dispersing vs tightening).
 → emit a **trade-timing call + the zones.**
 
 ## 3. Bull-vs-bear pass (stress test — do NOT skip)
@@ -58,13 +59,13 @@ Write a tight **BULL case** (growth · moat · catalyst · undervaluation · pos
 ## 4. Verdict (structured)
 
 - **Grade A–D** — composite of Quality · Valuation · Trend · Catalyst, minus Risk. A = strong hold/buy-the-zone; D = avoid.
-- **两轨结论:** one line each — **长拿** (yes/no + why) and **短做** (now / wait-for-zone / avoid).
-- **Horizon:** 短(2–6周) · 中(2–6月) · 长(9–24月).
-- **仓位计划:** size + the buy/trim/stop zones + the invalidation, tagged to the horizon.
+- **Two-track verdict:** one line each — **hold** (yes/no + why) and **trade** (now / wait-for-zone / avoid).
+- **Horizon:** short (2–6 wk) · medium (2–6 mo) · long (9–24 mo).
+- **Position plan:** size + the buy/trim/stop zones + the invalidation, tagged to the horizon.
 
 ## 5. Output format (the report)
 
-`Verdict + Grade` → `两轨摘要 (长拿 vs 短做)` → `护城河 / Quality` → `管理层` → `业绩 / 财务` → `估值` → `技术面 (trend · BIAS · 量比 · zones)` → `情绪 / 筹码 (US: GEX · F&G / A: 人气 · 股东户数)` → `催化 & 风险` → `仓位计划 (horizon-tagged)` → disclaimer. Every line cites a real number from §1.
+`Verdict + Grade` → `Two-track summary (hold vs trade)` → `Moat / Quality` → `Management` → `Earnings / Financials` → `Valuation` → `Technicals (trend · BIAS · volume-ratio · zones)` → `Sentiment / Positioning (US: GEX · F&G / A: 人气榜 · 股东户数)` → `Catalysts & Risks` → `Position plan (horizon-tagged)` → disclaimer. Every line cites a real number from §1. **One language per report:** English reports stay pure English; zh rosters get every section title translated (两轨摘要 · 护城河 · 管理层 · 业绩/财务 · 估值 · 技术面 · 情绪/筹码 · 催化与风险 · 仓位计划).
 
 ## Region tuning
 

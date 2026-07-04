@@ -105,4 +105,4 @@ Then: **"What I'd watch next"** — the 1–2 names *just* below the cut and wha
 - **Fresh data.** Re-fetch news/macro/quotes at pick time (`ot news store` then read) — never recycle.
 - **Horizon honesty.** This is multi-week/position research, not an intraday setup — hand off entries
   to the `short-term-trader` skill once a name is chosen.
-- **Always disclaim.** Research aid, educational only — **not** investment advice. (研究辅助，非投资建议。)
+- **Always disclaim.** Research aid, educational only — **not** investment advice.

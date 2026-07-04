@@ -13,7 +13,7 @@ description: >-
 
 One skill that turns the whole `ot` stack into a single neat email:
 **news + logic + price ranges + alpha + intraday decision + portfolio +/- +
-新增标的建议 + the policy + 风控/纪律.** It reuses the existing chrome
+new ideas + the policy + risk/discipline.** It reuses the existing chrome
 (`tools/brief/wrap_html.py`) and transport (`tools/email/send_email.py`) — do not
 reinvent them. Always **re-fetch fresh data** (never recycle a prior note).
 

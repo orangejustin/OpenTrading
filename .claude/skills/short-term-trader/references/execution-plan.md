@@ -34,7 +34,11 @@ position concept), so it shows the intraday call, not zones.
 
 Risk % by grade: A 1.25% · B 1.0% · C 0.6% · D 0. Single-name weight caps: A 12% · B 9% · C 5%.
 
-## Render in an email (中文)
+## Render in an email
+
+English rosters use the English labels (entry zone / add zone / take-profit / stop /
+size / conviction / scenario). Chinese rosters (`lang: zh`) use the zh labels — same
+structure, ONE language per email. zh example:
 
 ```
 VST · AI电力 · 信心B · 2–6周

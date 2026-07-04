@@ -1,10 +1,15 @@
-# Intraday analysis & email (盘中) + the apex-predator lens
+# Intraday analysis & email + the apex-predator lens
 
 The **on-demand, market-open** counterpart to the pre-market daily email. Pre-market
 runs on a schedule (launchd, see [[opentrading-daily-email]]); **intraday is requested**
-("盘中分析", "real-time portfolio", "between-market read", "intraday actions"). Output is a
-position-aware Chinese (or `--lang en`) note with **concrete +/- actions** and **new ideas**,
-delivered via the same Gmail pipeline.
+(trigger phrases: "intraday analysis", "盘中分析", "real-time portfolio", "between-market
+read", "intraday actions"). Output is a position-aware note with **concrete +/- actions**
+and **new ideas**, delivered via the same Gmail pipeline.
+
+**Language: ONE language per email, never mixed.** Write in the roster's language —
+the user's own book (`watchlist.json`, `lang: en`) is **English only**; Chinese only
+for a `lang: zh` roster, using the rendering map in §4. Headings, badges, and
+parentheticals included: no Chinese in an English note, and vice-versa.
 
 > ⚠️ Educational analysis only — not financial advice.
 
@@ -39,23 +44,24 @@ apex candidates to fold in: GLD/SLV/IBIT/TLT, NBIS/ASTS/SNDK/OKLO/RKLB, …).
 
 ## 2. Analysis structure (the template)
 
-1. **盘中定位 (regime box, `p.regime`)** — index vs. leaders (divergence = narrow rally),
+1. **Regime box (`p.regime`)** — index vs. leaders (divergence = narrow rally),
    VIX level/Δ, macro score, the news tape, Fear&Greed. One conclusive lean: *selective /
    risk-on / defensive*.
-2. **持仓快照 (table)** — `标的 | 股数 | 现价 | 今日 | 占股票仓 | 操作`. Compute **weights**;
-   flag any single-name > ~30–40% (concentration).
-3. **逐仓操作** — per name, emit a **range execution plan** (建仓区 / 加仓区 / 止盈区[⅓·⅓·runner] /
-   止损 / 仓位 / A–D信心 / 时限) from `ot decide TICKER` — **the user trades zones, not single
-   points**; see [[execution-plan]]. Plus the **learned discipline**: lock winners into spikes
+2. **Book snapshot (table)** — `Name | Shares | Last | Day | % of book | Action`.
+   Compute **weights**; flag any single-name > ~30–40% (concentration).
+3. **Per-position actions** — per name, emit a **range execution plan** (entry zone /
+   add zone / take-profit zone [⅓·⅓·runner] / stop / size / A–D conviction / horizon)
+   from `ot decide TICKER` — **the user trades zones, not single points**; see
+   [[execution-plan]]. Plus the **learned discipline**: lock winners into spikes
    (don't let them round-trip), trim the **heaviest-and-weakest**, never add into a parabolic
    candle. Respect user-set levels (e.g. "hold ORCL to $200").
-4. **新增标的建议** — edge-name dip-buys (NVDA/AMZN/GOOG: uptrend + pullback) **plus the
+4. **New ideas** — edge-name dip-buys (NVDA/AMZN/GOOG: uptrend + pullback) **plus the
    apex-predator lens (§3)**.
-5. **现金与风控** — cash plan + the governor: ≤5% premium/trade, **never size up after a
+5. **Cash & risk** — cash plan + the governor: ≤5% premium/trade, **never size up after a
    loss**, no index 0DTE on a jumpy/event tape; 0DTE QQQ only fade-gap + VIX-confirm.
 6. **disclaimer (`p.disclaimer`)**.
 
-## 3. The apex-predator lens (顶尖掠食者) — hunt asymmetry, enter with discipline
+## 3. The apex-predator lens — hunt asymmetry, enter with discipline
 
 The user wants **asymmetric multibaggers** (their hits: SNDK ~10x 2025, NBIS $100→$284, ASTS).
 Be a predator *and* a survivor:
@@ -74,22 +80,26 @@ Be a predator *and* a survivor:
 - **Tie to the book:** prefer apex names that **diversify** the existing BTC-beta + AI-capex
   concentration, or that the macro tape favors (e.g. TLT/GLD when VIX rises).
 
-## 4. Render + send (Chinese, Gmail)
+## 4. Render + send (roster language, Gmail)
 
 Write the analysis as a semantic HTML *fragment* (tags: `p.regime`, `h2`, `table`,
 `ul/li`, `span.up/down`, `p.disclaimer`), then:
 
 ```bash
-# render -> Outlook-safe HTML (+ plain-text on stdout)
-python3 tools/brief/wrap_html.py --out /tmp/intraday_zh.html \
-  --date "盘中速递 · <日期> · 美东<HH:MM>" < /tmp/frag.html > /tmp/intraday_zh.txt
-# localize the English chrome -> 中文 (header "· Pre-Market Read" -> "· 盘中组合分析";
-# footer English -> 中文); then send via the .env Gmail creds:
+# render -> Outlook-safe HTML (+ plain-text on stdout); --lang zh for zh rosters
+python3 tools/brief/wrap_html.py --out /tmp/intraday.html --lang en \
+  --date "Intraday Note · <date> · <HH:MM> ET" < /tmp/frag.html > /tmp/intraday.txt
 python3 tools/email/send_email.py \
-  --subject "OpenTrading — 盘中组合分析与操作（中文）· <日期>" \
-  --html-file /tmp/intraday_zh.html --body-file /tmp/intraday_zh.txt
+  --subject "OpenTrading — Intraday Portfolio Read · <date>" \
+  --html-file /tmp/intraday.html --body-file /tmp/intraday.txt
 ```
 (`OT_EMAIL_TO` in `.env` is the default recipient; pass `--to` for someone else.)
+
+**Chinese rendering map (zh rosters ONLY — translate every label, keep tickers/numbers):**
+Regime box → 盘中定位 · Book snapshot → 持仓快照 (columns 标的|股数|现价|今日|占股票仓|操作) ·
+Per-position actions → 逐仓操作 (zones 建仓区/加仓区/止盈区/止损/仓位/信心/时限) ·
+New ideas → 新增标的建议 · Cash & risk → 现金与风控 · date chrome "盘中速递 · <日期> · 美东<HH:MM>" ·
+subject "OpenTrading — 盘中组合分析与操作 · <日期>".
 
 > Privacy: `watchlist.json` stays git-ignored and is never committed.
 > Educational only — not financial advice.
