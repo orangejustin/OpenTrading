@@ -24,18 +24,22 @@ dependency-free *data CLIs* (the live data), and let Claude drive both.
 
 ## Product preview
 
-**`ot web` — a local, keyless dashboard** over the same data stack: live ticker strip,
-index cards with sparklines, your watchlist — and one-click AI analysis on
-**switchable engines** (pick Gemini, any OpenRouter model, or your Claude Code
-subscription straight from the header):
+**`ot web` — a local, keyless dashboard** over the same data stack: a scrolling
+ticker tape (Gold · Oil · BTC · 10Y · DXY · …, each linking out to TradingView),
+index cards with sparklines, a **Macro & Flow** row (macro score · Fear&Greed ·
+BTC funding · SPY dealer gamma), your watchlist, and a **News page** with a
+time-window slider + an AI read of the tape — engines switchable in the header
+(Gemini, any OpenRouter model, or your Claude Code subscription):
 
-<p align="center"><img src="docs/assets/web-overview.png" alt="ot web — market overview (demo data)" width="780"></p>
+<p align="center"><img src="docs/assets/web-overview.png" alt="ot web — market overview with Macro & Flow (demo data)" width="780"></p>
 
-**Per-ticker AI analysis** — action chip, sentiment gauge, **sniper levels**
-(ideal buy · secondary buy · stop · target), risk alerts, operation advice — with
-the engine and latency stamped on every run (`gemini-2.5-flash · 13.7s`):
+**The ticker page loads instantly with keyless data** — a hand-rolled candlestick
+chart (1M/3M/6M/1Y), key stats, and per-name news — then the AI analysis runs
+**on demand**: action chip, sentiment gauge, **sniper levels** (ideal buy ·
+secondary buy · stop · target), risks, advice, with the engine · latency ·
+finish time stamped on every run and cached until you re-run:
 
-<p align="center"><img src="docs/assets/web-analysis.png" alt="ot web — per-ticker AI analysis with sniper levels (demo data)" width="780"></p>
+<p align="center"><img src="docs/assets/web-analysis.png" alt="ot web — ticker page: candlestick chart, AI analysis, sniper levels (demo data)" width="780"></p>
 
 **The daily pre-market email** — position-aware, Claude-written, Outlook-safe HTML:
 regime call, your book with levels, a graded **Top-3 watchlist** (Enter / Wait at an
