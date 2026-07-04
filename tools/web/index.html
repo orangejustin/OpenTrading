@@ -42,6 +42,16 @@
     font-size:14px;background:#fff;outline:none}
   .search input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.12)}
   .search svg{position:absolute;left:12px;top:11px;color:#94a3b8}
+  /* engine switcher */
+  .engctl{display:flex;gap:6px;align-items:center}
+  .engctl select,.engctl input{padding:9px 10px;border:1px solid var(--line);border-radius:10px;
+    font-size:12px;background:#fff;color:#334155;outline:none;font-weight:600}
+  .engctl select:focus,.engctl input:focus{border-color:var(--accent)}
+  #model{width:168px;font-weight:500}
+  @media(max-width:820px){#model{display:none}}
+  .rerun{font-size:12px;font-weight:700;color:var(--accent);cursor:pointer;user-select:none}
+  .rerun:hover{text-decoration:underline}
+  .via{font-size:11.5px;color:#94a3b8;margin-left:auto}
 
   main{max-width:1180px;margin:0 auto;padding:8px 24px 60px}
   .sec-h{font-size:13px;font-weight:700;color:#334155;text-transform:uppercase;letter-spacing:.5px;
@@ -92,9 +102,15 @@
   .meta-row{display:flex;gap:10px;align-items:center;margin-top:12px;flex-wrap:wrap}
   .trend{font-size:13px;color:#334155}.trend b{color:var(--ink)}
   /* gauge */
-  .gauge{display:flex;flex-direction:column;align-items:center;justify-content:center}
-  .gauge .val{font-size:30px;font-weight:800;margin-top:-46px}
-  .gauge .gl{font-size:12px;color:var(--muted);margin-top:2px;font-weight:600}
+  .gcard{display:flex;flex-direction:column}
+  .gauge{position:relative;width:124px;height:124px;margin:10px auto 4px}
+  .gauge svg{display:block}
+  .gauge .ctr{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;gap:2px;pointer-events:none}
+  .gauge .val{font-size:28px;font-weight:800;line-height:1}
+  .gauge .gl{font-size:10.5px;color:var(--muted);font-weight:700;text-transform:uppercase;
+    letter-spacing:.4px;max-width:86px;text-align:center;line-height:1.25}
+  .gsub{text-align:center;font-size:11.5px;color:#94a3b8;margin-top:8px}
   /* sniper levels */
   .levels{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:6px}
   @media(max-width:760px){.levels{grid-template-columns:repeat(2,1fr)}}
@@ -124,6 +140,11 @@
 <header>
   <div class="brand"><span class="logo"></span>OpenTrading</div>
   <span id="regime" class="regime">—</span>
+  <div class="engctl" id="engctl" style="display:none">
+    <select id="engine" title="AI engine"></select>
+    <input id="model" list="mlist" title="model — pick or type any slug" spellcheck="false" autocomplete="off">
+    <datalist id="mlist"></datalist>
+  </div>
   <div class="search">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
     <input id="q" placeholder="Search a ticker…  e.g. NVDA, AAPL, 600519" autocomplete="off">
@@ -143,7 +164,8 @@
 
 <footer>
   OpenTrading — local-first, macro-first, risk-first. Data: Yahoo quotes, FinancialJuice news,
-  CNN/crypto Fear&amp;Greed, Coinbase BTC. AI analysis via Gemini (optional).
+  CNN/crypto Fear&amp;Greed, Coinbase BTC. AI analysis (optional) via Gemini, OpenRouter
+  (GPT · Claude · DeepSeek · GLM · …) or your Claude Code subscription — switch in the header.
   Everything runs on your machine. <b>Educational only — not financial advice.</b>
 </footer>
 
@@ -166,16 +188,38 @@ function sparkline(series,up){
     <path d="${area}" fill="url(#${id})"/><path d="${d}" fill="none" stroke="${col}" stroke-width="1.6"/></svg>`;
 }
 
-function gauge(score){
+function gauge(score,label){
   if(score==null) return '';
-  const r=46,c=2*Math.PI*r,off=c*(1-score/100);
+  const r=48,c=2*Math.PI*r,off=c*(1-score/100);
   const col=score<35?'#dc2626':score>65?'#15803d':'#b45309';
-  const lbl=score<25?'Extreme Fear':score<45?'Fear':score<=55?'Neutral':score<75?'Greed':'Extreme Greed';
-  return `<div class="gauge"><svg width="120" height="120" viewBox="0 0 120 120">
-    <circle cx="60" cy="60" r="${r}" fill="none" stroke="#eef2f7" stroke-width="11"/>
-    <circle cx="60" cy="60" r="${r}" fill="none" stroke="${col}" stroke-width="11" stroke-linecap="round"
-      stroke-dasharray="${c}" stroke-dashoffset="${off}" transform="rotate(-90 60 60)"/></svg>
-    <div class="val" style="color:${col}">${score}</div><div class="gl">${lbl}</div></div>`;
+  const band=score<25?'Extreme Fear':score<45?'Fear':score<=55?'Neutral':score<75?'Greed':'Extreme Greed';
+  const lbl=(label&&label.length<=22)?label:band;  // long AI labels overflow the ring — fall back to the band
+  return `<div class="gauge"><svg width="124" height="124" viewBox="0 0 124 124">
+    <circle cx="62" cy="62" r="${r}" fill="none" stroke="#eef2f7" stroke-width="11"/>
+    <circle cx="62" cy="62" r="${r}" fill="none" stroke="${col}" stroke-width="11" stroke-linecap="round"
+      stroke-dasharray="${c}" stroke-dashoffset="${off}" transform="rotate(-90 62 62)"/></svg>
+    <div class="ctr"><div class="val" style="color:${col}">${score}</div><div class="gl">${lbl}</div></div></div>`;
+}
+
+let ENG={list:[],cur:null};
+async function loadEngines(){
+  const d=await fetch('/api/engines').then(r=>r.json()).catch(()=>null);
+  if(!d||!d.engines||!d.engines.length) return;
+  ENG.list=d.engines;
+  const saved=localStorage.getItem('ot_engine');
+  ENG.cur=(ENG.list.find(e=>e.id===saved&&e.ok)||{}).id||d.default;
+  const sel=$('#engine');
+  sel.innerHTML=ENG.list.map(e=>`<option value="${e.id}" ${e.ok?'':'disabled'} ${e.id===ENG.cur?'selected':''}>${e.label}${e.ok?'':' · off'}</option>`).join('');
+  sel.onchange=()=>{ENG.cur=sel.value;localStorage.setItem('ot_engine',sel.value);setModels();};
+  $('#model').onchange=ev=>{const m=JSON.parse(localStorage.getItem('ot_models')||'{}');m[ENG.cur]=ev.target.value.trim();localStorage.setItem('ot_models',JSON.stringify(m));};
+  setModels();
+  $('#engctl').style.display=ENG.cur?'flex':'none';
+}
+function setModels(){
+  const e=ENG.list.find(x=>x.id===ENG.cur); if(!e) return;
+  const m=JSON.parse(localStorage.getItem('ot_models')||'{}');
+  $('#mlist').innerHTML=(e.models||[]).map(x=>`<option value="${x}">`).join('');
+  $('#model').value=m[e.id]||e.model||'';
 }
 
 async function load(){
@@ -199,11 +243,16 @@ async function load(){
     || '<div class="loading">No watchlist.json yet — add one to populate this.</div>';
 }
 
-async function analyze(tk){
+async function analyze(tk,fresh){
   $('#overview').style.display='none'; const a=$('#analysis'); a.style.display='block';
-  a.innerHTML=`<div class="back" onclick="home()">← Back</div><div class="loading">Analyzing ${tk}…</div>`;
+  const eng=ENG.list.find(x=>x.id===ENG.cur), mdl=($('#model').value||'').trim();
+  const engTxt=eng?` via ${eng.label}${mdl&&mdl!=='default'?' · '+mdl:''}`:'';
+  a.innerHTML=`<div class="back" onclick="home()">← Back</div><div class="loading">Analyzing ${tk}${engTxt}…</div>`;
   window.scrollTo(0,0);
-  const d=await fetch('/api/analyze?ticker='+encodeURIComponent(tk)).then(r=>r.json()).catch(()=>null);
+  let url='/api/analyze?ticker='+encodeURIComponent(tk);
+  if(ENG.cur) url+='&engine='+encodeURIComponent(ENG.cur)+'&model='+encodeURIComponent(mdl);
+  if(fresh) url+='&fresh=1';
+  const d=await fetch(url).then(r=>r.json()).catch(()=>null);
   if(!d){a.innerHTML=`<div class="back" onclick="home()">← Back</div><div class="loading">Failed to load ${tk}.</div>`;return;}
   const t=d.technicals||{}, e=d.entries||{};
   const techLine=`MA10 ${fmt(t.ma10)} · MA20 ${fmt(t.ma20)} · 20d ${fmt(t.lo20)}–${fmt(t.hi20)} · RSI ${t.rsi14??'—'}`;
@@ -214,15 +263,18 @@ async function analyze(tk){
   if(d.error) html+=`<div class="banner">${d.error}</div>`;
 
   if(d.ai){
+    const via=d.engine?`${d.engine.engine}${d.engine.model&&d.engine.model!=='default'?' · '+d.engine.model:''}${d.elapsed?' · '+d.elapsed+'s':''}`:'';
     html+=`<div class="top">
       <div class="card pad">
         <div class="lbl">AI Analysis</div><div class="summary">${d.summary||''}</div>
         <div class="meta-row"><span class="chip ${(d.action||'').toLowerCase()}">${d.action||'—'}</span>
-          <span class="trend"><b>Trend:</b> ${d.trend||'—'}</span></div>
+          <span class="trend"><b>Trend:</b> ${d.trend||'—'}</span>
+          <span class="rerun" onclick="analyze('${d.symbol}',true)">↻ Re-run</span>
+          ${via?`<span class="via">${via}</span>`:''}</div>
         <div class="meta-row trend" style="color:#64748b">${techLine}${d.technicals?' · '+d.technicals:''}</div>
       </div>
-      <div class="card pad">${gauge(d.sentiment_score)}
-        <div style="text-align:center;font-size:12px;color:#64748b;margin-top:6px">${d.sentiment_label||'sentiment'}</div></div>
+      <div class="card pad gcard"><div class="lbl">Sentiment</div>${gauge(d.sentiment_score,d.sentiment_label)}
+        <div class="gsub">AI read for ${d.symbol} · 0–100</div></div>
     </div>
     <div class="sec-h" style="margin-top:18px">Sniper Levels</div>
     <div class="levels">
@@ -245,6 +297,7 @@ async function analyze(tk){
 }
 function home(){$('#analysis').style.display='none';$('#overview').style.display='block';window.scrollTo(0,0);}
 $('#q').addEventListener('keydown',e=>{if(e.key==='Enter'){const v=e.target.value.trim();if(v){analyze(v.toUpperCase());e.target.value='';}}});
+loadEngines();
 load();
 </script>
 </body>
