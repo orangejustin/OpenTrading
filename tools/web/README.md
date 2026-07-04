@@ -36,9 +36,21 @@ Everything runs **on your machine** — positions never leave `localhost`.
   **sniper levels** (ideal buy · secondary buy · stop · take-profit), sectors,
   risks, advice — stamped `engine · model · elapsed · finished (ET)` and **cached
   until you ↻ Re-run**.
-- **News page** — the market tape with a time-window slider (6h–72h) and an
-  optional ticker filter, plus a **🧠 AI read of the tape** button (summary ·
-  RISK-ON/OFF/MIXED bias · drivers · portfolio tilt · what to watch next).
+- **Strategy — the action board** — one deterministic `ot decide` card per
+  book/watch name: **Long / Short / Wait** badge, A–D grade, buy/add/trim zones,
+  core, stop, horizon, the policy's reason and scenario warning. No LLM, loads in
+  ~1s, cached 30 min (↻ Refresh reads). Held names sort first; click through to
+  the full ticker page.
+- **News page** — the market tape with a time-window slider (**6h–7d**; windows
+  past 24h merge the local `ot news store` archive, since the public RSS only
+  keeps the ~40 latest items), an instant **keyword/ticker filter**, dated ET
+  timestamps, a red edge on market-moving flashes, the **Event Gate** strip
+  (scheduled CPI/FOMC/OPEX catalysts from `ot catalysts`), and a **🧠 AI read of
+  the tape** button (summary · RISK-ON/OFF/MIXED bias · drivers · portfolio tilt ·
+  watch-next) that folds the event calendar into its prompt.
+- **TV chart toggle (optional)** — the built-in chart is dependency-free; flip
+  the "TV chart" switch on a ticker page to embed TradingView's interactive
+  chart instead (loads tradingview.com — external, off by default, persisted).
 - **Per-name news fallback chain** — FinancialJuice ticker-tagged → Yahoo per-name
   RSS → the general tape (clearly labeled), so "Related News" is never empty on a
   quiet name.

@@ -129,6 +129,10 @@ def generate_json(prompt: str, schema: dict, *, engine: str | None = None,
         data = openrouter.generate_json(prompt, schema, model=mdl)
     else:
         data = claude_cli.generate_json(prompt, schema, model=mdl)
+        # Surface the exact model the CLI resolved the alias to (e.g. "opus"
+        # -> "claude-opus-4-8") so the UI can stamp the real model.
+        if claude_cli.LAST_MODEL_ID:
+            mdl = claude_cli.LAST_MODEL_ID
     return data, {"engine": eng, "model": mdl}
 
 
