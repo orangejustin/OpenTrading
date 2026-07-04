@@ -5,10 +5,14 @@ professional panel (market indices + sparklines, your watchlist, and a per-ticke
 analysis) inspired by the layout of modern ticker apps.
 
 ```bash
-ot web                 # serve http://127.0.0.1:8787 and open your browser
-ot web --port 9000     # pick a port
-ot web --no-open       # don't auto-open the browser
+ot web                                        # serve http://127.0.0.1:8787 and open your browser
+ot web --engine claude                        # default to the no-key Claude Code engine
+ot web --engine openrouter --model z-ai/glm-5.2   # default to GLM 5.2 via OpenRouter
+ot web --port 9000 --no-open                  # pick a port / don't auto-open
 ```
+
+Deep links work too: `http://127.0.0.1:8787/#NVDA` opens straight into the
+NVDA analysis.
 
 Everything runs **on your machine** — positions never leave `localhost`.
 
@@ -30,9 +34,12 @@ Everything runs **on your machine** — positions never leave `localhost`.
   (MA10/MA20/RSI), and news all work with **no key** — same public endpoints as
   the rest of `ot`.
 - **AI analysis (optional).** The per-ticker summary + action + sniper levels run
-  on **your choice of engine** — switch live from the header dropdown, and pick a
-  model per engine. Results are cached 10 min per (ticker, engine, model); the
-  **↻ Re-run** button forces a fresh call.
+  on **your choice of engine + model** — one header dropdown lists every enabled
+  combo by name (Gemini 2.5 Flash · GLM 5.2 · DeepSeek v4 · GPT-5.5 · Claude Code
+  · … · "custom model slug" for anything else on OpenRouter). Pick the boot
+  default with `ot web --engine … --model …` or `OT_LLM_ENGINE` in `.env`.
+  Results are cached 10 min per (ticker, engine, model); the **↻ Re-run** button
+  forces a fresh call.
 
   | Engine | Setup | Models |
   |---|---|---|
