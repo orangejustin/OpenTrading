@@ -1,97 +1,55 @@
-# OpenTrading
+<div align="center">
 
-**A local-first trading copilot for Claude Code — macro-first, risk-first, zero API keys.**
+# 📈 OpenTrading
+
+**A local-first trading copilot — macro-first, risk-first, zero API keys.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-blue.svg)](#requirements)
 [![API keys: none](https://img.shields.io/badge/API_keys-none-success.svg)](#requirements)
+[![stdlib only](https://img.shields.io/badge/deps-stdlib_only-informational.svg)](#requirements)
 [![Claude Code: native](https://img.shields.io/badge/Claude_Code-native-8A2BE2.svg)](#ask-claude)
+
+**[Preview](#preview) · [First principles](#first-principles) · [Features](#what-you-get) · [Quickstart](#quickstart) · [Web dashboard](#ot-web--the-local-dashboard) · [Daily email](#daily-pre-market-email) · [Privacy](#privacy)**
 
 **English** | [简体中文](README.zh-CN.md)
 
-**[Preview](#product-preview) · [Quickstart](#quickstart) · [Features](#what-you-get) · [Web dashboard](#ot-web--the-local-dashboard) · [Daily email](#daily-pre-market-email) · [Privacy](#privacy)**
+</div>
 
 OpenTrading fuses **macro, news, smart-money positioning, and options gamma** into one
-opinionated read — then turns it into a concrete **CALL / PUT / NO-ACTION** through a
-decision engine that follows a learned, risk-first policy. Everything runs on your
-machine: no SaaS, no keys, no data leaving your laptop. It's the **open alternative to
-closed alpha-simulation platforms** — pair the trading *skill* (the expertise) with small,
-dependency-free *data CLIs* (the live data), and let Claude drive both.
+opinionated read — then turns it into concrete action: a graded **Long / Short / Wait**
+board, sniper levels, and a **CALL / PUT / NO-ACTION** decision engine that follows a
+learned, risk-first policy. Everything runs on your machine: no SaaS, no keys, no data
+leaving your laptop. Pair the trading *skill* (the expertise) with small, dependency-free
+*data CLIs* (the live data), and let Claude drive both.
 
 > ⚠️ **Educational only — not financial advice.** Trading carries substantial risk of loss.
 
 ---
 
-## Product preview
+## Preview
 
-**`ot web` — a local, keyless dashboard** over the same data stack: a scrolling
-ticker tape (Gold · Oil · BTC · 10Y · DXY · …, each linking out to TradingView),
-index cards with sparklines, a **Macro & Flow** row (macro score · Fear&Greed ·
-BTC funding · SPY dealer gamma), your watchlist, and a **News page** with a
-time-window slider + an AI read of the tape — engines switchable in the header
-(Gemini, any OpenRouter model, or your Claude Code subscription):
+<p align="center"><img src="docs/assets/tour_20260704.gif" alt="ot web tour — dashboard · strategy board · news + event gate · one-click AI analysis" width="880"></p>
+<p align="center"><sub>≈12s tour of <code>ot web</code>: dashboard with Macro&nbsp;&amp;&nbsp;Flow → the Strategy action board → News + event gate → a ticker page (instant keyless chart) → one-click AI analysis with sniper levels.</sub></p>
 
-<p align="center"><img src="docs/assets/web-overview.png" alt="ot web — market overview with Macro & Flow (demo data)" width="780"></p>
+<table align="center"><tr>
+<td align="center" width="50%"><img src="docs/assets/web-strategy.png" alt="Strategy — the action board"><br><sub><b>Strategy — the action board.</b> One deterministic <code>ot decide</code> read per name: Long/Short/Wait · A–D grade · buy/add/trim zones · stop. No LLM, ~1s.</sub></td>
+<td align="center" width="50%"><img src="docs/assets/email-sample.png" alt="daily pre-market email (demo data)"><br><sub><b>The daily pre-market email.</b> Position-aware, Claude-written, Outlook-safe HTML: regime call, book levels, graded Top-3, hedge plan, event gate.</sub></td>
+</tr></table>
 
-**The ticker page loads instantly with keyless data** — a hand-rolled candlestick
-chart (1M/3M/6M/1Y), key stats, and per-name news — then the AI analysis runs
-**on demand**: action chip, sentiment gauge, **sniper levels** (ideal buy ·
-secondary buy · stop · target), risks, advice, with the engine · latency ·
-finish time stamped on every run and cached until you re-run:
-
-<p align="center"><img src="docs/assets/web-analysis.png" alt="ot web — ticker page: candlestick chart, AI analysis, sniper levels (demo data)" width="780"></p>
-
-**The daily pre-market email** — position-aware, Claude-written, Outlook-safe HTML:
-regime call, your book with levels, a graded **Top-3 watchlist** (Enter / Wait at an
-exact price), hedge plan, and the event gate:
-
-<p align="center"><img src="docs/assets/email-sample.png" alt="daily pre-market email (sample, demo data)" width="700"></p>
-
-<sub>All screenshots use a fictional demo book — your real positions never leave your machine.</sub>
+<p align="center"><sub>All demos use a fictional book — your real positions never leave your machine.</sub></p>
 
 ---
 
-## Quickstart
+## First principles
 
-```bash
-git clone https://github.com/orangejustin/OpenTrading
-cd OpenTrading
-bash install.sh        # puts `ot` on PATH + a health check — no keys, nothing to compile
-```
+Three rules the whole system enforces, in order:
 
-Everything is **one command, `ot`**:
-
-```bash
-ot                     # the morning read: macro + news + smart money + options + your book
-ot news --window premarket   # live FinancialJuice headlines (public RSS — no account)
-ot macro               # scored intraday macro dashboard (SOFR / 2s10s / TGA / RRP)
-ot options SPY --dte 7 # put/call + dealer gamma (GEX) + gamma walls
-ot decide QQQ --dte 0  # one concrete call: CALL / PUT / NO-ACTION + conviction + size
-ot help                # every subcommand
-```
-
-> Don't want to touch your PATH? Skip `install.sh` and run in place: `bin/ot …`
-
-**New here?** Start with the three [hero workflows](WORKFLOWS.md) — *morning read*, *is it
-safe to size up?*, and *grade my book* — each is one command plus one prompt to Claude.
-
----
-
-## Why it's different
-
-- **Local & keyless.** Every core tool runs on public, no-auth endpoints (or a `curl`
-  fallback). Nothing to sign up for, nothing phoning home.
-- **Opinionated, not a data dump.** It doesn't just fetch — it *scores* macro, flags
-  sentiment/credit divergences, reads dealer gamma, and gives a per-position game plan.
-- **A policy, not vibes.** `ot decide` encodes a written, risk-first strategy
-  (selection > timing, 0DTE done right, a hard daily-loss stop) — auditable in the repo.
-- **Claude-native.** An embedded skill activates on any trading question and pulls live
-  data through `ot` for you. Open it in Claude Code and just ask.
-- **Bring-your-own-AI.** The AI layer is optional and engine-agnostic: a free Gemini key,
-  one OpenRouter key for *any* model (GLM · DeepSeek · GPT · Claude · Grok …), or your
-  existing **Claude Code subscription with no key at all** — switchable per request.
-- **Private by design.** Your positions and secrets are git-ignored and never shippable
-  (see [Privacy](#privacy)).
+| # | Principle | What it means in the product |
+|---|---|---|
+| 1 | **Macro first, setup second, size third.** | Every read starts from rates/liquidity + dealer gamma + sentiment — a trade idea that fights the regime gets demoted, whatever the chart says. |
+| 2 | **Risk before opportunity.** | No level without an invalidation: every plan carries a stop and a size derived *from* that stop; the event gate (FOMC/CPI/OPEX/earnings) can veto sizing entirely. **NO-ACTION is a position.** |
+| 3 | **Local first, keyless first.** | Public no-auth endpoints, Python stdlib, everything on `127.0.0.1`. The AI layer is optional garnish — three interchangeable engines, one of which is your existing Claude subscription with no key at all. |
 
 ---
 
@@ -100,22 +58,39 @@ safe to size up?*, and *grade my book* — each is one command plus one prompt t
 | Piece | Command | What it does |
 |-------|---------|--------------|
 | **Market report** | `ot` | Fuses macro + news + smart money + options + your book → one regime read |
-| **Deep report** | `ot report --deep` | Splits the pack into parallel analyst desks + a synthesis pass (multi-agent prototype) |
+| **Web dashboard** | `ot web` | Local dashboard: scrolling tape · indices · Macro & Flow · Strategy board · News + event gate · per-ticker AI analysis on switchable engines |
+| **Decision engine** | `ot decide` | CALL / PUT / NO-ACTION + conviction + zones, from the learned policy |
+| **Daily email** | `ot email` / `ot schedule` | Position-aware, Outlook-safe HTML pre-market brief via SMTP |
 | **News** | `ot news` | FinancialJuice squawk (public RSS) — windowed, ticker-filtered, storable |
 | **Macro** | `ot macro` | SOFR / 2s10s / TGA / RRP → scored put/call bias |
 | **Smart money** | `ot smart` | CNN + crypto Fear&Greed, BTC funding (contrarian) |
 | **Options** | `ot options` | Put/Call + dealer gamma (GEX) + gamma walls (CBOE) |
 | **Event gate** | `ot catalysts` / `ot earnings` | FOMC/CPI/PCE/NFP/OPEX + per-name earnings → size-up verdict |
-| **Quotes** | `ot quote` | No-key quotes incl premarket + `^VIX`; `ot cn` for China A-shares |
-| **Decision engine** | `ot decide` | CALL / PUT / NO-ACTION + conviction + size, from the learned policy |
-| **Daily email** | `ot email` / `ot schedule` | Position-aware, Outlook-safe HTML pre-market brief via SMTP |
-| **Web dashboard** | `ot web` | Local dashboard: indices + watchlist + per-ticker AI analysis on switchable engines |
+| **Quotes** | `ot quote` / `ot cn` | No-key quotes incl. premarket + `^VIX`; China A-shares / HK |
+| **Deep report** | `ot report --deep` | Parallel analyst desks + a synthesis pass (multi-agent prototype) |
 
 Add `--json` to any tool for machine-readable output. Full help: `ot help`.
 
 ---
 
-## Ask Claude
+## Quickstart
+
+**60 seconds, no keys:**
+
+```bash
+git clone https://github.com/orangejustin/OpenTrading
+cd OpenTrading
+bash install.sh        # puts `ot` on PATH + a health check — nothing to sign up for
+ot                     # the morning read: macro + news + smart money + options + your book
+ot web                 # the dashboard → http://127.0.0.1:8787
+```
+
+> Don't want to touch your PATH? Skip `install.sh` and run in place: `bin/ot …`
+
+**New here?** Start with the three [hero workflows](WORKFLOWS.md) — *morning read*, *is it
+safe to size up?*, and *grade my book* — each is one command plus one prompt to Claude.
+
+### Ask Claude
 
 Open the folder in **Claude Code** (or Claude Desktop) and just ask — the embedded
 **short-term-trader** skill activates automatically and pulls live data through `ot`:
@@ -124,19 +99,54 @@ Open the folder in **Claude Code** (or Claude Desktop) and just ask — the embe
 - *"Any FinancialJuice news on NVDA in the last hour? Store it."*
 - *"NVDA broke $950 on volume, RSI 62, account $30k — how do I trade it?"*
 
-The skill enforces the house rules on every answer: **macro first → setup second → size
-third**, **risk before opportunity**, **news only matters in context**, and an
-educational-not-advice disclaimer. Its eight workflows cover macro bias, news-impact,
-trade setups, options, crypto sizing, the P&L journal, backtesting, and portfolio review.
+The skill enforces the house rules on every answer — the [first principles](#first-principles)
+above — and its workflows cover macro bias, news impact, trade setups, options, crypto
+sizing, the P&L journal, backtesting, and portfolio review.
+
+---
+
+## AI engines — bring your own
+
+The data panels are keyless forever. The optional AI layer runs on **your choice of
+engine**, switchable live from the dashboard header (or `ot web --engine … --model …`):
+
+| Engine | Key | Models |
+|---|---|---|
+| **Gemini** | `GEMINI_API_KEY` (free tier) | gemini-2.5-flash / -pro |
+| **OpenRouter** | `OPENROUTER_API_KEY` — one key, **any** model | GLM 5.2 · DeepSeek v4 · GPT-5.5 · Claude · Grok · any slug |
+| **Claude Code** | **none** — your existing subscription | headless `claude -p` (default / sonnet / opus / haiku; the exact resolved model is stamped on every run) |
+
+Every analysis is stamped `engine · model · latency · finish time (ET)` and cached until
+you re-run. No engine configured? Everything still works — you just don't get the AI card.
+
+---
+
+## `ot web` — the local dashboard
+
+stdlib `http.server` + vanilla JS, no build step, bound to `127.0.0.1`
+(see the [preview](#preview)):
+
+```bash
+ot web                                          # http://127.0.0.1:8787
+ot web --engine claude                          # boot on the no-key Claude Code engine
+ot web --engine openrouter --model z-ai/glm-5.2 # boot on GLM 5.2
+```
+
+- **Dashboard** — scrolling macro tape (TradingView deep links) · index cards · **Macro & Flow** (macro score · Fear&Greed · BTC funding · SPY dealer gamma + walls) · your watchlist.
+- **Strategy** — the action board: one deterministic `ot decide` card per name (Long/Short/Wait · grade · zones · stop), ~1s, no LLM.
+- **News** — 6h–7d window (deep windows merge the local archive), instant keyword filter, event-gate strip, and a **🧠 AI read of the tape** (bias · drivers · portfolio tilt).
+- **Ticker pages** — instant keyless candlestick chart + stats + per-name news (Yahoo RSS fallback), then **⚡ Analyze on demand**; deep links like `/#NVDA`; optional TradingView chart embed (off by default).
+
+Details: [`tools/web/README.md`](tools/web/README.md).
 
 ---
 
 ## Daily pre-market email
 
 A **position-aware** pre-market brief in your inbox every weekday — the same fusion as
-`ot`, written up by Claude and delivered as styled, **Outlook-safe HTML** (plain-text
-fallback). Each run fuses macro bias, smart-money sentiment, options gamma, last-24h news
-tied to *your* names, a $-weighted book table, and the day's event gate.
+`ot`, written by Claude on your subscription and delivered as styled, **Outlook-safe HTML**:
+regime call, your book with levels, a graded **Top-3 watchlist** (Enter / Wait at an exact
+price), hedge plan, and the day's event gate.
 
 ```bash
 cp .env.example .env       # set OT_SMTP_* + OT_EMAIL_TO  (Resend works with no 2FA)
@@ -150,35 +160,10 @@ ot schedule email          # weekdays 08:30 local (macOS launchd) · `… email 
 
 ---
 
-## `ot web` — the local dashboard
-
-The same data stack as a clean local web app — stdlib `http.server`, vanilla JS,
-no build step, bound to `127.0.0.1` (see the [preview](#product-preview) above):
-
-```bash
-ot web                                          # http://127.0.0.1:8787
-ot web --engine claude                          # boot on the no-key Claude Code engine
-ot web --engine openrouter --model z-ai/glm-5.2 # boot on GLM 5.2
-```
-
-The data panels are **keyless**; the per-ticker AI analysis runs on your choice of
-engine, switchable live from the header:
-
-| Engine | Key | Models |
-|---|---|---|
-| **Gemini** | `GEMINI_API_KEY` (free tier) | gemini-2.5-flash / -pro |
-| **OpenRouter** | `OPENROUTER_API_KEY` — one key, any model | GLM 5.2 · DeepSeek v4 · GPT-5.5 · Claude · Grok · any slug |
-| **Claude Code** | **none** — your existing subscription | headless `claude -p` (default / sonnet / opus / haiku) |
-
-Deep links (`/#NVDA`), a 10-minute per-(ticker, engine, model) cache, and a ↻ Re-run
-button. Details: [`tools/web/README.md`](tools/web/README.md).
-
----
-
 ## `ot decide` — the policy in one call
 
-`ot decide TICKER --dte N` turns the skill's written policy into a single concrete call —
-**CALL / PUT / NO-ACTION** + conviction + size — from no-key data (price/gap/trend + `^VIX`):
+`ot decide TICKER --dte N` turns the written policy into a single concrete call —
+**CALL / PUT / NO-ACTION** + conviction + zones — from no-key data:
 
 ```bash
 ot decide QQQ  --dte 0     # 0DTE: fade-gap + VIX-confirm + skip-events + selectivity
@@ -186,9 +171,8 @@ ot decide NVDA --dte 5     # swing: momentum calls on names you read well
 ```
 
 It encodes [`references/learned-strategy.md`](.claude/skills/short-term-trader/references/learned-strategy.md)
-(selection > timing; a hard daily-loss stop; never size up after a loss) and points you at
-`ot options` / `ot news` / `ot macro` for the IV / gamma-wall / news confirmation it can't
-see. **NO-ACTION is a position.**
+(selection > timing; a hard daily-loss stop; never size up after a loss). The Strategy
+board in `ot web` is this engine, fanned out across your whole book.
 
 ---
 
@@ -207,60 +191,54 @@ cp watchlist.example.json watchlist.json   # then edit with YOUR positions
 cp .env.example .env                        # then add your SMTP creds
 ```
 
-The `*.example` files are placeholders; the real ones stay on your machine. That
-separation is what makes the repo safe to share. **Never commit `.env` or `watchlist.json`.**
+The `*.example` files are placeholders; the real ones stay on your machine. The web
+dashboard binds `127.0.0.1` only. **Never commit `.env` or `watchlist.json`.**
 
 ---
 
 ## Optional power modules
 
 The core above is the **plain tier**: free, keyless, zero manual steps. These add more but
-are **optional** and need manual setup — nothing in the core depends on them.
+are **optional** — nothing in the core depends on them.
 
 - **TradingView (shipped)** — bridge your TradingView Desktop app to Claude via the
   [`tradingview-mcp`](https://github.com/tradesdontlie/tradingview-mcp) server, then ask
-  *"analyze MSTR with the TV data"* and it reads live quotes / study values / your Pine
-  levels off your chart. *(ToS-gray; runs against your own logged-in client.)*
+  *"analyze MSTR with the TV data"*. The dashboard also has an opt-in TradingView chart
+  embed per ticker. *(ToS-gray; runs against your own logged-in client.)*
 - **IBKR (planned, `tools/ibkr/`)** — Interactive Brokers via
-  [`ib_async`](https://github.com/ib-api-reloaded/ib_async): live quotes, option chains,
-  positions, and **paper** execution behind an explicit guard. Never auto-submits live orders.
-
----
+  [`ib_async`](https://github.com/ib-api-reloaded/ib_async): quotes, option chains, and
+  **paper** execution behind an explicit guard. Never auto-submits live orders.
 
 ## Roadmap
 
-Where it's headed (shipped history in [`RELEASE_NOTES.md`](RELEASE_NOTES.md); detail in [`ROADMAP.md`](ROADMAP.md)):
+Shipped history in [`RELEASE_NOTES.md`](RELEASE_NOTES.md); detail in [`ROADMAP.md`](ROADMAP.md):
 
-- **Web dashboard v2.** (v1 shipped: `ot web`.) Price charts in the analysis view, the
-  event calendar as cards, sector aggregation, and a personalized strategy lab.
-- **Multi-engine debate.** The three AI engines argue a ticker — one bull, one bear,
-  one judge (assigned stances, 5-tier verdict) — distilling
-  [TradingAgents](https://github.com/TauricResearch/TradingAgents)' debate protocol
-  into three keyless-friendly LLM calls.
-- **Personalized simulation.** A transparent, local strategy simulator that tunes the
-  decision policy to *your* trading — open, auditable, on your own machine.
-- **Multi-agent research desk.** Claude/Codex as the mastermind: specialist agents
-  (macro, news, options, risk) run in parallel and a synthesis pass fuses them — more
-  coverage, fewer tokens. Learning from [TradingAgents](https://github.com/TauricResearch/TradingAgents).
-- **Email v2 — user-tunable feeds.** Pick which sources the daily brief fuses, opt-in per source.
-- **More no-key data** — FRED, options IV/IVR, funding curves.
+- **Multi-engine debate.** Gemini argues bull, GLM argues bear, Claude judges — a 5-tier
+  verdict with entry + invalidation, distilling
+  [TradingAgents](https://github.com/TauricResearch/TradingAgents) into three keyless-friendly calls.
+- **Decision-log v2.** Every call logged with its invalidation; D1/D3 outcome checks grade
+  realized alpha and feed the lessons back into future reads.
+- **Smart-money on-chain.** `ot whales`: labeled whale wallets polled over keyless public
+  RPC, classified HIGH/MED/LOW, surfaced in the email's smart-money section.
+- **Web dashboard v2.** Charts in the analysis view grew in v3 — next: sector aggregation
+  and a personalized strategy lab.
 
 ---
 
 ## Requirements
 
 Python 3.9+ (standard library only; uses `certifi` if installed, else falls back to system
-`curl`). No keys, no paid feeds. For a reproducible dev environment, `ot` auto-prefers
-[`uv`](https://github.com/astral-sh/uv) when installed (`uv sync` for locked deps) and
-otherwise runs on plain `python3` — override with `OT_PYTHON`, disable uv with `OT_NO_UV=1`,
-inspect with `ot doctor`.
+`curl`). No keys, no paid feeds. `ot` auto-prefers [`uv`](https://github.com/astral-sh/uv)
+when installed and otherwise runs on plain `python3` — override with `OT_PYTHON`, disable
+uv with `OT_NO_UV=1`, inspect with `ot doctor`.
 
 ---
 
 ## Credits & disclaimer
 
 Built by [@orangejustin](https://github.com/orangejustin). The multi-agent direction draws
-inspiration from [TradingAgents](https://github.com/TauricResearch/TradingAgents).
+on [TradingAgents](https://github.com/TauricResearch/TradingAgents); the deploy-and-preview
+craft on [daily_stock_analysis](https://github.com/ZhuLinsen/daily_stock_analysis).
 
 Analysis is for **educational purposes only** — **not financial advice**. Markets are
 risky; size accordingly and do your own research.
