@@ -234,6 +234,34 @@
     margin-left:12px;cursor:pointer;user-select:none}
   .chnote{font-size:11.5px;color:#94a3b8;margin-top:6px}
 
+  /* desk consensus strip + confluence ladder */
+  .consensus{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#fff;
+    border:1px solid var(--line);border-radius:12px;padding:10px 14px;box-shadow:var(--shadow);margin:10px 0 2px}
+  .cchip{display:flex;flex-direction:column;gap:1px;padding:4px 10px;border-radius:9px;background:#f8fafc;
+    border:1px solid var(--line);min-width:86px}
+  .cchip .s{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:#94a3b8}
+  .cchip .d{font-size:11.5px;font-weight:700}
+  .cchip.bull{background:var(--upbg);border-color:#bbf7d0}.cchip.bull .d{color:var(--up)}
+  .cchip.bear{background:var(--downbg);border-color:#fecaca}.cchip.bear .d{color:var(--down)}
+  .cverdict{margin-left:auto;font-size:12px;font-weight:800;padding:6px 14px;border-radius:999px;
+    text-transform:uppercase;letter-spacing:.4px;background:#eef2f7;color:#475569}
+  .cverdict.long{background:var(--upbg);color:var(--up)}
+  .cverdict.short{background:var(--downbg);color:var(--down)}
+  .cverdict.aside{background:var(--amberbg);color:var(--amber)}
+  .lrow{display:flex;align-items:center;gap:10px;padding:7px 2px;border-bottom:1px solid var(--line);font-size:12.5px}
+  .lrow:last-child{border-bottom:0}
+  .lrow .px{font-weight:800;min-width:86px;text-align:right}
+  .lrow .conf{font-size:10px;font-weight:800;border-radius:999px;padding:2px 8px;background:#eef2f7;color:#94a3b8;min-width:30px;text-align:center}
+  .lrow.hit .conf{background:#1d4ed8;color:#fff}
+  .lrow.hit .px{color:var(--accent)}
+  .lsrc{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;border-radius:5px;padding:2px 6px;background:#eef2f7;color:#64748b}
+  .lsrc.engine{background:#dbeafe;color:#1e40af}.lsrc.quant{background:#ede9fe;color:#5b21b6}
+  .lsrc.timesfm{background:#cffafe;color:#155e75}.lsrc.gex{background:var(--amberbg);color:var(--amber)}
+  .lsrc.ai{background:#fce7f3;color:#9d174d}.lsrc.debate{background:#0f172a;color:#fff}
+  .lrow .what{color:#64748b;flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+  .lnow{display:flex;align-items:center;gap:10px;padding:4px 2px;font-size:10.5px;font-weight:800;color:var(--accent)}
+  .lnow::before,.lnow::after{content:'';flex:1;border-top:2px dashed #bfdbfe}
+
   footer{max-width:1180px;margin:0 auto;padding:18px 24px 40px;color:#94a3b8;font-size:11px;line-height:1.5}
 </style>
 </head>
@@ -467,6 +495,7 @@ async function showTicker(tk){
     <div class="ahead"><span class="sym">${tk}</span><span class="nm" id="t-nm"></span>
       <a class="tvlink" href="${tvUrl(tk,'ticker-page')}" target="_blank" rel="noopener">TradingView ↗</a>
       <span class="px mono" id="t-px"></span></div>
+    <div class="consensus" id="consensus"><span style="font-size:12px;color:#94a3b8">Desk consensus — reading the analysts…</span></div>
     <div class="card pad"><div style="display:flex;align-items:center"><div class="lbl" style="margin:0">Price</div>
       <label class="tvsw" title="Swap in TradingView's interactive chart — loads tradingview.com (external); off = the built-in dependency-free chart">
         <input type="checkbox" id="tvsw" onchange="tvToggle()"> TV chart</label>
@@ -479,11 +508,14 @@ async function showTicker(tk){
       <div class="card pad" id="desk-debate"></div>
       <div class="card pad" id="desk-cones"><div class="lbl">Forecast cones</div><div class="loading" style="padding:14px">Fitting the regression…</div></div>
     </div>
+    <div class="card pad" id="ladder" style="margin-top:14px"><div class="lbl">Confluence ladder</div>
+      <div class="d" style="color:#94a3b8;font-size:12px">merging every level the desk emits — engine zones · cones · dealer walls · AI snipers · judge lines…</div></div>
     <div id="ai-area"></div>
     <div class="sec-h" style="margin-top:18px" id="news-h">Related News</div>
     <div class="card pad news" id="t-news"><div class="loading">Loading headlines…</div></div>`;
   window.scrollTo(0,0);
   CHART={tk,rng:'3mo'};
+  FUSION=null;
   $('#tvsw').checked=localStorage.getItem('ot_tv')==='1';
   loadChart();
   loadCones(tk);
@@ -505,7 +537,8 @@ async function loadChart(){
   $('#chart').innerHTML='<div class="loading" style="padding:24px">Loading chart…</div>';
   const c=await fetch(`/api/chart?ticker=${encodeURIComponent(tk)}&range=${rng}`).then(r=>r.json()).catch(()=>null);
   if(!c||!c.rows||CHART.tk!==tk) { if(CHART.tk===tk) $('#chart').innerHTML='<div class="loading">No chart data.</div>'; return; }
-  drawChart($('#chart'),c.rows);
+  CHART.rowsCache=c.rows;
+  drawChart($('#chart'),c.rows,FUSION&&FUSION.overlay);
   // A young listing returns the same short history for every range — say so
   // instead of looking like the range tabs are broken.
   $('#chnote').textContent=(rng!=='1mo'&&c.rows.length<22)
@@ -536,7 +569,7 @@ function technicalsFromRows(rows){
     out.rsi14=Math.round((100-100/(1+(g/14)/((l/14)||1e-9)))*10)/10;}
   return out;
 }
-function drawChart(el,rows){
+function drawChart(el,rows,ov){
   const w=980,h=330,vh=48,ph=h-vh-22,axr=54;
   const hi=Math.max(...rows.map(r=>r.h??r.c)),lo=Math.min(...rows.map(r=>r.l??r.c)),rng=(hi-lo)||1;
   const vmax=Math.max(...rows.map(r=>r.v||0))||1;
@@ -551,6 +584,20 @@ function drawChart(el,rows){
     s+=`<rect x="${(x-bw/2).toFixed(1)}" y="${top.toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" fill="${col}"/>`;
     const vb=(r.v||0)/vmax*(vh-10);
     s+=`<rect x="${(x-bw/2).toFixed(1)}" y="${(ph+10+(vh-10-vb)).toFixed(1)}" width="${bw.toFixed(1)}" height="${vb.toFixed(1)}" fill="${up?'#bbf7d0':'#fecaca'}"/>`;});
+  // fusion overlay — forecast cone band on the forward edge + dealer walls
+  if(ov){
+    const inR=v=>v!=null&&v>=lo&&v<=hi;
+    const wall=(v,col,lbl)=>inR(v)?`<line x1="0" x2="${cw}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="${col}" stroke-width="1" stroke-dasharray="6 4" opacity=".6"/>
+      <text x="4" y="${(y(v)-3).toFixed(1)}" font-size="9.5" fill="${col}" font-weight="700">${lbl} ${fmt(v,v>1000?0:2)}</text>`:'';
+    s+=wall(ov.call_wall,'#b45309','call wall')+wall(ov.put_wall,'#15803d','put wall');
+    const c=ov.cone;
+    if(c&&inR(c.p50)){
+      const x0=cw*0.82, yT=y(Math.min(c.p90,hi)), yB=y(Math.max(c.p10,lo));
+      s+=`<rect x="${x0.toFixed(1)}" y="${yT.toFixed(1)}" width="${(cw-x0).toFixed(1)}" height="${Math.max(1,yB-yT).toFixed(1)}" fill="#2563eb" opacity=".08"/>
+        <line x1="${x0.toFixed(1)}" x2="${cw}" y1="${y(c.p50).toFixed(1)}" y2="${y(c.p50).toFixed(1)}" stroke="#1d4ed8" stroke-width="1.2" stroke-dasharray="2 3" opacity=".7"/>
+        <text x="${(x0+3).toFixed(1)}" y="${(yT+10).toFixed(1)}" font-size="9.5" fill="#1d4ed8" opacity=".8">5d cone</text>`;
+    }
+  }
   const lastP=rows[rows.length-1].c,ly=y(lastP);
   s+=`<line x1="0" x2="${cw}" y1="${ly}" y2="${ly}" stroke="#2563eb" stroke-width="1" stroke-dasharray="3 3" opacity=".55"/>
       <rect x="${cw+2}" y="${ly-9}" width="${axr-4}" height="18" rx="4" fill="#2563eb"/>
@@ -621,6 +668,7 @@ function renderAnalysis(d){
       ${d.risks&&d.risks.length?`<div class="card pad"><div class="lbl">Risk Alerts</div><ul class="risks">${d.risks.map(r=>`<li>${r}</li>`).join('')}</ul></div>`:''}
       ${d.advice?`<div class="card pad"><div class="lbl">Operation Advice</div><div class="summary">${d.advice}</div></div>`:''}
     </div>`;
+  loadFusion(d.symbol);
 }
 
 /* ---------- prediction desk ---------- */
@@ -653,15 +701,64 @@ async function loadCones(tk){
     h+=coneBar(q.cone,q.last,'Quant — empirical (keyless)',`n=${q.n_train}`);
   } else h+='<div class="d" style="margin-top:8px;color:#94a3b8">quant unavailable'+(q&&q.error?': '+q.error:'')+'</div>';
   el.innerHTML=h+'<div class="d" id="tfm-slot" style="margin-top:10px;color:#94a3b8">checking TimesFM…</div>';
+  loadFusion(tk);
   const f=await fetch(`/api/forecast?ticker=${encodeURIComponent(tk)}`).then(r=>r.json()).catch(()=>null);
   if(CHART.tk!==tk) return;
   const slot=$('#tfm-slot'); if(!slot) return;
   if(f&&f.available){
     slot.outerHTML=coneBar(f.cone,f.last,'TimesFM — foundation model',f.model||'')+
       `<div class="d" style="margin-top:8px;color:#94a3b8">two independent cones agreeing = a real range; disagreeing = uncertainty is the signal</div>`;
+    loadFusion(tk);
   } else {
     slot.textContent=f&&f.hint?('TimesFM: '+f.hint):'TimesFM: opt-in — bash install.sh --with-forecast';
   }
+}
+
+/* ---------- fusion: consensus row + confluence ladder (F1+F2) ---------- */
+let FUSION=null;
+async function loadFusion(tk){
+  const d=await fetch(`/api/fusion?ticker=${encodeURIComponent(tk)}`).then(r=>r.json()).catch(()=>null);
+  if(CHART.tk!==tk) return;
+  if(!d||d.error){
+    const el=$('#consensus'); if(el) el.innerHTML=`<span style="font-size:12px;color:#94a3b8">Desk consensus unavailable${d&&d.error?' — '+d.error:''}</span>`;
+    return;
+  }
+  FUSION=d;
+  renderConsensus(d); renderLadder(d);
+  if(CHART.rowsCache&&localStorage.getItem('ot_tv')!=='1') drawChart($('#chart'),CHART.rowsCache,d.overlay);
+}
+function renderConsensus(d){
+  const el=$('#consensus'); if(!el) return;
+  const c=d.consensus||{}, names={engine:'Engine',quant:'Quant',timesfm:'TimesFM',ai:'AI',debate:'Debate'};
+  const chips=(c.chips||[]).map(x=>`<div class="cchip ${x.tilt}"><span class="s">${names[x.src]||x.src}</span><span class="d">${x.detail||'—'}</span></div>`).join('');
+  const missing=Object.entries(d.sources||{}).filter(([k,v])=>!v&&k!=='gex').map(([k])=>names[k]||k);
+  const V={CONSENSUS_LONG:['long','CONSENSUS LONG'],CONSENSUS_SHORT:['short','CONSENSUS SHORT'],
+    STAND_ASIDE:['aside','⚠ STAND ASIDE — models disagree'],NEUTRAL:['','NEUTRAL'],THIN:['','THIN — run more analysts']};
+  const [vc,vt]=V[c.verdict]||['','—'];
+  el.innerHTML=`<span style="font-size:10px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px">Desk<br>consensus</span>
+    ${chips||'<span style="font-size:12px;color:#94a3b8">no analyst reads yet</span>'}
+    ${missing.length?`<span style="font-size:10.5px;color:#cbd5e1">idle: ${missing.join(' · ')}</span>`:''}
+    <span class="cverdict ${vc}" title="agreement ${c.agreement??'—'}% across ${c.chips?c.chips.length:0} analysts">${vt}</span>`;
+}
+function renderLadder(d){
+  const el=$('#ladder'); if(!el) return;
+  const rows=d.ladder||[];
+  if(!rows.length){el.innerHTML='<div class="lbl">Confluence ladder</div><div class="d" style="color:#94a3b8;font-size:12px">no levels within ±25% of price yet — run the desk analysts.</div>';return;}
+  let html='',placed=false;
+  for(const r of rows){
+    if(!placed&&r.price<d.last){html+=`<div class="lnow">last ${fmt(d.last)}</div>`;placed=true;}
+    const badges=r.sources.map(s=>`<span class="lsrc ${s}">${s}</span>`).join(' ');
+    const what=r.items.map(i=>i.label).join(' · ');
+    html+=`<div class="lrow${r.confluence>=2?' hit':''}">
+      <span class="px mono">${fmt(r.price)}</span>
+      <span class="conf" title="${r.confluence} independent source${r.confluence>1?'s':''}">×${r.confluence}</span>
+      ${badges}<span class="what">${what}</span></div>`;
+  }
+  if(!placed) html+=`<div class="lnow">last ${fmt(d.last)}</div>`;
+  el.innerHTML=`<div class="lbl" style="display:flex;gap:8px;align-items:baseline">Confluence ladder
+      <span style="color:#cbd5e1;font-weight:600;text-transform:none;letter-spacing:0">every level the desk emits, clustered — <b>×2+</b> = independent methods naming the SAME line</span>
+      <span class="rerun" style="margin-left:auto" onclick="loadFusion('${d.ticker}')">↻</span></div>${html}
+    <div class="d" style="margin-top:8px;color:#94a3b8;font-size:11px">agreement between a statistical cone and a dealer wall is tradeable structure neither shows alone — the ×2+ rows are the only levels that matter</div>`;
 }
 function renderDebateInvite(tk){
   const el=$('#desk-debate'); if(!el) return;
@@ -712,6 +809,7 @@ function renderDebate(tk,d){
       <div style="margin-top:6px;color:#64748b"><b>Bear on bull:</b> ${d.bear?.attack_on_bull||''}</div>
       ${d.weakest_link?`<div style="margin-top:6px;color:#64748b"><b>Weakest link:</b> ${d.weakest_link}</div>`:''}</div>
     <div class="d" style="margin-top:10px;color:#94a3b8">judge ${d.engines?.judge||''} · ${d.elapsed_s?d.elapsed_s+'s':''} ${d.finished_at?'· '+d.finished_at:''} · journaled to ot reflect — educational only</div>`;
+  loadFusion(tk);
 }
 
 /* ---------- news page ---------- */

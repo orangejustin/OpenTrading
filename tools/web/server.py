@@ -685,6 +685,212 @@ def debate_view(ticker: str, fresh: bool, bull: str | None, bear: str | None,
     return d
 
 
+# --------------------------------------------------------------------------- #
+# fusion — confluence ladder + desk consensus (combining what the desk already knows)
+# --------------------------------------------------------------------------- #
+_PRICE_RE = re.compile(r"\$?\s*([0-9]{1,6}(?:,[0-9]{3})*(?:\.[0-9]+)?)")
+
+
+def _num(v):
+    """First price-looking number out of a string like '~$190 — near MA10'."""
+    if isinstance(v, (int, float)):
+        return float(v)
+    if not isinstance(v, str):
+        return None
+    m = _PRICE_RE.search(v)
+    if not m:
+        return None
+    try:
+        return float(m.group(1).replace(",", ""))
+    except ValueError:
+        return None
+
+
+def _cached_part(key, ttl: int, compute):
+    with _CACHE_LOCK:
+        hit = _DESK_CACHE.get(key)
+    if hit and time.time() - hit[0] < ttl:
+        return hit[1]
+    d = compute()
+    if d:
+        with _CACHE_LOCK:
+            _DESK_CACHE[key] = (time.time(), d)
+    return d
+
+
+def _peek_part(key, ttl: int):
+    """Cached value or None — never computes (used for the slow/LLM parts)."""
+    with _CACHE_LOCK:
+        hit = _DESK_CACHE.get(key)
+    return hit[1] if hit and time.time() - hit[0] < ttl else None
+
+
+def _ai_peek(ticker: str) -> dict | None:
+    """Any cached AI analysis for this name (whatever engine produced it)."""
+    with _CACHE_LOCK:
+        for (tk, _e, _m), (ts, ctx) in _CACHE.items():
+            if tk == ticker and ctx.get("ai") and time.time() - ts < _CACHE_TTL:
+                return ctx
+    return None
+
+
+def _marks(ticker: str) -> dict:
+    # yahoo_ohlc with range=1y: yahoo() truncates its series to 40 closes, and
+    # the chart meta's fiftyTwoWeek fields mirror the REQUESTED range's window
+    # — anything shorter than 1y silently shrinks "52w high/low".
+    try:
+        q = yahoo_ohlc(ticker, "1y", "1d")
+    except Exception:  # noqa: BLE001
+        return {}
+    s = [r["c"] for r in q.get("rows", [])]
+    return {"last": q.get("last"),
+            "ma20": round(sum(s[-20:]) / 20, 2) if len(s) >= 20 else None,
+            "hi52": q.get("hi52"), "lo52": q.get("lo52")}
+
+
+def fusion_view(ticker: str) -> dict:
+    """F1+F2: merge every level the desk already emits into ONE price ladder
+    (2+ independent sources = confluence) and read the analysts' tilts into a
+    consensus row. Combines cached parts — the only compute it may trigger is
+    decide / per-name GEX / quant (seconds, then cached); TimesFM, the debate
+    and the AI analysis are peek-only so this never burns an LLM call."""
+    T = ticker.upper()
+    quant = quant_view(T)
+    decide = _cached_part(("decide", T), 1800,
+                          lambda: ot_json(ROOT / "tools/sim/decide.py", T) or {})
+    gex = _cached_part(("gex", T), 1800, lambda: (
+        lambda o: o[0] if isinstance(o, list) and o else None)(
+        ot_json(ROOT / "tools/options/opt.py", T, "--dte", "30"))) or {}
+    marks = _cached_part(("marks", T), 1800, lambda: _marks(T)) or {}
+    tfm = _peek_part(("tfm", T), 1800)
+    debate = _peek_part(("debate", T), _CACHE_TTL)
+    ai = _ai_peek(T)
+    plan = (decide or {}).get("plan") or {}
+    last = ((quant or {}).get("last") or (decide or {}).get("price")
+            or marks.get("last"))
+    if not last:
+        return {"error": f"no price read for {T}"}
+
+    # -- collect every level, tagged by which analyst named it ---------------
+    levels: list = []
+
+    def add(price, src, label, kind):
+        p = _num(price)
+        if p and abs(p / last - 1) <= 0.25:  # keep the ladder tradeable, not a 52w tour
+            levels.append({"price": round(p, 2), "src": src, "label": label, "kind": kind})
+
+    for zone, name in ((plan.get("buy_zone"), "buy zone"),
+                       (plan.get("add_zone"), "add zone"),
+                       (plan.get("trim_zone"), "trim zone")):
+        if isinstance(zone, (list, tuple)) and len(zone) == 2:
+            kind = "target" if name == "trim zone" else "support"
+            add(zone[0], "engine", f"{name} low", kind)
+            add(zone[1], "engine", f"{name} high", kind)
+    add(plan.get("core"), "engine", "core entry", "pivot")
+    add(plan.get("stop"), "engine", "stop", "stop")
+    for cone, src, lbl in (((quant or {}).get("cone"), "quant", "quant"),
+                           ((tfm or {}).get("cone") if tfm and tfm.get("available") else None,
+                            "timesfm", "TimesFM")):
+        if cone:
+            add(cone.get("p10"), src, f"{lbl} P10", "support")
+            add(cone.get("p50"), src, f"{lbl} P50", "pivot")
+            add(cone.get("p90"), src, f"{lbl} P90", "resistance")
+    add(gex.get("call_wall"), "gex", "call wall", "resistance")
+    add(gex.get("put_wall"), "gex", "put wall", "support")
+    if ai:
+        e = ai.get("entries") or {}
+        add(e.get("ideal_buy"), "ai", "ideal buy", "support")
+        add(e.get("secondary_buy"), "ai", "secondary buy", "support")
+        add(e.get("stop_loss"), "ai", "stop loss", "stop")
+        add(e.get("take_profit"), "ai", "take profit", "target")
+    if debate:
+        add(debate.get("entry"), "debate", "judge entry", "pivot")
+        add(debate.get("invalidation"), "debate", "judge invalidation", "stop")
+    add(marks.get("ma20"), "marks", "MA20", "pivot")
+    add(marks.get("hi52"), "marks", "52w high", "resistance")
+    add(marks.get("lo52"), "marks", "52w low", "support")
+
+    # -- cluster: levels within 0.7% of each other are the SAME level --------
+    levels.sort(key=lambda x: x["price"])
+    tol = last * 0.007
+    clusters: list = []
+    for it in levels:
+        if clusters and abs(it["price"] - clusters[-1]["sum"] / clusters[-1]["n"]) <= tol:
+            c = clusters[-1]
+            c["items"].append(it)
+            c["sum"] += it["price"]
+            c["n"] += 1
+        else:
+            clusters.append({"items": [it], "sum": it["price"], "n": 1})
+    ladder = []
+    for c in clusters:
+        srcs = sorted({i["src"] for i in c["items"]})
+        ladder.append({"price": round(c["sum"] / c["n"], 2),
+                       "sources": srcs, "confluence": len(srcs),
+                       "items": [{"src": i["src"], "label": i["label"],
+                                  "price": i["price"], "kind": i["kind"]}
+                                 for i in c["items"]]})
+    ladder.sort(key=lambda x: -x["price"])
+
+    # -- consensus row: each analyst's tilt + an agreement verdict -----------
+    chips = []
+
+    def chip(src, tilt, detail):
+        chips.append({"src": src, "tilt": tilt, "detail": detail})
+
+    side = (plan.get("side") or "").lower()
+    if decide and decide.get("ticker"):
+        tilt = "bull" if side == "long" else "bear" if side == "short" else "flat"
+        chip("engine", tilt, f"{decide.get('action') or side or '—'}"
+             + (f" · grade {plan.get('grade')}" if plan.get("grade") else ""))
+    if quant and not quant.get("error") and isinstance(quant.get("p_up"), (int, float)):
+        pu = quant["p_up"]
+        chip("quant", "bull" if pu >= 55 else "bear" if pu <= 45 else "flat",
+             f"P(up) {pu}% · OOS {quant.get('oos_hit_rate') or '—'}%")
+    if tfm and tfm.get("available") and (tfm.get("cone") or {}).get("p50"):
+        drift = (tfm["cone"]["p50"] / last - 1) * 100
+        chip("timesfm", "bull" if drift > 0.5 else "bear" if drift < -0.5 else "flat",
+             f"P50 drift {drift:+.1f}%")
+    if ai and ai.get("action"):
+        act = ai["action"]
+        tilt = ("bull" if act in ("BUY", "ADD") else
+                "bear" if act in ("SELL", "REDUCE", "AVOID") else "flat")
+        chip("ai", tilt, act)
+    if debate and debate.get("verdict"):
+        v = debate["verdict"]
+        tilt = ("bull" if v in ("STRONG_BUY", "BUY") else
+                "bear" if v in ("SELL", "STRONG_SELL") else "flat")
+        chip("debate", tilt, f"{v.replace('_', ' ')} · {debate.get('confidence', '—')}/100")
+
+    n_bull = sum(1 for c in chips if c["tilt"] == "bull")
+    n_bear = sum(1 for c in chips if c["tilt"] == "bear")
+    if len(chips) < 2:
+        verdict = "THIN"
+    elif n_bull and n_bear:
+        verdict = "STAND_ASIDE"
+    elif n_bull >= 2:
+        verdict = "CONSENSUS_LONG"
+    elif n_bear >= 2:
+        verdict = "CONSENSUS_SHORT"
+    else:
+        verdict = "NEUTRAL"
+    agreement = round(100 * max(n_bull, n_bear) / len(chips)) if chips else None
+
+    cone = (quant or {}).get("cone") or ((tfm or {}).get("cone") if tfm else None)
+    return {
+        "ticker": T, "last": last,
+        "ladder": ladder,
+        "consensus": {"chips": chips, "verdict": verdict, "agreement": agreement},
+        "overlay": {"cone": cone, "call_wall": _num(gex.get("call_wall")),
+                    "put_wall": _num(gex.get("put_wall"))},
+        "sources": {"engine": bool(decide and decide.get("ticker")),
+                    "quant": bool(quant and not quant.get("error")),
+                    "timesfm": bool(tfm and tfm.get("available")),
+                    "gex": bool(gex), "ai": bool(ai), "debate": bool(debate)},
+        "as_of": _now_et(),
+    }
+
+
 def calibration() -> dict:
     """ot reflect stats + the lessons block — the desk's own track record."""
     stats = ot_json(ROOT / "tools/reflect/reflect.py") or None
@@ -781,6 +987,11 @@ class Handler(BaseHTTPRequestHandler):
                     qs.get("bull", [None])[0], qs.get("bear", [None])[0],
                     qs.get("judge", [None])[0],
                     peek=qs.get("peek", ["0"])[0] in ("1", "true"))))
+            if u.path == "/api/fusion":
+                tk = (qs.get("ticker", [""])[0] or "").strip()
+                if not tk:
+                    return self._send(400, json.dumps({"error": "ticker required"}))
+                return self._send(200, json.dumps(fusion_view(tk)))
             if u.path == "/api/calibration":
                 return self._send(200, json.dumps(calibration()))
             if u.path == "/api/health":
