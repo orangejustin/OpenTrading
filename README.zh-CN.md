@@ -1,196 +1,128 @@
-# OpenTrading
+<div align="center">
 
-**简体中文** | [English](README.md)
+# 📈 OpenTrading
 
-*本文档为中文版，内容可能略滞后于英文版 [README.md](README.md)（以英文版为准）。*
+**本地优先的交易副驾 —— 宏观优先、风险优先、零 API key。**
 
-**开源、本地优先的 Claude 短线交易分析项目** —— 覆盖股票、期权、衍生品与加密货币。它把一套专业的交易 *skill*（宏观优先、风险优先）与一组小巧、零依赖的 *数据 CLI* 结合起来：你可以自己运行这些命令，也可以交给 Claude 来驱动。
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-blue.svg)](#环境要求)
+[![API keys: none](https://img.shields.io/badge/API_keys-none-success.svg)](#环境要求)
+[![stdlib only](https://img.shields.io/badge/依赖-仅标准库-informational.svg)](#环境要求)
+[![Claude Code: native](https://img.shields.io/badge/Claude_Code-原生集成-8A2BE2.svg)](#问-claude)
+
+**[产品预览](#产品预览) · [第一性原理](#第一性原理) · [功能特性](#功能特性) · [快速开始](#快速开始) · [本地仪表盘](#ot-web-本地仪表盘) · [每日盘前邮件](#每日盘前邮件) · [隐私](#隐私)**
+
+[English](README.md) | **简体中文**
+
+</div>
+
+OpenTrading 把 **宏观、新闻、聪明钱仓位与期权 gamma** 融合成一份有观点的市场解读，
+再落成具体行动：评级后的 **做多 / 做空 / 观望** 行动面板、狙击点位，以及遵循一套
+习得的风险优先策略的 **CALL / PUT / NO-ACTION** 决策引擎。一切都在你自己的电脑上运行：
+没有 SaaS、没有 key、数据不出本机。把交易 *skill*（专业认知）与小巧零依赖的
+*数据 CLI*（实时数据）配对，让 Claude 同时驱动两者。
 
 > ⚠️ **仅供教育用途，非投资建议。交易涉及重大亏损风险。**
-
-> 📧 **全自动：** 每个交易日早晨，把一份带样式、感知你持仓的盘前简报直接发到你的邮箱
-> —— 见 [每日盘前邮件](#每日盘前邮件)。📈 进阶用户还可实时桥接
-> **TradingView** —— 见 [可选增强模块](#可选增强模块)。
-
-**[产品预览](#产品预览) · [快速开始](#快速开始) · [本地仪表盘](#ot-web-本地仪表盘) · [每日盘前邮件](#每日盘前邮件) · [隐私](#隐私与你的数据)**
 
 ---
 
 ## 产品预览
 
-**`ot web` —— 本地、无需 API key 的仪表盘**：滚动行情带（黄金 · 原油 · BTC · 美债10Y ·
-美元指数……，点击直达 TradingView）、指数卡片 + 迷你走势图、**宏观与资金流** 面板
-（宏观评分 · 恐惧贪婪 · BTC 资金费率 · SPY 做市商 gamma）、你的自选清单，以及带
-时间窗滑块和「AI 解读盘面」的 **新闻页** —— AI 引擎随时切换（Gemini、OpenRouter
-任意模型、或直接用你的 Claude Code 订阅，一个 key 都不用配）：
+<p align="center"><img src="docs/assets/tour_20260704.gif" alt="ot web 演示 —— 仪表盘 · 策略面板 · 新闻与事件闸门 · 一键 AI 分析" width="880"></p>
+<p align="center"><sub>约 12 秒的 <code>ot web</code> 之旅：宏观资金流仪表盘 → 策略行动面板 → 新闻 + 事件闸门 → 个股页（秒开的免 key K 线）→ 一键 AI 分析与狙击点位。</sub></p>
 
-<p align="center"><img src="docs/assets/web-overview.png" alt="ot web —— 市场总览与宏观资金流（演示数据）" width="780"></p>
+<table align="center"><tr>
+<td align="center" width="50%"><img src="docs/assets/web-strategy.png" alt="策略 —— 行动面板"><br><sub><b>策略 —— 行动面板。</b>每个标的一张确定性的 <code>ot decide</code> 卡片：做多/做空/观望 · A–D 评级 · 建仓/加仓/止盈区 · 止损。无需 LLM，约 1 秒出全表。</sub></td>
+<td align="center" width="50%"><img src="docs/assets/email-sample.png" alt="每日盘前邮件（演示数据）"><br><sub><b>每日盘前邮件。</b>感知持仓、由 Claude 撰写、兼容 Outlook 的 HTML：市场状态判断、持仓关键位、评级 Top-3、对冲计划、事件闸门。</sub></td>
+</tr></table>
 
-**个股页秒开、纯免 key 数据** —— 手绘 K 线图（1M/3M/6M/1Y）、关键指标、个股新闻 ——
-AI 分析则 **按需一键生成**：操作建议、情绪仪表盘、**狙击点位**（理想买点 · 次级买点 ·
-止损 · 止盈）、风险与操作建议，每次分析标注引擎 · 耗时 · 完成时间（美东），缓存至你
-重新生成为止：
+<p align="center"><sub>所有演示均为虚构持仓 —— 你的真实持仓永远不会离开你的电脑。</sub></p>
 
-<p align="center"><img src="docs/assets/web-analysis.png" alt="ot web —— 个股页：K线图、AI 分析与狙击点位（演示数据）" width="780"></p>
+---
 
-**每日盘前邮件** —— 感知持仓、由 Claude 撰写、兼容 Outlook 的 HTML 简报：市场状态判断、
-持仓关键价位、评级后的 **Top-3 观察名单**（买入 / 等待到具体价格）、对冲计划与事件闸门：
+## 第一性原理
 
-<p align="center"><img src="docs/assets/email-sample.png" alt="每日盘前邮件（演示数据示例）" width="700"></p>
+整个系统按顺序强制执行的三条规则：
 
-<sub>以上截图均为虚构的演示持仓 —— 你的真实持仓永远不会离开你的电脑。</sub>
+| # | 原理 | 在产品里意味着什么 |
+|---|---|---|
+| 1 | **宏观优先，形态其次，仓位第三。** | 每次解读都从利率/流动性 + 做市商 gamma + 情绪出发 —— 与大环境相逆的交易想法会被降级，无论图形多漂亮。 |
+| 2 | **先风险，后机会。** | 没有失效位就没有点位：每份计划都带止损，仓位由止损距离 *推导* 而来；事件闸门（FOMC/CPI/OPEX/财报）可以直接否决加仓。**不动手也是一种持仓。** |
+| 3 | **本地优先，免 key 优先。** | 公开无鉴权接口、Python 标准库、一切绑定 `127.0.0.1`。AI 层只是可选的点缀 —— 三个可互换引擎，其中一个就是你现有的 Claude 订阅，一个 key 都不用。 |
+
+---
+
+## 功能特性
+
+| 模块 | 命令 | 作用 |
+|------|------|------|
+| **市场报告** | `ot` | 宏观 + 新闻 + 聪明钱 + 期权 + 你的持仓 → 一份市场状态解读 |
+| **本地仪表盘** | `ot web` | 滚动行情带 · 指数 · 宏观资金流 · 策略面板 · 新闻+事件闸门 · 可切换引擎的个股 AI 分析 |
+| **决策引擎** | `ot decide` | CALL / PUT / NO-ACTION + 信心 + 区间，来自习得的策略 |
+| **每日邮件** | `ot email` / `ot schedule` | 感知持仓、兼容 Outlook 的 HTML 盘前简报（SMTP） |
+| **新闻** | `ot news` | FinancialJuice 快讯（公开 RSS）—— 按时间窗/标的过滤、可存档 |
+| **宏观** | `ot macro` | SOFR / 2s10s / TGA / RRP → 评分式多空偏向 |
+| **聪明钱** | `ot smart` | CNN + 加密恐惧贪婪指数、BTC 资金费率（逆向） |
+| **期权** | `ot options` | 看跌/看涨比 + 做市商 gamma（GEX）+ gamma 墙（CBOE） |
+| **事件闸门** | `ot catalysts` / `ot earnings` | FOMC/CPI/PCE/NFP/OPEX + 个股财报 → 能否加仓的裁决 |
+| **行情** | `ot quote` / `ot cn` | 免 key 行情，含盘前与 `^VIX`；A 股 / 港股 |
+| **深度报告** | `ot report --deep` | 并行分析台 + 综合归纳（多智能体原型） |
+
+任意工具加 `--json` 获得机器可读输出。完整帮助：`ot help`。
 
 ---
 
 ## 快速开始
 
+**60 秒，零 key：**
+
 ```bash
 git clone https://github.com/orangejustin/OpenTrading
 cd OpenTrading
-bash install.sh            # 把 `ot` 加入你的 PATH 并跑一次健康检查（无需 key，无需编译）
+bash install.sh        # 把 `ot` 加入 PATH 并跑一次健康检查 —— 无需注册任何服务
+ot                     # 早盘速览：宏观 + 新闻 + 聪明钱 + 期权 + 你的持仓
+ot web                 # 仪表盘 → http://127.0.0.1:8787
 ```
 
-之后一切都是 **一个命令 `ot`**：
+> 不想改动 PATH？跳过 `install.sh`，直接原地运行：`bin/ot …`
 
-```bash
-ot                         # 早盘速览：宏观 + 新闻 + 聪明钱 + 期权 + 你的持仓
-ot news --window premarket # FinancialJuice 实时头条（公开 RSS —— 无需账号）
-ot macro                   # 评分制的盘中宏观面板（无需 API key）
-ot options SPY --dte 7     # 看跌/看涨比 + 做市商 gamma（GEX）+ gamma 墙
-ot help                    # 所有子命令
-```
+**第一次用？** 从三个 [招牌工作流](WORKFLOWS.md) 开始 —— *早盘解读*、*现在能加仓吗？*、
+*给我的持仓打分* —— 每个都只需一条命令加一句向 Claude 的提问。
 
-> 还不想改动 PATH？跳过 `install.sh`，直接原地运行：`bin/ot …`
+### 问 Claude
 
-然后用 **Claude Code**（或 Claude Desktop）打开这个文件夹，直接提问：
+用 **Claude Code**（或 Claude Desktop）打开这个文件夹，直接提问 —— 内置的
+**short-term-trader** skill 会自动激活，并通过 `ot` 拉取实时数据：
 
-- *“给我今早的宏观简报 —— 今天 QQQ 是做 call 还是 put？”*
-- *“过去一小时有没有关于 NVDA 的 FinancialJuice 新闻？存下来。”*
-- *“NVDA 放量突破 $950，RSI 62，账户 $30k —— 这笔怎么交易？”*
+- *"给我今早的宏观简报 —— 今天 QQQ 做 call 还是 put？"*
+- *"过去一小时有没有 NVDA 的 FinancialJuice 新闻？存下来。"*
+- *"NVDA 放量突破 $950，RSI 62，账户 $30k —— 这笔怎么交易？"*
 
-内置的 **short-term-trader** skill 会自动激活，并通过 `ot` 拉取实时数据。
-
-**环境要求：** Python 3.9+（以标准库为主；安装了 `certifi` 就用它做 TLS 校验，否则
-自动回退到系统 `curl`）。无需任何 API key，无需付费数据源。
-
-**依赖管理（推荐 uv）：** 推荐用 [`uv`](https://github.com/astral-sh/uv) 管理依赖与
-虚拟环境（与 TradingAgents / OpenHands 一致）——`uv sync` 会按 `uv.lock` 安装锁定的依赖，
-复现可靠的开发环境；日常运行用 `uv run …`。
-
-**Runner：** 检测到 `uv` 时，`ot` 会自动优先使用它 —— 它运行的是独立 CPython
-（PEP 723-ready，便于将来引入依赖，并规避 macOS framework-Python 在 launchd 下的挂起
-问题）—— 否则回退到普通的 `python3`。可用 `OT_PYTHON=/path/to/python` 覆盖解释器，用
-`OT_NO_UV=1` 强制禁用 uv，用 `ot doctor` 查看当前生效的 runner。
+skill 会在每一次回答中强制执行上面的 [第一性原理](#第一性原理)，其工作流覆盖宏观偏向、
+新闻影响、交易形态、期权、加密仓位、交易日志、回测与组合复盘。
 
 ---
 
-## 项目结构
+## AI 引擎 —— 自带你的 AI
 
-| 组成 | 路径 | 用途 |
-|------|------|------|
-| **`ot` CLI** | `bin/ot` | **统一入口，前置所有工具**（运行 `ot help`） |
-| 安装脚本 | `install.sh` | 把 `ot` 加入 PATH + `ot doctor` 健康检查 |
-| 交易 skills | `.claude/skills/` | `short-term-trader`（交易形态/期权/风控）+ `market-report`（融合宏观+新闻+聪明钱+期权的报告） |
-| FinancialJuice CLI | `tools/financialjuice/fj.py` | 通过公开 RSS 的实时新闻速报 |
-| 宏观 CLI | `tools/macro/macro.py` | SOFR、2Y/10Y、TGA、RRP → 评分式偏向（无需 key） |
-| 聪明钱 CLI | `tools/smartmoney/sm.py` | CNN + 加密货币恐惧贪婪指数、BTC 资金费率 —— 逆向情绪 |
-| 期权 CLI | `tools/options/opt.py` | 看跌/看涨比 + 做市商 gamma（GEX）+ gamma 墙（CBOE，无需 key） |
-| 行情 CLI | `tools/quote/q.py` | 无需 key 的行情，含盘前 + ^VIX（Yahoo）—— IBKR 的替身 |
-| 中国 A 股（可选） | `tools/china/cn.py` | 经东方财富的 A 股行情 沪深/A股（无需 key）—— `ot cn` |
-| 报告编排器 | `tools/report/report.py` | 把以上全部 + BTC + 你的持仓融合成一份报告 |
-| 每日简报 | `tools/brief/daily_brief.py` | 更轻量的每日推送 + macOS 通知 |
-| 每日邮件 | `tools/brief/daily_email_claude.sh` + `tools/brief/wrap_html.py` | Claude 撰写、感知持仓的 **HTML** 盘前邮件（SMTP） |
-| 本地仪表盘 | `tools/web/` + `tools/llm/` | `ot web` —— 行情面板 + 个股 AI 分析，引擎可切换（Gemini / OpenRouter / Claude Code 订阅） |
-| 项目配置 | `CLAUDE.md`、`.claude/settings.json` | 接入 skills 并预授权相关工具 |
-| 持仓清单 | `watchlist.json`（git 忽略） | 你的持仓；驱动所有感知持仓的板块 |
-| 数据 | `data/news-log/`、`data/reports/`、`data/briefs/` | 带日期戳的输出（git 忽略） |
+数据面板永远免 key。可选的 AI 层跑在 **你选的引擎** 上，仪表盘顶部随时切换
+（或 `ot web --engine … --model …`）：
 
----
+| 引擎 | Key | 模型 |
+|---|---|---|
+| **Gemini** | `GEMINI_API_KEY`（免费额度即可） | gemini-2.5-flash / -pro |
+| **OpenRouter** | `OPENROUTER_API_KEY` —— 一个 key，**任意**模型 | GLM 5.2 · DeepSeek v4 · GPT-5.5 · Claude · Grok · 任意 slug |
+| **Claude Code** | **无需 key** —— 用你现有的订阅 | 无头 `claude -p`（default / sonnet / opus / haiku；每次运行都标注实际解析到的模型） |
 
-## FinancialJuice CLI
-
-读取 **公开** 的 FinancialJuice RSS 源（`feed.ashx?xy=rss`）—— 无需登录、无需浏览器
-自动化。它会把时间戳转换为美东时间（ET）、标注分类、缓存 60 秒，并在触发限流时自动退避。
-
-```bash
-ot news                          # 最新
-ot news --window open            # 09:30–10:30 ET
-ot news --minutes 60             # 最近一小时
-ot news --ticker NVDA            # 仅与该标的相关
-ot news --category Fed           # Fed/宏观/财报/...
-ot news --json                   # 机器可读
-ot news digest --days 7          # 多日摘要（合并已存档案 + 实时）
-ot news store --window premarket # -> data/news-log/
-```
-
-完整参数说明：[`tools/financialjuice/README.md`](tools/financialjuice/README.md)。
-
-> 公开的 FinancialJuice RSS 是 **来源无关的**（不带 Bloomberg/CNBC/Reuters 标签）。若要
-> **按来源覆盖美股**，可 **聚合直连源**：`ot news --feeds financialjuice,cnbc`
-> 或 `--feeds yahoo --tickers AAPL,MSTR`（CNBC Top/Markets/Earnings/Economy + Yahoo 按标的，
-> 各自带来源标签；用 `--source cnbc` 过滤）。Reuters/Bloomberg 已停掉免费 RSS。
-> `OT_FJ_FEED_URL` 也可指向你个人的 PRO 源。
-
-## 宏观面板 CLI
-
-自动抓取无需 API key 的利率/流动性指标，并按 skill 中 `macro-dashboard.md` 设定的阈值
-逐项评分：
-
-```
-INTRADAY MACRO DASHBOARD — auto-fetched (no-key public data)
-  SOFR            3.60%  [+ bull]  down vs 3.63%
-  TGA             $801B  [+ bull]  bull<900 / bear>925
-  2Y Yield        4.09%  [+ bull]  bull<4.18 / bear>4.30
-  10Y Yield       4.48%  [  neut]  bull<4.35 / bear>4.50
-  AUTO SCORE: +3  (from 4 indicators)  ->  LEAN CALLS (bullish tilt)
-```
-
-用 `ot macro`（或 `ot macro --json`）运行。它还会打印两个需要手动跟进的指标
-（Polymarket 上的降息概率、PCE nowcast）及其 URL，供你手动纳入判断。详见：
-[`tools/macro/README.md`](tools/macro/README.md)。
-
----
-
-## 市场报告（完整融合）
-
-一个命令即可把 **宏观 + 聪明钱仓位 + 期权/gamma + 行情 + BTC + 新闻 + 你的持仓**
-汇成一份带自动市场状态（regime）的数据包：
-
-```bash
-ot                 # markdown 数据包 -> stdout（这是默认命令）
-ot report --save   # 同时 -> data/reports/<date>.md
-ot report --notify # + macOS 通知（定时任务会用到）
-```
-
-随后向 Claude 索要 **“the market report”**（或说 *“monday report”*）—— `market-report`
-skill 会基于该数据包进行推理：跨资产综合、情绪/信用 **背离**、做市商 gamma 的钉住/趋势
-解读，以及逐个持仓的操作计划。用 `ot schedule` 设置定时任务（注意 `tools/brief/README.md`
-中关于 macOS TCC 的提示）。
-
----
-
-## 这套 skill
-
-`.claude/skills/short-term-trader/` 是一个标准的 Claude skill。它的工作流：
-
-1. **每日宏观简报与看跌/看涨偏向** —— 8 指标评分面板 → CALLS / PUTS / NO TRADE
-2. **FinancialJuice 新闻** —— 抓取 / 过滤 / 存档 / 对某标的做新闻影响分析
-3. **交易形态分析** —— 逻辑、入场/止损/目标、盈亏比（R:R）、仓位大小
-4. **期权分析** —— 希腊字母、IV 排名、策略选择、财报博弈
-5. **加密货币交易分析** —— 资金费率、杠杆、考虑爆仓的仓位测算
-6. **交易日志与盈亏复盘** —— R 倍数跟踪、行为模式
-7. **策略回测** —— 指标 + 过拟合检查
-8. **持仓复盘与仓位管理** —— 多空研判台 → 具体的 +/- 股数建议，并设集中度与因子上限
-
-它强制执行的操作原则：**宏观优先 → 形态其次 → 仓位第三**、**先风险后机会**、
-**新闻只有放在背景下才有意义**，并在每一份分析上都附带“仅供教育、非投资建议”的免责声明。
+每次分析都标注 `引擎 · 模型 · 耗时 · 完成时间（美东）`，缓存至你重新生成。
+没配任何引擎？其余功能照常 —— 只是没有 AI 卡片。
 
 ---
 
 ## `ot web` 本地仪表盘
 
-把同一套数据栈变成一个干净的本地网页应用 —— 标准库 `http.server` + 原生 JS，无需构建，
-只绑定 `127.0.0.1`（效果见上方 [产品预览](#产品预览)）：
+标准库 `http.server` + 原生 JS，无需构建，只绑定 `127.0.0.1`
+（效果见 [产品预览](#产品预览)）：
 
 ```bash
 ot web                                          # http://127.0.0.1:8787
@@ -198,128 +130,108 @@ ot web --engine claude                          # 用无需 key 的 Claude Code 
 ot web --engine openrouter --model z-ai/glm-5.2 # 用 GLM 5.2 启动
 ```
 
-数据面板 **无需任何 key**；个股 AI 分析的引擎可在页面顶部随时切换：
+- **仪表盘** —— 滚动宏观行情带（点击直达 TradingView）· 指数卡片 · **宏观资金流**（宏观评分 · 恐惧贪婪 · BTC 资金费率 · SPY 做市商 gamma 与墙位）· 你的自选清单。
+- **策略** —— 行动面板：每个标的一张确定性 `ot decide` 卡片（做多/做空/观望 · 评级 · 区间 · 止损），约 1 秒，无需 LLM。
+- **新闻** —— 6 小时到 7 天时间窗（长窗口自动合并本地新闻存档）、即时关键词过滤、事件闸门条，以及 **🧠 AI 解读盘面**（偏向 · 驱动因素 · 组合倾斜）。
+- **个股页** —— 秒开的免 key K 线图 + 关键指标 + 个股新闻（Yahoo RSS 兜底），**⚡ 按需一键 AI 分析**；支持 `/#NVDA` 深链；可选 TradingView 图表嵌入（默认关闭）。
 
-| 引擎 | Key | 模型 |
-|---|---|---|
-| **Gemini** | `GEMINI_API_KEY`（免费额度即可） | gemini-2.5-flash / -pro |
-| **OpenRouter** | `OPENROUTER_API_KEY` —— 一个 key，任意模型 | GLM 5.2 · DeepSeek v4 · GPT-5.5 · Claude · Grok · 任意 slug |
-| **Claude Code** | **无需 key** —— 用你现有的订阅 | 无头 `claude -p`（default / sonnet / opus / haiku） |
-
-支持深链（`/#NVDA`）、按（标的 × 引擎 × 模型）缓存 10 分钟、↻ 重新分析按钮。
 详见 [`tools/web/README.md`](tools/web/README.md)。
 
 ---
 
 ## 每日盘前邮件
 
-OpenTrading 可在每个交易日早晨给你发一份 **感知持仓的盘前简报** —— 与 `ot report`
-同样的融合内容，由 Claude 撰写，并以带样式、**兼容 Outlook 的 HTML** 邮件投递
-（附纯文本回退）。每次运行融合的内容：
-
-- **宏观** —— SOFR / 2s10s / TGA / RRP → 评分式方向偏向
-- **聪明钱** —— CNN + 加密货币恐惧贪婪指数，以及 BTC 资金费率（逆向）
-- **期权 EV** —— SPY + 你的标的：做市商 gamma（GEX）符号与 gamma 墙
-- **新闻，最近 24 小时** —— 与 *你的* 持仓相关的 FinancialJuice 头条
-- **你的持仓** —— 按美元加权的持仓表（敞口、权重 %、逐个标的解读）
-- **集中度与今日关注** —— 主导因子风险 + 可操作的关键价位
-
-启用它（基础档 —— 只需 SMTP 凭据，无其他手动步骤）：
+每个交易日早晨，一份 **感知持仓** 的盘前简报直达你的邮箱 —— 与 `ot` 同一套融合，
+由 Claude 在你的订阅上撰写，以带样式、**兼容 Outlook 的 HTML** 投递：市场状态判断、
+持仓关键位、评级后的 **Top-3 观察名单**（买入 / 等待到具体价格）、对冲计划与当日事件闸门。
 
 ```bash
-cp .env.example .env        # 设置 OT_SMTP_* + OT_EMAIL_TO（Resend 无需 2FA 即可用）
-ot email --dry-run          # 确认配置可正确解析（不发送）
-ot email                    # 单次发送
-ot schedule email           # 工作日本地时间 08:30（macOS launchd）
-ot schedule email 9 0       # 改时间 · `ot schedule email uninstall` 移除
+cp .env.example .env       # 设置 OT_SMTP_* + OT_EMAIL_TO（Resend 无需 2FA 即可用）
+ot email --dry-run         # 确认配置（不发送）
+ot email                   # 单次发送   ·   --lang zh 输出简体中文
+ot schedule email          # 工作日本地 08:30（macOS launchd）· `… email uninstall` 移除
 ```
 
-不发送、仅预览 HTML：
-
-```bash
-OT_EMAIL_RENDER_ONLY=1 OT_EMAIL_HTML_OUT=/tmp/brief.html \
-  bash tools/brief/daily_email_claude.sh && open /tmp/brief.html
-```
-
-**中文版：** 加上 `--lang zh`（新闻邮件）或 `OT_EMAIL_LANG=zh`（每日简报），即可收到
-简体中文版本。
-
-> **计划中（v2）：用户可调的数据源** —— 自行选择简报融合 *哪些* 来源（宏观、
-> FinancialJuice 新闻、聪明钱、期权 EV、TradingView），按来源逐项 opt-in，而不再总是
-> 全部包含。见 [`RELEASE_NOTES.md`](RELEASE_NOTES.md)。
->
-> macOS：launchd 无法读取位于 `~/Desktop`、`~/Documents` 或 `~/Downloads` 下的仓库
-> （TCC 限制）—— 请把仓库放在别处（例如 `~/OpenTrading`）。各邮件服务商细节：
-> [`tools/email/README.md`](tools/email/README.md)。
+> macOS：launchd 无法读取 `~/Desktop`、`~/Documents`、`~/Downloads` 下的仓库（TCC 限制）
+> —— 请把仓库放在别处（如 `~/OpenTrading`）。详见 [`tools/email/README.md`](tools/email/README.md)。
 
 ---
 
-## 隐私与你的数据
+## `ot decide` —— 一条命令的策略
 
-你的持仓与密钥 **绝不** 进入 git，也 **绝不** 成为任何发布版本的一部分：
+`ot decide TICKER --dte N` 把成文的策略变成一个具体判断 ——
+**CALL / PUT / NO-ACTION** + 信心 + 区间，全部来自免 key 数据：
+
+```bash
+ot decide QQQ  --dte 0     # 0DTE：填坑反打 + VIX 确认 + 避开事件 + 精选
+ot decide NVDA --dte 5     # 波段：只在你读得懂的名字上做动量 call
+```
+
+它编码了 [`references/learned-strategy.md`](.claude/skills/short-term-trader/references/learned-strategy.md)
+（选股 > 择时；硬性日亏损止损；亏损后绝不加码）。`ot web` 的策略面板就是这台引擎
+在你整个持仓上的并行展开。
+
+---
+
+## 隐私
+
+你的持仓与密钥 **绝不** 进入 git，也 **绝不** 出现在任何发布中：
 
 | 内容 | 存放于 | 状态 |
 |------|--------|------|
-| 你的持仓（如 ORCL、SPCX …） | `watchlist.json` | **git 忽略** —— 只有 `watchlist.example.json` 被纳入版本控制 |
-| 邮件 / API 凭据 | `.env` | **git 忽略** —— 只有 `.env.example` 被纳入版本控制 |
+| 你的持仓 | `watchlist.json` | **git 忽略** —— 只有 `watchlist.example.json` 被跟踪 |
+| 邮件 / API 凭据 | `.env` | **git 忽略** —— 只有 `.env.example` 被跟踪 |
 | 抓取的新闻、报告、简报 | `data/` | **git 忽略** |
-
-在任意机器上从模板重建这两个私有文件：
 
 ```bash
 cp watchlist.example.json watchlist.json   # 然后填入你自己的持仓
 cp .env.example .env                        # 然后填入你的 SMTP 凭据
 ```
 
-正是这种隔离，让这个仓库可以安全地公开分享 —— `*.example` 文件只是占位模板，真实文件
-始终留在你本机。**切勿提交 `.env` 或 `watchlist.json`。**
+`*.example` 只是占位模板，真实文件始终留在你本机。仪表盘只绑定 `127.0.0.1`。
+**切勿提交 `.env` 或 `watchlist.json`。**
 
 ---
 
 ## 可选增强模块
 
-上面的核心是 **基础档**：免费、无需 API key、无需手动步骤 —— `install.sh` 开箱即用。
-下面这些模块能力更强，但都是 **可选的**，且需要 **手动配置**；核心功能不依赖它们中的任何一个。
+以上核心是 **基础档**：免费、免 key、零手动步骤。以下模块能力更强，但都是 **可选**
+的 —— 核心不依赖其中任何一个。
 
-### TradingView —— 实时图表，会话内可用
-通过 [`tradesdontlie/tradingview-mcp`](https://github.com/tradesdontlie/tradingview-mcp)
-服务器（Chrome DevTools 端口）把你的 **TradingView Desktop** 应用桥接给 Claude。配好之后，
-在会话里直接问 Claude —— *“用 TV 数据分析一下 MSTR”* —— 它就会从你的图表上直接读取实时
-行情 / 指标值 / 你的 Pine 价位。手动步骤：clone + `npm install` 该 MCP、`claude mcp add`、
-以调试端口启动 TradingView、重启 Claude Code、运行 `tv_health_check`。*（ToS 灰色地带、
-未公开的内部 API —— 仅对你自己已登录的客户端运行。）*
-
-### IBKR —— 计划中（`tools/ibkr/`）
-通过 [`ib_async`](https://github.com/ib-api-reloaded/ib_async) 接入 Interactive Brokers：
-实时行情、期权链、持仓，以及在显式保护开关后的 **模拟盘** 执行。先做只读/模拟盘；绝不自动
-提交实盘订单。需要 TWS / IB Gateway 处于运行状态。
-
----
+- **TradingView（已发布）** —— 通过 [`tradingview-mcp`](https://github.com/tradesdontlie/tradingview-mcp)
+  把你的 TradingView 桌面端桥接给 Claude，直接问 *"用 TV 数据分析 MSTR"*。仪表盘个股页
+  也提供可选的 TradingView 图表嵌入。*（ToS 灰色地带；仅对你自己已登录的客户端运行。）*
+- **IBKR（计划中，`tools/ibkr/`）** —— 经 [`ib_async`](https://github.com/ib-api-reloaded/ib_async)
+  接入盈透：行情、期权链，以及显式保护开关后的 **模拟盘** 执行。绝不自动提交实盘订单。
 
 ## 路线图
 
-简版（已发布历史见 [`RELEASE_NOTES.md`](RELEASE_NOTES.md)；完整细节见
-[`ROADMAP.md`](ROADMAP.md)）：
+已发布历史见 [`RELEASE_NOTES.md`](RELEASE_NOTES.md)；完整细节见 [`ROADMAP.md`](ROADMAP.md)：
 
-- **仪表盘 v2**（v1 已发布：`ot web`）：分析页价格图表、事件日历卡片、板块聚合、个性化策略实验室。
-- **多引擎辩论**：三个 AI 引擎对同一标的辩论 —— 一方看多、一方看空、一方裁决（指定立场、
-  五档结论），把 [TradingAgents](https://github.com/TauricResearch/TradingAgents) 的辩论协议
-  精简为三次 LLM 调用。
-- **邮件 v2 —— 用户可调的数据源**：自行选择每日简报融合哪些来源。
-- **可选增强模块**（手动配置，核心永不依赖）：
-  - **IBKR**（`tools/ibkr/`）—— 通过 `ib_async` 提供实时行情、期权链、持仓、模拟盘执行。
-  - **TradingView** —— 把实时图表 / 指标 / Pine 价位融入报告（目前：会话内、按需）。
-- **更多无需 key 的数据 CLI 与 API** —— FRED、期权 IV/IVR、资金费率曲线。
-- **多智能体研究台** —— *未来探索方向，并非当前路线*：分析师 →
-  多空辩论 → 交易员 → 风控官，借鉴
-  [TauricResearch/TradingAgents](https://github.com/TauricResearch/TradingAgents)。
+- **多引擎辩论。** Gemini 论多、GLM 论空、Claude 裁决 —— 五档结论 + 入场位 + 失效位，
+  把 [TradingAgents](https://github.com/TauricResearch/TradingAgents) 的辩论协议精简为三次调用。
+- **决策日志 v2。** 每个判断连同失效位入档；D1/D3 自动核对实现收益与超额，教训回灌到
+  之后的每一次解读。
+- **链上聪明钱。** `ot whales`：带标签的巨鲸钱包，经免 key 公共 RPC 轮询，按
+  HIGH/MED/LOW 分级，汇入每日邮件的聪明钱板块。
+- **仪表盘 v2。** 分析页图表已在 v3 落地 —— 下一步：板块聚合与个性化策略实验室。
+
+---
+
+## 环境要求
+
+Python 3.9+（以标准库为主；装了 `certifi` 就用它做 TLS 校验，否则回退到系统 `curl`）。
+无需任何 key、无需付费数据源。检测到 [`uv`](https://github.com/astral-sh/uv) 时 `ot`
+自动优先使用，否则用普通 `python3` —— `OT_PYTHON` 覆盖解释器，`OT_NO_UV=1` 禁用 uv，
+`ot doctor` 查看当前状态。
 
 ---
 
 ## 致谢与免责声明
 
-由 [@orangejustin](https://github.com/orangejustin) 构建。（未来的）多智能体方向受
-[TradingAgents](https://github.com/TauricResearch/TradingAgents) 启发。
+由 [@orangejustin](https://github.com/orangejustin) 构建。多智能体方向借鉴
+[TradingAgents](https://github.com/TauricResearch/TradingAgents)；部署与产品预览的打磨
+借鉴 [daily_stock_analysis](https://github.com/ZhuLinsen/daily_stock_analysis)。
 
-本项目提供的分析 **仅供教育用途**，**并非投资建议**。市场有风险，请据此控制仓位并自行
-做尽职研究。**仅供教育用途，非投资建议。交易涉及重大亏损风险。**
+本项目提供的分析 **仅供教育用途**，**并非投资建议**。市场有风险，请据此控制仓位并
+自行做尽职研究。
