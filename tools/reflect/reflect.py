@@ -10,7 +10,12 @@ days, and recalibrate — so the toolkit grades its own track record and learns.
   ot reflect log  < decide.json     # append a call (or --ticker/--market/--action/--grade/--price)
   ot reflect grade [--days N]        # verify open calls >= N days old vs price (return, vs SPY/index)
   ot reflect stats                   # hit-rate + avg return + alpha, by grade/action/market (calibration)
+  ot reflect lessons [--ticker T]    # compact lessons block for prompt injection (ot debate / emails)
   ot reflect                         # the calibration table (same as stats)
+
+Schema v2: a call may carry `invalidation` (the price that voids the thesis),
+`time_stop_days` and a one-line `thesis`. `grade` also reports the max adverse
+excursion (close basis) and whether the invalidation level was breached.
 
 Journal: data/journal/decisions.jsonl (git-ignored). Benchmarks: US ^GSPC,
 A-share CSI300 (000300.SS), HK ^HSI. No-key Yahoo daily closes. Stdlib + curl.
@@ -135,10 +140,22 @@ def grade(min_days):
         alpha = (ret - bret) if bret is not None else None
         act = (e.get("action") or "").upper()
         right = (ret > 0) if act == "CALL" else (ret < 0) if act == "PUT" else (abs(ret) < 3)
+        # Max adverse excursion (close basis) + did price cross the logged invalidation?
+        closes = [c for _, c in cs]
+        adverse = (min(closes) if act != "PUT" else max(closes))
+        mae = (adverse / entry_px - 1) * 100
+        inval, breached = e.get("invalidation"), None
+        if inval is not None:
+            try:
+                iv = float(inval)
+                breached = (min(closes) < iv) if act != "PUT" else (max(closes) > iv)
+            except (TypeError, ValueError):
+                pass
         e["outcome"] = {"graded": today, "days": _days(e["date"], today), "current_price": round(cur, 2),
                         "return_pct": round(ret, 2), "bench": bsym,
                         "bench_return_pct": round(bret, 2) if bret is not None else None,
-                        "alpha_pct": round(alpha, 2) if alpha is not None else None, "was_right": right}
+                        "alpha_pct": round(alpha, 2) if alpha is not None else None, "was_right": right,
+                        "mae_pct": round(mae, 2), "invalidation_breached": breached}
         n += 1
     _save(entries)
     return n
@@ -158,6 +175,41 @@ def _agg(entries, key):
         else:
             b["alpha"] += o["alpha_pct"]
     return g
+
+
+def lessons(ticker=None, same=5, cross=3):
+    """Compact lessons block for prompt injection: last `same` graded calls on
+    this ticker + last `cross` on other names (TradingAgents' two-phase memory,
+    distilled). Returns '' when nothing is graded yet."""
+    graded = [e for e in _load() if e.get("outcome")]
+    graded.sort(key=lambda e: e.get("date") or "", reverse=True)
+    tk = (ticker or "").upper()
+    mine = [e for e in graded if str(e.get("ticker", "")).upper() == tk][:same] if tk else []
+    others = [e for e in graded if str(e.get("ticker", "")).upper() != tk][:cross]
+    if not mine and not others:
+        return ""
+
+    def line(e):
+        o = e["outcome"]
+        verdict = "RIGHT" if o["was_right"] else "WRONG"
+        parts = [f"{e.get('date')} {e.get('ticker')} {e.get('action') or '?'}"
+                 f" (grade {e.get('grade') or '?'}) -> {o['return_pct']:+.1f}% in {o['days']}d, {verdict}"]
+        if o.get("alpha_pct") is not None:
+            parts.append(f"alpha {o['alpha_pct']:+.1f}%")
+        if o.get("invalidation_breached"):
+            parts.append("invalidation BREACHED en route")
+        if e.get("thesis"):
+            parts.append(f'thesis: "{e["thesis"]}"')
+        return "  - " + " · ".join(parts)
+
+    L = ["PAST-CALL LESSONS (self-calibration — weigh these before deciding):"]
+    if mine:
+        L.append(f" same ticker ({tk}):")
+        L += [line(e) for e in mine]
+    if others:
+        L.append(" other names:")
+        L += [line(e) for e in others]
+    return "\n".join(L)
 
 
 def stats():
@@ -183,11 +235,18 @@ def main(argv=None):
     p.add_argument("--format", choices=["text", "json"], default="text")
     sub = p.add_subparsers(dest="cmd")
     pl = sub.add_parser("log")
-    for f in ("ticker", "market", "action", "grade", "conviction"):
+    for f in ("ticker", "market", "action", "grade", "conviction", "thesis"):
         pl.add_argument(f"--{f}")
     pl.add_argument("--price", type=float)
+    pl.add_argument("--invalidation", type=float, help="price that voids the thesis (schema v2)")
+    pl.add_argument("--time-stop", dest="time_stop", type=int,
+                    help="days after which the call self-expires (schema v2)")
     sub.add_parser("grade").add_argument("--days", type=int, default=5)
     sub.add_parser("stats")
+    pls = sub.add_parser("lessons")
+    pls.add_argument("--ticker")
+    pls.add_argument("--same", type=int, default=5)
+    pls.add_argument("--cross", type=int, default=3)
     a = p.parse_args(argv)
 
     if a.cmd == "log":
@@ -197,14 +256,17 @@ def main(argv=None):
             if raw:
                 try:
                     d = json.loads(raw)
+                    plan = d.get("plan") or {}
                     entry = {"ticker": d.get("ticker"), "market": d.get("market", "US"), "action": d.get("action"),
-                             "conviction": d.get("conviction"), "grade": (d.get("plan") or {}).get("grade"),
-                             "entry_price": d.get("price"), "source": "pipe"}
+                             "conviction": d.get("conviction"), "grade": plan.get("grade"),
+                             "entry_price": d.get("price"), "invalidation": plan.get("stop"),
+                             "thesis": d.get("thesis"), "source": "pipe"}
                 except ValueError:
                     pass
         if entry is None:
             entry = {"ticker": a.ticker, "market": a.market or "US", "action": a.action, "grade": a.grade,
-                     "conviction": a.conviction, "entry_price": a.price, "source": "manual"}
+                     "conviction": a.conviction, "entry_price": a.price, "invalidation": a.invalidation,
+                     "time_stop_days": a.time_stop, "thesis": a.thesis, "source": "manual"}
         if not entry.get("ticker"):
             print("reflect log: need a ticker (stdin JSON or --ticker)", file=sys.stderr)
             return 1
@@ -214,6 +276,11 @@ def main(argv=None):
 
     if a.cmd == "grade":
         print(f"graded {grade(a.days)} call(s) (>= {a.days}d old) vs actual price.")
+        return 0
+
+    if a.cmd == "lessons":
+        print(lessons(a.ticker, a.same, a.cross) or
+              "(no graded calls yet — log with `ot reflect log`, verify with `ot reflect grade`)")
         return 0
 
     s = stats()

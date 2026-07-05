@@ -258,7 +258,11 @@ def _fj_items(minutes: int, ticker: str | None = None, limit: int = 12) -> list:
     (populated by `ot news store` / the scheduled email runs)."""
     if minutes > 1440 and not ticker:
         days = min(7, max(2, -(-minutes // 1440)))
-        raw = ot_json(ROOT / "tools/financialjuice/fj.py", "digest", "--days", str(days)) or {}
+        # digest defaults to --limit 200 (newest only) — that caps the window well
+        # short of `days`, so 3d and 7d collapse to the same newest slice. Ask for
+        # the whole window; the cutoff filter below trims it to `minutes`.
+        raw = ot_json(ROOT / "tools/financialjuice/fj.py", "digest",
+                      "--days", str(days), "--limit", "2000") or {}
         items = raw.get("items") if isinstance(raw, dict) else raw
         items = [i for i in (items or []) if isinstance(i, dict)]
         cutoff = time.time() - minutes * 60
@@ -320,7 +324,10 @@ def _news_for(ticker: str | None, minutes: int = 1440) -> tuple[list, str]:
     """Headlines + scope. Fallback chain for a name: FJ ticker-tagged →
     Yahoo per-name RSS → the general market tape (labeled as such)."""
     if not ticker:
-        return _fj_items(minutes, limit=120), "market"
+        # window-proportional render cap so a wider window visibly shows more
+        # history instead of the same newest slice (min 120, ~80/day, max 500).
+        cap = min(500, max(120, 80 * (-(-minutes // 1440))))
+        return _fj_items(minutes, limit=cap), "market"
     items = _fj_items(minutes, ticker)
     if items:
         return items, "name"
