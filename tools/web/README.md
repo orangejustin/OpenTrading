@@ -70,6 +70,18 @@ Everything runs **on your machine** — positions never leave `localhost`.
     **invalidation**, time stop, plus the bear's direct attack on the bull.
     Runs only on click (a page visit never burns LLM calls), cached until ↻,
     and the verdict is **auto-journaled to `ot reflect`**.
+- **Desk consensus + Confluence ladder (per ticker)** — the fusion layer that makes
+  the panels compound instead of sitting side-by-side:
+  - **Desk consensus strip** — one row atop the ticker page: engine (`ot decide`) ·
+    quant tilt · TimesFM tilt · AI action · debate verdict as colored chips, plus an
+    agreement verdict — **CONSENSUS LONG/SHORT** when the analysts align,
+    **⚠ STAND ASIDE — models disagree** when they split (disagreement IS the signal).
+  - **Confluence ladder** — every price level the desk emits (decide zones/stop ·
+    quant + TimesFM P10/P50/P90 · dealer call/put walls · AI sniper levels · judge
+    entry/invalidation · MA20 + true 52w marks) merged into ONE ladder; levels named
+    by **2+ independent sources** get a confluence badge — those are the lines that
+    matter. The quant cone band + dealer walls are also drawn on the candlestick
+    chart itself. Assembled from cached parts — never triggers an LLM call.
 - **Desk Calibration (Strategy tab)** — `ot reflect`'s track record as a table
   (hit-rate · avg return · alpha, by action/grade/market) plus the exact
   lessons block that gets injected into every debate's judge prompt.
@@ -115,7 +127,8 @@ Everything runs **on your machine** — positions never leave `localhost`.
 - `server.py` — stdlib `ThreadingHTTPServer`; routes `/api/overview`,
   `/api/watchlist`, `/api/analyze`, `/api/engines`, `/api/news`, plus the
   prediction desk: `/api/poly`, `/api/quant`, `/api/forecast`, `/api/debate`
-  (`peek=1` = cached-only, never triggers LLM calls), `/api/calibration`.
+  (`peek=1` = cached-only, never triggers LLM calls), `/api/fusion` (confluence
+  ladder + consensus row, assembled from cached parts), `/api/calibration`.
   Data comes from the existing `ot` tools (via `--format json`) and Yahoo's
   no-key chart endpoint (quotes + sparklines).
 - `index.html` — a single dependency-free page (vanilla JS + inline CSS); SVG
