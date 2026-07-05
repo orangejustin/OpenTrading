@@ -155,9 +155,15 @@ def _pack_text(t: str, pack: dict) -> str:
         L.append(f"CROWD ODDS (Polymarket): {odds}")
     q = pack.get("quant")
     if q and not q.get("error"):
+        hit = q.get("oos_hit_rate")
+        # Honest reliability label — only call the model weak when it IS weak
+        # (a 69% OOS hit-rate is strong; an unconditional caveat misleads the bear).
+        rel = ("reliability unknown" if hit is None
+               else f"WEAK model ({hit}% OOS hit-rate, ~coin-flip) — discount it" if hit < 55
+               else f"decent model ({hit}% OOS hit-rate)" if hit < 62
+               else f"STRONG model ({hit}% OOS hit-rate) — weigh it seriously")
         L.append(f"QUANT MODEL (logistic on this name's history, {q.get('horizon_days')}d):"
-                 f" P(up)={q.get('p_up')}% vs base {q.get('base_rate_up')}%,"
-                 f" oos hit-rate {q.get('oos_hit_rate')}% (near 50% = weak model — weigh accordingly),"
+                 f" P(up)={q.get('p_up')}% vs base {q.get('base_rate_up')}%, {rel},"
                  f" range cone {json.dumps(q.get('cone'))}")
     fc = pack.get("forecast")
     if fc:
