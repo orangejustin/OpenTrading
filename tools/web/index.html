@@ -291,6 +291,8 @@
     <div class="sub" style="font-size:12px;color:#94a3b8;margin:0 4px 12px">
       One deterministic <b>ot decide</b> read per name — direction · grade · zones · stop. No LLM, no waiting; the learned risk-first policy. Click a card for the full page.</div>
     <div class="sgrid" id="sgrid"><div class="card pad loading" style="grid-column:1/-1">Running the decision engine over your book + watchlist…</div></div>
+    <div class="sec-h" style="margin-top:22px">Desk Calibration <span class="sub">ot reflect — the desk grading its own past calls</span></div>
+    <div class="card pad" id="calib"><div class="loading" style="padding:12px">Loading the journal…</div></div>
   </section>
 
   <section id="view-ticker" style="display:none"></section>
@@ -298,7 +300,8 @@
 
 <footer>
   OpenTrading — local-first, macro-first, risk-first. Data: Yahoo quotes &amp; charts, FinancialJuice news,
-  CNN/crypto Fear&amp;Greed, CBOE options. AI analysis (optional) via Gemini, OpenRouter
+  CNN/crypto Fear&amp;Greed, CBOE options, Polymarket crowd odds. Forecasts: keyless quant regression +
+  optional TimesFM. AI analysis (optional) via Gemini, OpenRouter
   (GPT · Claude · DeepSeek · GLM · …) or your Claude Code subscription — switch in the header.
   Everything runs on your machine. <b>Educational only — not financial advice.</b>
 </footer>
@@ -430,7 +433,29 @@ async function loadMacro(){
       <div class="d">${m.btc_funding?.read||''} — extreme positive = crowded longs</div></div>
     <div class="card"><div class="k">SPY dealer gamma (&lt;7 DTE)</div>
       <div class="v ${g.sign==='positive'?'up':g.sign==='negative'?'down':''}">${g.net_usd_bn!=null?('$'+g.net_usd_bn+'bn/1%'):'—'}</div>
-      <div class="d">${g.sign||''} · call wall <b>${g.call_wall??'—'}</b> · put wall <b>${g.put_wall??'—'}</b> · spot ${g.spot??'—'}</div></div>`;
+      <div class="d">${g.sign||''} · call wall <b>${g.call_wall??'—'}</b> · put wall <b>${g.put_wall??'—'}</b> · spot ${g.spot??'—'}</div></div>
+    <div class="card" id="polycard" style="grid-column:1/-1"><div class="k">Crowd odds — Polymarket</div>
+      <div class="d" style="margin-top:6px">loading…</div></div>`;
+  loadPoly();
+}
+async function loadPoly(){
+  const p=await fetch('/api/poly').then(r=>r.json()).catch(()=>null);
+  const el=$('#polycard'); if(!el) return;
+  if(!p||p.error||!p.gate){el.innerHTML='<div class="k">Crowd odds — Polymarket</div><div class="d" style="margin-top:6px">unavailable (network)</div>';return;}
+  const g=p.gate;
+  const stat=(lbl,x,warnHigh)=>{if(!x)return '';
+    const col=warnHigh&&x.p>=40?'var(--down)':x.p>=65?'var(--ink)':'#334155';
+    return `<div style="min-width:130px"><div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.3px">${lbl}</div>
+      <div class="mono" style="font-size:19px;font-weight:800;color:${col};margin-top:2px">${x.p}%</div></div>`;};
+  el.innerHTML=`<div class="k">Crowd odds — Polymarket <span style="color:#cbd5e1">· priced forecast, no key</span></div>
+    <div style="display:flex;gap:26px;flex-wrap:wrap;margin-top:9px">
+      ${stat('Fed holds next FOMC',g.no_change_next_fomc)}
+      ${stat('25bp cut next FOMC',g.cut_25_next_fomc)}
+      ${stat('Fed HIKE this year',g.hike_this_year,true)}
+      ${stat('Zero cuts this year',g.zero_cuts_this_year)}
+      ${stat('Recession',g.recession,true)}
+    </div>
+    <div class="d" style="margin-top:7px;color:#94a3b8">what the crowd is braced for — a print inside these odds is a non-event; outside them is the trade</div>`;
 }
 
 /* ---------- ticker page ---------- */
@@ -449,6 +474,11 @@ async function showTicker(tk){
       <div id="chart" style="margin-top:8px"><div class="loading">Loading chart…</div></div>
       <div class="chnote" id="chnote"></div>
       <div class="stats" id="t-stats"></div></div>
+    <div class="sec-h" style="margin-top:18px">Prediction Desk <span class="sub">quant cone · TimesFM · bull vs bear debate — the fusion pipeline</span></div>
+    <div class="top" style="margin-top:0">
+      <div class="card pad" id="desk-debate"></div>
+      <div class="card pad" id="desk-cones"><div class="lbl">Forecast cones</div><div class="loading" style="padding:14px">Fitting the regression…</div></div>
+    </div>
     <div id="ai-area"></div>
     <div class="sec-h" style="margin-top:18px" id="news-h">Related News</div>
     <div class="card pad news" id="t-news"><div class="loading">Loading headlines…</div></div>`;
@@ -456,6 +486,10 @@ async function showTicker(tk){
   CHART={tk,rng:'3mo'};
   $('#tvsw').checked=localStorage.getItem('ot_tv')==='1';
   loadChart();
+  loadCones(tk);
+  renderDebateInvite(tk);
+  fetch(`/api/debate?ticker=${encodeURIComponent(tk)}&peek=1`).then(r=>r.json())
+    .then(d=>{if(CHART.tk===tk&&d&&d.verdict)renderDebate(tk,d);}).catch(()=>{});
   const d=await fetch(`/api/analyze?ticker=${encodeURIComponent(tk)}&mode=auto${engQS()}`).then(r=>r.json()).catch(()=>null);
   if(!d){$('#ai-area').innerHTML='<div class="banner">Failed to load data.</div>';return;}
   $('#t-nm').textContent=d.name||'';
@@ -589,6 +623,97 @@ function renderAnalysis(d){
     </div>`;
 }
 
+/* ---------- prediction desk ---------- */
+function coneBar(c,last,label,extra){
+  if(!c) return '';
+  const lo=Math.min(c.p10,last), hi=Math.max(c.p90,last), span=(hi-lo)||1;
+  const x=v=>((v-lo)/span*100).toFixed(1)+'%';
+  return `<div style="margin-top:12px">
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:#64748b;font-weight:700">
+      <span>${label}</span><span class="mono">${extra||''}</span></div>
+    <div style="position:relative;height:26px;margin-top:6px;background:#f1f5f9;border-radius:8px">
+      <div style="position:absolute;left:${x(c.p10)};width:calc(${x(c.p90)} - ${x(c.p10)});top:8px;height:10px;background:#dbeafe;border-radius:6px"></div>
+      <div style="position:absolute;left:${x(c.p25)};width:calc(${x(c.p75)} - ${x(c.p25)});top:6px;height:14px;background:#93c5fd;border-radius:6px"></div>
+      <div style="position:absolute;left:${x(c.p50)};top:3px;width:2px;height:20px;background:#1d4ed8"></div>
+      <div style="position:absolute;left:${x(last)};top:0;width:2px;height:26px;background:#0f172a"></div>
+    </div>
+    <div class="mono" style="display:flex;justify-content:space-between;font-size:10.5px;color:#94a3b8;margin-top:3px">
+      <span>${fmt(c.p10)}</span><span>P50 ${fmt(c.p50)}</span><span>${fmt(c.p90)}</span></div></div>`;
+}
+async function loadCones(tk){
+  const el=$('#desk-cones'); if(!el) return;
+  const q=await fetch(`/api/quant?ticker=${encodeURIComponent(tk)}`).then(r=>r.json()).catch(()=>null);
+  if(CHART.tk!==tk) return;
+  let h='<div class="lbl">Forecast cones <span style="color:#cbd5e1">· 5 sessions</span></div>';
+  if(q&&!q.error){
+    const edge=(q.p_up-q.base_rate_up).toFixed(1);
+    h+=`<div style="display:flex;align-items:baseline;gap:10px;margin-top:4px">
+      <span class="mono" style="font-size:24px;font-weight:800;color:${q.p_up>=55?'var(--up)':q.p_up<=45?'var(--down)':'#334155'}">${q.p_up}%</span>
+      <span style="font-size:12px;color:#64748b">P(up) · edge ${edge>0?'+':''}${edge}pt vs base · oos hit ${q.oos_hit_rate??'—'}%</span></div>`;
+    h+=coneBar(q.cone,q.last,'Quant — empirical (keyless)',`n=${q.n_train}`);
+  } else h+='<div class="d" style="margin-top:8px;color:#94a3b8">quant unavailable'+(q&&q.error?': '+q.error:'')+'</div>';
+  el.innerHTML=h+'<div class="d" id="tfm-slot" style="margin-top:10px;color:#94a3b8">checking TimesFM…</div>';
+  const f=await fetch(`/api/forecast?ticker=${encodeURIComponent(tk)}`).then(r=>r.json()).catch(()=>null);
+  if(CHART.tk!==tk) return;
+  const slot=$('#tfm-slot'); if(!slot) return;
+  if(f&&f.available){
+    slot.outerHTML=coneBar(f.cone,f.last,'TimesFM — foundation model',f.model||'')+
+      `<div class="d" style="margin-top:8px;color:#94a3b8">two independent cones agreeing = a real range; disagreeing = uncertainty is the signal</div>`;
+  } else {
+    slot.textContent=f&&f.hint?('TimesFM: '+f.hint):'TimesFM: opt-in — bash install.sh --with-forecast';
+  }
+}
+function renderDebateInvite(tk){
+  const el=$('#desk-debate'); if(!el) return;
+  el.innerHTML=`<div class="lbl">Bull vs Bear — the research desk</div>
+    <div style="text-align:center;padding:14px 6px 8px">
+      <button class="aibtn" onclick="runDebate('${tk}',false)">⚔️ Run the debate</button>
+      <div class="aihint">3 LLM calls: bull and bear argue on different engines, the judge commits —
+        5-tier verdict · entry · invalidation · time stop. ~1–2 min; journaled to <b>ot reflect</b>. Cached until ↻.</div></div>`;
+}
+let DBTIMER=null;
+function runDebate(tk,fresh){
+  const el=$('#desk-debate'); if(!el) return;
+  const stages=['building the evidence pack (quote · macro · odds · quant · news · lessons)…',
+    'bull is arguing…','bear is attacking the bull…','the judge is deciding…'];
+  const t0=Date.now();
+  el.innerHTML=`<div class="lbl">Bull vs Bear — the research desk</div><div class="prog" style="margin:10px auto 6px">
+    <div class="stage" id="db-stage">${stages[0]}</div>
+    <div class="bar"><div class="fill"></div></div>
+    <div class="el" id="db-el">0.0s</div></div>`;
+  clearInterval(DBTIMER);
+  DBTIMER=setInterval(()=>{const s=(Date.now()-t0)/1000;
+    $('#db-el')&&($('#db-el').textContent=s.toFixed(1)+'s');
+    $('#db-stage')&&($('#db-stage').textContent=stages[s<25?0:s<50?1:s<75?2:3]);},150);
+  fetch(`/api/debate?ticker=${encodeURIComponent(tk)}${fresh?'&fresh=1':''}`)
+    .then(r=>r.json()).then(d=>{clearInterval(DBTIMER);
+      if(CHART.tk!==tk) return;
+      if(!d||d.error){el.innerHTML=`<div class="lbl">Bull vs Bear</div><div class="banner">${d&&d.error||'Debate failed.'}</div>`;return;}
+      renderDebate(tk,d);
+    }).catch(()=>{clearInterval(DBTIMER);el.innerHTML='<div class="lbl">Bull vs Bear</div><div class="banner">Debate failed — try again.</div>';});
+}
+function renderDebate(tk,d){
+  const el=$('#desk-debate'); if(!el) return;
+  const vc={STRONG_BUY:'buy',BUY:'buy',HOLD:'hold',SELL:'sell',STRONG_SELL:'sell'}[d.verdict]||'mixed';
+  el.innerHTML=`<div class="lbl" style="display:flex;gap:8px;align-items:center">Bull vs Bear — verdict
+      ${d.cached?'<span class="cachetag">cached</span>':''}
+      <span class="rerun" style="margin-left:auto" onclick="runDebate('${tk}',true)">↻ Re-run</span></div>
+    <div style="display:flex;align-items:center;gap:12px;margin-top:4px">
+      <span class="chip ${vc}" style="font-size:14px;padding:6px 14px">${(d.verdict||'').replace('_',' ')}</span>
+      <span style="font-size:13px;color:#64748b">confidence <b class="mono">${d.confidence}/100</b></span></div>
+    <div class="summary" style="margin-top:10px">${d.rationale||''}</div>
+    <div class="levels" style="grid-template-columns:repeat(3,1fr);margin-top:12px">
+      <div class="lv sec"><div class="k">Entry</div><div class="v">${d.entry||'—'}</div></div>
+      <div class="lv stop"><div class="k">Invalidation</div><div class="v mono">${fmt(d.invalidation)}</div></div>
+      <div class="lv tgt"><div class="k">Time stop</div><div class="v">${d.time_stop_days??'—'}d</div></div></div>
+    <div style="margin-top:12px;font-size:12.5px;line-height:1.6;color:#334155">
+      <div><b style="color:var(--up)">Bull</b> <span style="color:#94a3b8">(${d.engines?.bull||''})</span> — ${d.bull?.strongest_point||''}</div>
+      <div style="margin-top:6px"><b style="color:var(--down)">Bear</b> <span style="color:#94a3b8">(${d.engines?.bear||''})</span> — ${d.bear?.strongest_point||''}</div>
+      <div style="margin-top:6px;color:#64748b"><b>Bear on bull:</b> ${d.bear?.attack_on_bull||''}</div>
+      ${d.weakest_link?`<div style="margin-top:6px;color:#64748b"><b>Weakest link:</b> ${d.weakest_link}</div>`:''}</div>
+    <div class="d" style="margin-top:10px;color:#94a3b8">judge ${d.engines?.judge||''} · ${d.elapsed_s?d.elapsed_s+'s':''} ${d.finished_at?'· '+d.finished_at:''} · journaled to ot reflect — educational only</div>`;
+}
+
 /* ---------- news page ---------- */
 const WINS=[6,12,24,48,72,168];
 const winLbl=v=>v<24?v+'h':(v/24)+'d';
@@ -675,6 +800,29 @@ async function loadStrategy(fresh){
       ${c.reason?`<div class="why">${c.reason}</div>`:''}
       ${c.scenario?`<div class="why">⚠ ${c.scenario}</div>`:''}</div>`;
   }).join('');
+  loadCalibration();
+}
+async function loadCalibration(){
+  const el=$('#calib'); if(!el) return;
+  const d=await fetch('/api/calibration').then(r=>r.json()).catch(()=>null);
+  if(!d||(!d.stats&&!d.lessons)){el.innerHTML='<div class="d" style="color:#94a3b8">Nothing graded yet — verdicts from the debate desk auto-journal; <b>ot reflect grade</b> scores them after a few days.</div>';return;}
+  const s=d.stats;
+  const group=(title,g)=>{if(!g)return '';
+    const rows=Object.entries(g).sort((a,b)=>b[1].n-a[1].n).map(([k,b])=>{
+      const hit=Math.round(100*b.right/b.n), na=b.n-b.na, alpha=na?(b.alpha/na):null;
+      return `<tr><td style="font-weight:700">${k}</td><td class="mono">${b.n}</td>
+        <td class="mono" style="color:${hit>=55?'var(--up)':hit<=45?'var(--down)':'#334155'}">${hit}%</td>
+        <td class="mono">${(b.ret/b.n>=0?'+':'')+(b.ret/b.n).toFixed(1)}%</td>
+        <td class="mono">${alpha!=null?(alpha>=0?'+':'')+alpha.toFixed(1)+'%':'—'}</td></tr>`;}).join('');
+    return `<div style="flex:1;min-width:230px"><div class="lbl">${title}</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12.5px">
+        <tr style="color:#94a3b8;font-size:10.5px;text-transform:uppercase;text-align:left">
+          <th></th><th>n</th><th>hit</th><th>avg ret</th><th>α</th></tr>${rows}</table></div>`;};
+  el.innerHTML=(s?`<div style="display:flex;gap:26px;flex-wrap:wrap">
+      ${group('By action',s.by_action)}${group('By grade',s.by_grade)}${group('By market',s.by_market)}</div>
+    <div class="d" style="margin-top:8px;color:#94a3b8">${s.total} graded calls · hit-rate near 50% means no edge — the judge is told to weigh this</div>`:'')+
+    (d.lessons?`<div class="lbl" style="margin-top:14px">Recent lessons (injected into every debate)</div>
+      <pre style="font-size:11.5px;line-height:1.6;color:#334155;white-space:pre-wrap;margin:4px 0 0;font-family:ui-monospace,monospace">${d.lessons.replace(/</g,'&lt;')}</pre>`:'');
 }
 
 /* ---------- routing ---------- */

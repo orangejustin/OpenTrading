@@ -5,6 +5,7 @@
 __pycache__/
 *.py[cod]
 .venv/
+.venv-forecast/
 venv/
 
 # Local trading data — never commit fetched news or personal logs
