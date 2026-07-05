@@ -54,6 +54,25 @@ Everything runs **on your machine** — positions never leave `localhost`.
 - **Per-name news fallback chain** — FinancialJuice ticker-tagged → Yahoo per-name
   RSS → the general tape (clearly labeled), so "Related News" is never empty on a
   quiet name.
+- **Crowd odds (Polymarket)** — a full-width Macro & Flow strip with the crowd's
+  *priced* probabilities for the Step-0 questions: P(Fed holds next FOMC),
+  P(25bp cut), P(HIKE this year), P(zero cuts), P(recession). Keyless, cached 15 min.
+- **Prediction Desk (per ticker)** — the fusion pipeline on every ticker page:
+  - **Forecast cones** — `ot quant`'s keyless logistic P(up) + empirical
+    P10–P90 cone renders instantly; if the opt-in TimesFM module is installed
+    (`bash install.sh --with-forecast`) its foundation-model cone renders below
+    it. Two independent cones agreeing = a real range; disagreeing = the
+    uncertainty *is* the signal.
+  - **⚔️ Bull vs Bear debate** — one click runs `ot debate`: the evidence pack
+    (decide plan · macro · earnings gate · crowd odds · quant + TimesFM cones ·
+    48h news · past-call lessons) goes to a bull and a bear on **different
+    engines**, then the judge commits — 5-tier verdict, confidence, entry,
+    **invalidation**, time stop, plus the bear's direct attack on the bull.
+    Runs only on click (a page visit never burns LLM calls), cached until ↻,
+    and the verdict is **auto-journaled to `ot reflect`**.
+- **Desk Calibration (Strategy tab)** — `ot reflect`'s track record as a table
+  (hit-rate · avg return · alpha, by action/grade/market) plus the exact
+  lessons block that gets injected into every debate's judge prompt.
 
 ## Two tiers
 
@@ -94,9 +113,11 @@ Everything runs **on your machine** — positions never leave `localhost`.
 ## How it's built
 
 - `server.py` — stdlib `ThreadingHTTPServer`; routes `/api/overview`,
-  `/api/watchlist`, `/api/analyze`, `/api/engines`, `/api/news`. Data comes from the
-  existing `ot` tools (via `--format json`) and Yahoo's no-key chart endpoint
-  (quotes + sparklines).
+  `/api/watchlist`, `/api/analyze`, `/api/engines`, `/api/news`, plus the
+  prediction desk: `/api/poly`, `/api/quant`, `/api/forecast`, `/api/debate`
+  (`peek=1` = cached-only, never triggers LLM calls), `/api/calibration`.
+  Data comes from the existing `ot` tools (via `--format json`) and Yahoo's
+  no-key chart endpoint (quotes + sparklines).
 - `index.html` — a single dependency-free page (vanilla JS + inline CSS); SVG
   sparklines and the sentiment gauge are hand-rolled (no chart library, no build step).
 - `../llm/llm.py` — the engine dispatcher, over three tiny stdlib clients:

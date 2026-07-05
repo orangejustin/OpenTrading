@@ -116,7 +116,19 @@ def build_pack(ticker: str, dte: int, market: str) -> dict:
         "news": _tool_json("tools/financialjuice/fj.py", "fetch", "--ticker", t,
                            "--minutes", "2880", "--limit", "10"),
         "lessons": _tool_text("tools/reflect/reflect.py", "lessons", "--ticker", t),
+        "quant": _tool_json("tools/quant/quant.py", t, timeout=120),
     }
+    # Optional power module: TimesFM cone, only when its venv exists (ot forecast).
+    tfm_py = ROOT / ".venv-forecast/bin/python"
+    if tfm_py.exists():
+        try:
+            out = subprocess.run([str(tfm_py), str(ROOT / "tools/forecast/tfm.py"), t,
+                                  "--format", "json"],
+                                 capture_output=True, text=True, timeout=300, cwd=str(ROOT))
+            fc = json.loads(out.stdout) if out.returncode == 0 and out.stdout.strip() else None
+            pack["forecast"] = fc if fc and fc.get("available") else None
+        except Exception:  # noqa: BLE001
+            pack["forecast"] = None
     return pack
 
 
@@ -141,6 +153,16 @@ def _pack_text(t: str, pack: dict) -> str:
     if p:
         odds = " · ".join(f"{k}={v['p']}%" for k, v in p.items())
         L.append(f"CROWD ODDS (Polymarket): {odds}")
+    q = pack.get("quant")
+    if q and not q.get("error"):
+        L.append(f"QUANT MODEL (logistic on this name's history, {q.get('horizon_days')}d):"
+                 f" P(up)={q.get('p_up')}% vs base {q.get('base_rate_up')}%,"
+                 f" oos hit-rate {q.get('oos_hit_rate')}% (near 50% = weak model — weigh accordingly),"
+                 f" range cone {json.dumps(q.get('cone'))}")
+    fc = pack.get("forecast")
+    if fc:
+        L.append(f"TIMESFM CONE (foundation model, {fc.get('horizon_days')}d):"
+                 f" point_end {fc.get('point_end')}, cone {json.dumps(fc.get('cone'))}")
     news = pack.get("news")
     items = news if isinstance(news, list) else (news or {}).get("items") or []
     heads = [it.get("title") or it.get("headline") or "" for it in items if isinstance(it, dict)][:8]
@@ -233,7 +255,13 @@ def render_text(r: dict) -> str:
 
 
 def _journal(r: dict) -> None:
-    """--log: drop the verdict into the ot reflect journal (closes the loop)."""
+    """--log: drop the verdict into the ot reflect journal (closes the loop).
+    Re-runs the same day skip the append — one graded call per name per day."""
+    from datetime import date
+    marker = f'"id": "{r["ticker"]}-{date.today().isoformat()}"'
+    jf = ROOT / "data/journal/decisions.jsonl"
+    if jf.exists() and marker in jf.read_text():
+        return
     action = {"STRONG_BUY": "CALL", "BUY": "CALL",
               "SELL": "PUT", "STRONG_SELL": "PUT"}.get(r["verdict"], "NO-ACTION")
     args = [sys.executable, str(ROOT / "tools/reflect/reflect.py"), "log",

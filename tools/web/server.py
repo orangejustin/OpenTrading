@@ -598,6 +598,106 @@ def analyze(ticker: str, engine: str | None = None, model: str | None = None,
 
 
 # --------------------------------------------------------------------------- #
+# prediction desk — poly odds · quant cone · TimesFM cone · debate · calibration
+# --------------------------------------------------------------------------- #
+_POLY_CACHE: dict = {}
+_DESK_CACHE: dict = {}
+
+
+def poly_odds() -> dict:
+    """Polymarket gate view, cached 15 min (the crowd doesn't reprice faster)."""
+    with _CACHE_LOCK:
+        hit = _POLY_CACHE.get("v")
+    if hit and time.time() - hit[0] < 900:
+        return dict(hit[1], cached=True)
+    d = ot_json(ROOT / "tools/predict/poly.py") or {"error": "poly unavailable"}
+    d["as_of"] = _now_et()
+    with _CACHE_LOCK:
+        _POLY_CACHE["v"] = (time.time(), d)
+    return d
+
+
+def quant_view(ticker: str) -> dict:
+    """ot quant, cached 30 min per name (daily features barely move intraday)."""
+    key = ("quant", ticker.upper())
+    with _CACHE_LOCK:
+        hit = _DESK_CACHE.get(key)
+    if hit and time.time() - hit[0] < 1800:
+        return dict(hit[1], cached=True)
+    d = ot_json(ROOT / "tools/quant/quant.py", ticker) or {"error": "quant unavailable"}
+    with _CACHE_LOCK:
+        _DESK_CACHE[key] = (time.time(), d)
+    return d
+
+
+def forecast_view(ticker: str) -> dict:
+    """TimesFM cone via the opt-in venv; {'available': False} when not installed."""
+    venv_py = ROOT / ".venv-forecast/bin/python"
+    if not venv_py.exists():
+        return {"available": False,
+                "hint": "opt-in module — bash install.sh --with-forecast (~2 GB, keyless core unaffected)"}
+    key = ("tfm", ticker.upper())
+    with _CACHE_LOCK:
+        hit = _DESK_CACHE.get(key)
+    if hit and time.time() - hit[0] < 1800:
+        return dict(hit[1], cached=True)
+    try:
+        out = subprocess.run([str(venv_py), str(ROOT / "tools/forecast/tfm.py"),
+                              ticker, "--format", "json"],
+                             capture_output=True, text=True, timeout=420, cwd=str(ROOT))
+        d = json.loads(out.stdout) if out.stdout.strip() else {"available": False,
+                                                               "error": out.stderr[-200:]}
+    except Exception as e:  # noqa: BLE001
+        d = {"available": False, "error": str(e)}
+    if d.get("available"):
+        with _CACHE_LOCK:
+            _DESK_CACHE[key] = (time.time(), d)
+    return d
+
+
+def debate_view(ticker: str, fresh: bool, bull: str | None, bear: str | None,
+                judge: str | None, peek: bool = False) -> dict:
+    """The bull/bear/judge desk — 3 LLM calls, so cached until ↻ (24h TTL).
+    peek=True never runs the desk — it only reports a cached verdict (the
+    ticker page uses this on load so a visit can't silently burn 3 LLM calls)."""
+    key = ("debate", ticker.upper())
+    if not fresh:
+        with _CACHE_LOCK:
+            hit = _DESK_CACHE.get(key)
+        if hit and time.time() - hit[0] < _CACHE_TTL:
+            return dict(hit[1], cached=True)
+    if peek:
+        return {"cached": False}
+    cmd = [PY, str(ROOT / "tools/llm/debate.py"), ticker, "--format", "json", "--log"]
+    for flag, val in (("--bull", bull), ("--bear", bear), ("--judge", judge)):
+        if val:
+            cmd += [flag, val]
+    try:
+        out = subprocess.run(cmd, capture_output=True, text=True, timeout=600, cwd=str(ROOT))
+        if out.returncode != 0:
+            return {"error": (out.stderr or out.stdout)[-300:] or "debate failed"}
+        d = json.loads(out.stdout)
+    except Exception as e:  # noqa: BLE001
+        return {"error": f"debate failed: {e}"}
+    d["finished_at"] = _now_et()
+    with _CACHE_LOCK:
+        _DESK_CACHE[key] = (time.time(), d)
+    return d
+
+
+def calibration() -> dict:
+    """ot reflect stats + the lessons block — the desk's own track record."""
+    stats = ot_json(ROOT / "tools/reflect/reflect.py") or None
+    try:
+        out = subprocess.run([PY, str(ROOT / "tools/reflect/reflect.py"), "lessons"],
+                             capture_output=True, text=True, timeout=30, cwd=str(ROOT))
+        lessons = out.stdout.strip() if out.returncode == 0 else ""
+    except Exception:  # noqa: BLE001
+        lessons = ""
+    return {"stats": stats, "lessons": lessons, "as_of": _now_et()}
+
+
+# --------------------------------------------------------------------------- #
 # http
 # --------------------------------------------------------------------------- #
 class Handler(BaseHTTPRequestHandler):
@@ -660,8 +760,33 @@ class Handler(BaseHTTPRequestHandler):
                     "engines": llm.engines() if llm else [],
                     "default": llm.default_engine() if llm else None,
                 }))
+            if u.path == "/api/poly":
+                return self._send(200, json.dumps(poly_odds()))
+            if u.path == "/api/quant":
+                tk = (qs.get("ticker", [""])[0] or "").strip()
+                if not tk:
+                    return self._send(400, json.dumps({"error": "ticker required"}))
+                return self._send(200, json.dumps(quant_view(tk)))
+            if u.path == "/api/forecast":
+                tk = (qs.get("ticker", [""])[0] or "").strip()
+                if not tk:
+                    return self._send(400, json.dumps({"error": "ticker required"}))
+                return self._send(200, json.dumps(forecast_view(tk)))
+            if u.path == "/api/debate":
+                tk = (qs.get("ticker", [""])[0] or "").strip()
+                if not tk:
+                    return self._send(400, json.dumps({"error": "ticker required"}))
+                return self._send(200, json.dumps(debate_view(
+                    tk, qs.get("fresh", ["0"])[0] in ("1", "true"),
+                    qs.get("bull", [None])[0], qs.get("bear", [None])[0],
+                    qs.get("judge", [None])[0],
+                    peek=qs.get("peek", ["0"])[0] in ("1", "true"))))
+            if u.path == "/api/calibration":
+                return self._send(200, json.dumps(calibration()))
             if u.path == "/api/health":
-                return self._send(200, json.dumps({"ok": True, "ai": bool(llm and llm.any_ok())}))
+                return self._send(200, json.dumps({
+                    "ok": True, "ai": bool(llm and llm.any_ok()),
+                    "forecast": (ROOT / ".venv-forecast/bin/python").exists()}))
             return self._send(404, json.dumps({"error": "not found"}))
         except Exception as e:  # noqa: BLE001
             return self._send(500, json.dumps({"error": f"{type(e).__name__}: {e}"}))

@@ -19,6 +19,8 @@
 #   ot email   [--to a] [--subject s] [--dry-run]   email the report via SMTP (creds in .env)
 #   ot decide   TICKER [--dte N]      live CALL/PUT/NO-ACTION call (learned policy)
 #   ot poly     [--tags fed,economy]  Polymarket crowd odds for the macro gate (no key)
+#   ot quant    TICKER [--horizon N]  keyless regression: P(up) + empirical range cone
+#   ot forecast TICKER [--horizon N]  TimesFM quantile cone (opt-in: install.sh --with-forecast)
 #   ot debate   TICKER [--log]        bull/bear/judge desk: 3 LLM calls on a deterministic pack
 #   ot web      [--port N] [--no-open] [--engine gemini|openrouter|claude] [--model SLUG]
 #               local dashboard: market + watchlist + AI ticker analysis (engines optional)
@@ -157,6 +159,15 @@ case "$cmd" in
     pyrun "$ROOT/tools/predict/poly.py" "$@" ;;
   debate)
     pyrun "$ROOT/tools/llm/debate.py" "$@" ;;
+  quant)
+    pyrun "$ROOT/tools/quant/quant.py" "$@" ;;
+  forecast|tfm)
+    # Opt-in TimesFM module: prefer its isolated venv (install.sh --with-forecast);
+    # without it tfm.py degrades to a clear install hint.
+    if [ -x "$ROOT/.venv-forecast/bin/python" ]; then
+      exec "$ROOT/.venv-forecast/bin/python" "$ROOT/tools/forecast/tfm.py" "$@"
+    fi
+    pyrun "$ROOT/tools/forecast/tfm.py" "$@" ;;
   web|dashboard)
     pyrun "$ROOT/tools/web/server.py" "$@" ;;
   schedule)
