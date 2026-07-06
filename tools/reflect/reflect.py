@@ -181,7 +181,7 @@ def lessons(ticker=None, same=5, cross=3):
     """Compact lessons block for prompt injection: last `same` graded calls on
     this ticker + last `cross` on other names (TradingAgents' two-phase memory,
     distilled). Returns '' when nothing is graded yet."""
-    graded = [e for e in _load() if e.get("outcome")]
+    graded = _real_graded()          # seed bootstrap never becomes a "lesson"
     graded.sort(key=lambda e: e.get("date") or "", reverse=True)
     tk = (ticker or "").upper()
     mine = [e for e in graded if str(e.get("ticker", "")).upper() == tk][:same] if tk else []
@@ -212,11 +212,22 @@ def lessons(ticker=None, same=5, cross=3):
     return "\n".join(L)
 
 
+def _real_graded():
+    """Graded calls that count toward the track record. SEED rows are bootstrap
+    demo data (they exist only so the desk isn't empty on day one) — they are NOT
+    real desk calls, so they never enter calibration or lessons."""
+    return [e for e in _load() if e.get("outcome") and e.get("source") != "seed"]
+
+
 def stats():
-    graded = [e for e in _load() if e.get("outcome")]
+    all_graded = [e for e in _load() if e.get("outcome")]
+    graded = [e for e in all_graded if e.get("source") != "seed"]
+    seed_n = len(all_graded) - len(graded)
     if not graded:
-        return None
-    return {"total": len(graded), "by_grade": _agg(graded, "grade"),
+        return {"total": 0, "seed_excluded": seed_n,
+                "by_grade": {}, "by_action": {}, "by_market": {}}
+    return {"total": len(graded), "seed_excluded": seed_n,
+            "by_grade": _agg(graded, "grade"),
             "by_action": _agg(graded, "action"), "by_market": _agg(graded, "market")}
 
 

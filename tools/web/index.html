@@ -263,10 +263,18 @@
   .lnow::before,.lnow::after{content:'';flex:1;border-top:2px dashed #bfdbfe}
 
   /* learn: the "?" help chips + the textbook page */
-  .qhelp{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;
+  .qhelp{position:relative;display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;
     border-radius:50%;border:1.2px solid #cbd5e1;color:#94a3b8;font-size:10px;font-weight:800;
-    cursor:pointer;flex:none;vertical-align:1px;margin-left:2px}
+    cursor:help;flex:none;vertical-align:1px;margin-left:2px}
   .qhelp:hover{border-color:var(--accent);color:var(--accent);background:#eff6ff}
+  /* instant custom tooltip (native title has a ~1s delay) */
+  .qhelp[data-tip]:hover::after{content:attr(data-tip);position:absolute;left:50%;top:150%;
+    transform:translateX(-50%);background:#0f172a;color:#fff;font-size:11.5px;font-weight:500;
+    line-height:1.45;letter-spacing:normal;text-transform:none;text-align:left;padding:8px 11px;
+    border-radius:9px;width:max-content;max-width:280px;white-space:normal;z-index:60;
+    box-shadow:0 8px 24px rgba(15,23,42,.24)}
+  .qhelp[data-tip]:hover::before{content:"";position:absolute;left:50%;top:calc(150% - 5px);
+    transform:translateX(-50%);border:5px solid transparent;border-bottom-color:#0f172a;z-index:60}
   .learn{max-width:840px;margin:0 auto}
   .learn h2{font-size:20px;letter-spacing:-.3px;margin:38px 0 10px;scroll-margin-top:20px;
     display:flex;align-items:baseline;gap:10px}
@@ -343,7 +351,7 @@
   </section>
 
   <section id="view-strat" style="display:none">
-    <div class="sec-h" style="margin-top:18px" data-i18n="top3.h">Today's Top 3 — ot rank <a class="qhelp" href="#/learn/pipeline" title="One composite score: grade + gated quant edge + cone tilt + zone proximity + today's debate − event risk — click for how the desk fits together">?</a>
+    <div class="sec-h" style="margin-top:18px" data-i18n="top3.h">Today's Top 3 — ot rank <a class="qhelp" href="#/learn/pipeline" data-tip="One composite score: grade + gated quant edge + cone tilt + zone proximity + today's debate − event risk — click for how the desk fits together">?</a>
       <span class="sub" data-i18n="top3.sub">selection &gt; timing — the same ordering the morning email uses</span>
       <span class="rerun" style="margin-left:auto" data-i18n="rerank" onclick="loadRank(true)">↻ Re-rank</span></div>
     <div id="rankrow" class="calrow"><div class="loading" style="padding:10px">Scoring the whole watchlist (decide + quant per name — ~1 min cold, then cached)…</div></div>
@@ -357,7 +365,7 @@
     <div class="sub" style="font-size:12px;color:#94a3b8;margin:0 4px 12px">
       <span data-i18n="board.sub">One deterministic <b>ot decide</b> read per name — direction · grade · zones · stop. No LLM, no waiting; the learned risk-first policy. Cards are ordered by <b>ot rank</b> once it loads. Click a card for the full page.</span></div>
     <div class="sgrid" id="sgrid"><div class="card pad loading" style="grid-column:1/-1">Running the decision engine over your book + watchlist…</div></div>
-    <div class="sec-h" style="margin-top:22px" data-i18n="calib.h">Desk Calibration <a class="qhelp" href="#/learn/calibration" title="Every call graded — hit-rate, alpha, lessons — click for the explainer">?</a> <span class="sub" data-i18n="calib.sub">ot reflect — the desk grading its own past calls</span></div>
+    <div class="sec-h" style="margin-top:22px" data-i18n="calib.h">Desk Calibration <a class="qhelp" href="#/learn/calibration" data-tip="Every call graded — hit-rate, alpha, lessons — click for the explainer">?</a> <span class="sub" data-i18n="calib.sub">ot reflect — the desk grading its own past calls</span></div>
     <div class="card pad" id="calib"><div class="loading" style="padding:12px">Loading the journal…</div></div>
   </section>
 
@@ -725,7 +733,9 @@ function drawChart(el,rows,ov){
     const inR=v=>v!=null&&v>=lo&&v<=hi;
     const wall=(v,col,lbl)=>inR(v)?`<line x1="0" x2="${cw}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="${col}" stroke-width="1" stroke-dasharray="6 4" opacity=".6"/>
       <text x="4" y="${(y(v)-3).toFixed(1)}" font-size="9.5" fill="${col}" font-weight="700">${lbl} ${fmt(v,v>1000?0:2)}</text>`:'';
-    s+=wall(ov.call_wall,'#b45309',ZHM?'Call 墙':'call wall')+wall(ov.put_wall,'#15803d',ZHM?'Put 墙':'put wall');
+    // walls here are ≤30 DTE (swing horizon) — the Macro&Flow card is ≤7 DTE,
+    // so the same name can show a different wall; label the window to make that clear.
+    s+=wall(ov.call_wall,'#b45309',(ZHM?'Call 墙':'call wall')+' ≤30D')+wall(ov.put_wall,'#15803d',(ZHM?'Put 墙':'put wall')+' ≤30D');
     const c=ov.cone;
     if(c&&inR(c.p50)){
       const x0=cw*0.82, yT=y(Math.min(c.p90,hi)), yB=y(Math.max(c.p10,lo));
@@ -1133,10 +1143,15 @@ async function loadCalibration(){
       <table style="width:100%;border-collapse:collapse;font-size:12.5px">
         <tr style="color:#94a3b8;font-size:10.5px;text-transform:uppercase;text-align:left">
           <th></th><th>n</th><th>hit</th><th>avg ret</th><th>α</th></tr>${rows}</table></div>`;};
-  el.innerHTML=(s?`<div style="display:flex;gap:26px;flex-wrap:wrap">
+  const seedNote=s&&s.seed_excluded?(ZHM?`（${s.seed_excluded} 条种子样本已排除）`:` (${s.seed_excluded} seed bootstrap rows excluded)`):'';
+  const provenance=ZHM
+    ?`这里评的是<b>研判台自己过去的判断</b>（辩论/引擎的调用），不是你的实际盈亏；目前是全局的，未按持仓/账户拆分。命中率接近 50% = 没有优势 — 裁判被告知要权衡这一点。<a href="#/learn/calibration">怎么读 →</a>`
+    :`This grades the <b>desk's own past calls</b> (debate/engine verdicts), not your P&amp;L; it is global for now, not split by book/account. Hit-rate near 50% = no edge — the judge is told to weigh it. <a href="#/learn/calibration">how to read →</a>`;
+  el.innerHTML=(s&&s.total?`<div style="display:flex;gap:26px;flex-wrap:wrap">
       ${group(tr('By action'),s.by_action)}${group(tr('By grade'),s.by_grade)}${group(tr('By market'),s.by_market)}</div>
-    <div class="d" style="margin-top:8px;color:#94a3b8">${s.total} graded calls · hit-rate near 50% means no edge — the judge is told to weigh this</div>`:'')+
-    (d.lessons?`<div class="lbl" style="margin-top:14px">Recent lessons (injected into every debate)</div>
+    <div class="d" style="margin-top:8px;color:#94a3b8">${ZHM?`${s.total} 条真实已评判断${seedNote}`:`${s.total} real graded call${s.total>1?'s':''}${seedNote}`} · ${provenance}</div>`
+    :`<div class="d" style="color:#94a3b8">${ZHM?`暂无真实已评判断${seedNote} — 辩论判决会自动入日志，约 5 个交易日后由 `:`No real graded calls yet${seedNote} — debate verdicts auto-journal and get graded by `}<b>ot reflect grade</b>${ZHM?' 打分。':' ~5 sessions later.'} ${provenance}</div>`)+
+    (d.lessons?`<div class="lbl" style="margin-top:14px">${ZHM?'近期教训（注入每次辩论）':'Recent lessons (injected into every debate)'}</div>
       <pre style="font-size:11.5px;line-height:1.6;color:#334155;white-space:pre-wrap;margin:4px 0 0;font-family:ui-monospace,monospace">${d.lessons.replace(/</g,'&lt;')}</pre>`:'');
 }
 
@@ -1215,10 +1230,15 @@ META Jul 5: call wall 650, put wall 550 — and the put wall landed on the quant
 <div class="case"><div class="ct">Real case — odds as a conviction cap</div>
 In the META debate the judge explicitly cited “hawkish crowd odds (77.6% zero cuts, 10Y pinned at 4.50%)” as the reason confidence stopped at 55 and size stayed small — the crowd’s macro read capping a bullish single-name verdict. That’s the event gate working: macro first, setup second, size third.</div>`},
 {id:'calibration',mod:'the learning loop',title:'Desk calibration — ot reflect grades every call',html:()=>`
-<p><b>What it is.</b> Every debate verdict auto-journals (ticker, action, confidence, entry, invalidation, thesis). Days later, <code>ot reflect grade</code> scores it against what actually happened: right/wrong, return vs SPY (alpha), worst adverse excursion (MAE), and whether the invalidation was breached. The Strategy tab shows hit-rate by action, grade and market — and the <b>lessons block</b>: the last few graded calls, verbatim, which is injected into every future judge prompt.</p>
-<p><b>Why this is the endgame.</b> Forecasters improve only when they keep score${R('tetlock')} — most market opinions are never checked against outcomes. A desk that grades itself can (a) shame its own overconfidence (the META bear quoting “2 of 3 grade-B calls were wrong” <i>is</i> this loop firing), and (b) eventually weight analysts by demonstrated skill instead of equal votes — calibration-weighted fusion, unblocked at ~30 graded calls.</p>
+<p><b>What it is.</b> Every debate verdict auto-journals to <code>data/journal/decisions.jsonl</code> (ticker, action, confidence, entry, invalidation, thesis, the per-analyst tilts). Later, <code>ot reflect grade</code> scores it against what actually happened: right/wrong, return vs SPY (alpha), worst adverse excursion (MAE), and whether the invalidation was breached. The Strategy tab shows hit-rate by action, grade and market, plus the <b>lessons block</b> injected into every future judge prompt.</p>
+<h3>“Days later” — exactly when?</h3>
+<p><code>ot reflect grade --days N</code> grades a call once it is <b>≥ N sessions old</b> (default <b>N=5</b>, matching the debate's 5-day swing horizon); younger calls are skipped until they ripen. So a verdict made Monday is first gradeable the following Monday. Grading is idempotent — a call is scored once, then carries its <code>outcome</code> forever. Run it on a schedule (a nightly <code>ot reflect grade</code>) or by hand.</p>
+<h3>Is the CALL/PUT for day 0 or day +1?</h3>
+<p>It depends on the horizon the call was <i>made</i> at, carried on every row as <code>time_stop_days</code>: <b>0DTE</b> (<code>ot decide --dte 0</code>) is a <i>same-day</i> call, graded on the day's move; the <b>swing</b> default (<code>--dte 5</code>, which the debate uses) is a <i>days-to-~4-weeks</i> call entered from the next session and graded at ≥5 sessions. The desk never mixes the two: each row is graded on its own horizon, and “time stop” is when being flat-but-right becomes wrong.</p>
+<h3>Provenance &amp; retention</h3>
+<p>Two honesty rules make the numbers mean something: <b>(1) seed rows are excluded.</b> The journal ships with a few 2026-06-18 bootstrap examples (<code>source:"seed"</code>) so the desk isn't empty on day one — these never count toward the track record or the lessons. <b>(2) it grades the desk, not your P&amp;L.</b> The table is the <i>desk's own call history</i> (debate + engine reads), currently <b>global — not split by book or roster</b>; a name only appears because it was journaled, so an “A-share” row is a China name the desk read, not anyone's realized trade. Rows are append-only and retained (the <code>outcome</code> is what changes); the news archive under <code>data/news-log/</code> is what ages out, not the decision journal.</p>
 <div class="case"><div class="ct">How to read the table</div>
-<b>Hit-rate near 50% = no edge</b> — the judge is told so explicitly. <b>Alpha</b> matters more than raw return (being right in a rally is beta). <b>n is tiny for now</b> — single-digit cells are anecdotes, not statistics; that’s why F4 waits for ~30 calls before trusting the weights.</div>`},
+<b>Hit-rate near 50% = no edge</b> — the judge is told so explicitly. <b>Alpha</b> beats raw return (being right in a rally is just beta). <b>n is tiny for now</b> — after excluding seed, real graded calls are single-digit; those cells are anecdotes, not statistics. That's exactly why <b>calibration-weighted fusion waits for ~30 real graded calls</b> before the judge trusts one analyst over another. Full method in the repo: <code>docs/METHODOLOGY.md</code>.</div>`},
 ];
 const LEARN_ZH={
 pipeline:{mod:'全局',title:'研判台如何协同',html:()=>`
@@ -1279,10 +1299,15 @@ odds:{mod:'事件闸门',title:'宏观评分与人群赔率 — 什么已被定�
 <div class="case"><div class="ct">真实案例 — 赔率给置信度封顶</div>
 META 辩论里，裁判明确引用"鹰派人群赔率（77.6% 零降息、10Y 钉在 4.50%）"作为置信度停在 55、仓位保持小的原因 — 人群的宏观读数给一个看多的个股判决封了顶。这就是事件闸门在工作：宏观第一，形态第二，仓位第三。</div>`},
 calibration:{mod:'学习环',title:'研判台校准 — ot reflect 给每次判断打分',html:()=>`
-<p><b>是什么。</b>每个辩论判决自动入日志（代码、操作、置信度、入场、失效价、论点）。几天后 <code>ot reflect grade</code> 用真实走势打分：对/错、相对 SPY 的收益（alpha）、最大不利波动（MAE）、失效价是否被触发。策略页展示按操作/评级/市场的命中率 — 以及<b>教训块</b>：最近几次被打分的判断原文，会注入未来每一次辩论的裁判提示词。</p>
-<p><b>为什么这是终局。</b>预测者只有记分才会进步${R('tetlock')} — 市场上绝大多数观点从未被对照结果检验。一个给自己打分的研判台可以 (a) 羞辱自己的过度自信（META 空方引用"3 次 B 级判断错了 2 次"<i>就是</i>这个环在开火），(b) 最终按真实战绩给分析模块加权，而不是等权投票 — 校准加权融合，约 30 次打分后解锁。</p>
+<p><b>是什么。</b>每个辩论判决自动写入 <code>data/journal/decisions.jsonl</code>（代码、操作、置信度、入场、失效价、论点、各分析模块的倾向）。之后 <code>ot reflect grade</code> 用真实走势打分：对/错、相对 SPY 的 alpha、最大不利波动（MAE）、失效价是否被触发。策略页展示按操作/评级/市场的命中率，以及注入每次辩论的<b>教训块</b>。</p>
+<h3>"几天后"——到底是哪天？</h3>
+<p><code>ot reflect grade --days N</code> 会在一笔判断<b>满 N 个交易日</b>后才给它打分（默认 <b>N=5</b>，对应辩论的 5 日波段视野）；不够老的先跳过。所以周一做的判断，最早下周一可评。打分幂等——评一次，<code>outcome</code> 永久保留。可挂夜间任务或手动跑。</p>
+<h3>CALL/PUT 是第 0 天还是第 +1 天？</h3>
+<p>取决于这笔判断的视野（每行都带 <code>time_stop_days</code>）：<b>0DTE</b>（<code>ot decide --dte 0</code>）是<i>当日</i>判断，按当天走势评；<b>波段</b>默认（<code>--dte 5</code>，辩论用的）是<i>数日到约 4 周</i>的判断，从下一交易日入场、满 5 日后评。两者从不混：每行按各自视野打分，"时间止损"是"没亏但也没对开始变成错误"的时点。</p>
+<h3>来源与留存</h3>
+<p>两条诚实规则让数字有意义：<b>(1) 种子样本被排除。</b>日志自带几条 2026-06-18 的启动样本（<code>source:"seed"</code>），只为让研判台第一天不空——它们永不计入战绩或教训。<b>(2) 评的是研判台，不是你的盈亏。</b>这张表是<i>研判台自己的判断历史</i>（辩论+引擎读数），目前<b>全局、未按持仓或名单拆分</b>；一个名字出现只因为它被记过日志，所以"A股"行是研判台读过的中国名，不是任何人的已实现交易。行是追加式、长期保留（变的是 <code>outcome</code>）；会随时间老化的是 <code>data/news-log/</code> 的新闻归档，不是决策日志。</p>
 <div class="case"><div class="ct">怎么读校准表</div>
-<b>命中率接近 50% = 没有优势</b> — 裁判被明确告知这一点。<b>alpha</b> 比原始收益更重要（大涨里做对只是 beta）。<b>目前 n 很小</b> — 个位数的格子是轶事不是统计；这正是 F4 等满约 30 次打分才信任权重的原因。</div>`},
+<b>命中率接近 50% = 没有优势</b> — 裁判被明确告知。<b>alpha</b> 比原始收益更重要（大涨里做对只是 beta）。<b>目前 n 很小</b> — 排除种子后真实已评是个位数，只是轶事不是统计。这正是<b>校准加权融合要等约 30 条真实评过的判断</b>才让裁判信任某个分析模块的原因。完整方法见仓库 <code>docs/METHODOLOGY.md</code>。</div>`},
 };
 let LEARNBUILT=false;
 function renderLearn(sec){
@@ -1302,7 +1327,7 @@ function renderLearn(sec){
   if(t) setTimeout(()=>t.scrollIntoView({behavior:'instant',block:'start'}),0);
   else window.scrollTo(0,0);
 }
-const qh=(sec,hint)=>`<a class="qhelp" href="#/learn/${sec}" title="${hint} — click for the full explainer" onclick="event.stopPropagation()">?</a>`;
+const qh=(sec,hint)=>`<a class="qhelp" href="#/learn/${sec}" data-tip="${hint} — click for the full explainer" onclick="event.stopPropagation()">?</a>`;
 
 /* ---------- routing ---------- */
 function setView(v){
