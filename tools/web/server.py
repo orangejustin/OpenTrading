@@ -796,11 +796,18 @@ def forecast_view(ticker: str) -> dict:
 
 
 def debate_view(ticker: str, fresh: bool, bull: str | None, bear: str | None,
-                judge: str | None, peek: bool = False, lang: str = "en") -> dict:
+                judge: str | None, peek: bool = False, lang: str = "en",
+                engine: str | None = None) -> dict:
     """The bull/bear/judge desk — 3 LLM calls, so cached until ↻ (24h TTL).
     peek=True never runs the desk — it only reports a cached verdict (the
-    ticker page uses this on load so a visit can't silently burn 3 LLM calls)."""
-    key = ("debate", ticker.upper(), lang)
+    ticker page uses this on load so a visit can't silently burn 3 LLM calls).
+    engine (from the header dropdown, "single" mode): run ALL three roles on
+    that one engine instead of the default cross-engine diversity — honored
+    only when no explicit --bull/--bear/--judge override is given."""
+    if engine and not (bull or bear or judge):
+        bull = bear = judge = engine
+    # cache single-engine and diverse runs separately so a mode switch re-runs
+    key = ("debate", ticker.upper(), lang, engine or "diverse")
     if not fresh:
         with _CACHE_LOCK:
             hit = _DESK_CACHE.get(key)
@@ -1204,7 +1211,8 @@ class Handler(BaseHTTPRequestHandler):
                     qs.get("bull", [None])[0], qs.get("bear", [None])[0],
                     qs.get("judge", [None])[0],
                     peek=qs.get("peek", ["0"])[0] in ("1", "true"),
-                    lang=(qs.get("lang", ["en"])[0] or "en"))))
+                    lang=(qs.get("lang", ["en"])[0] or "en"),
+                    engine=(qs.get("engine", [None])[0]))))
             if u.path == "/api/fusion":
                 tk = (qs.get("ticker", [""])[0] or "").strip()
                 if not tk:
