@@ -93,6 +93,13 @@ Everything runs **on your machine** — positions never leave `localhost`.
   their score. **⚔️ Run the desk** debates every HELD name sequentially and
   renders the morning verdict table (verdict · confidence · entry · invalidation ·
   time stop), each row cached 24 h and auto-journaled.
+- **中文 / EN — full-dashboard language toggle** — the header switch (or a
+  `?lang=zh` link) flips every label, badge, verdict and the whole Learn
+  textbook to Simplified Chinese, persisted in `localStorage`. LLM output
+  follows too: `lang=zh` is threaded into the analysis / tape-read / debate
+  prompts (separate caches per language), and `ot debate --lang zh` writes its
+  free-text fields in Chinese while keeping tickers, prices and JSON enums
+  as-is.
 - **Desk Calibration (Strategy tab)** — `ot reflect`'s track record as a table
   (hit-rate · avg return · alpha, by action/grade/market) plus the exact
   lessons block that gets injected into every debate's judge prompt.
