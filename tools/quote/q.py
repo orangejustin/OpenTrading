@@ -19,13 +19,20 @@ import os
 import shutil
 import ssl
 import subprocess
+import time
 import urllib.parse
 import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 UA = "Mozilla/5.0 (OpenTrading q-cli)"
-URL = ("https://query1.finance.yahoo.com/v8/finance/chart/{sym}"
+# Reliability knobs (P1-1, born from the 6/28 上证 rate-limit miss): rotate
+# Yahoo's two chart hosts, retry with backoff, and give each attempt a hard cap.
+HOSTS = ("query1.finance.yahoo.com", "query2.finance.yahoo.com")
+TIMEOUT = 15          # seconds per attempt
+RETRIES = 2           # full host-rotation passes
+BACKOFF = 0.8         # seconds; doubles per pass
+URL = ("https://{host}/v8/finance/chart/{sym}"
        "?includePrePost=true&interval=5m&range=1d")
 
 
@@ -37,7 +44,7 @@ def _ctx():
         return ssl.create_default_context()
 
 
-def http_get(url, timeout=15):
+def http_get(url, timeout=TIMEOUT):
     req = urllib.request.Request(url, headers={"User-Agent": UA})
     try:
         with urllib.request.urlopen(req, timeout=timeout, context=_ctx()) as r:
@@ -52,8 +59,22 @@ def http_get(url, timeout=15):
         raise
 
 
+def _get_chart(sym: str) -> str:
+    """Fetch the chart JSON with host rotation + backoff — one flaky host or a
+    429 on query1 must not read as 'no quote'."""
+    last_err = None
+    for attempt in range(RETRIES):
+        for host in HOSTS:
+            try:
+                return http_get(URL.format(host=host, sym=urllib.parse.quote(sym)))
+            except Exception as e:  # noqa: BLE001
+                last_err = e
+        time.sleep(BACKOFF * (2 ** attempt))
+    raise last_err
+
+
 def quote(sym):
-    d = json.loads(http_get(URL.format(sym=urllib.parse.quote(sym))))
+    d = json.loads(_get_chart(sym))
     res = d["chart"]["result"][0]
     m = res["meta"]
     ts = res.get("timestamp") or []

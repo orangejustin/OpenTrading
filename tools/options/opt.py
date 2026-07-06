@@ -65,11 +65,9 @@ def parse_occ(sym):
     return sym[:-15], exp, cp, strike
 
 
-def analyze(symbol, dte_max, today):
-    d = json.loads(http_get(URL.format(sym=symbol.upper())))
-    data = d.get("data", {})
-    spot = data.get("current_price") or data.get("close")
-    rows = data.get("options", [])
+def aggregate(rows, dte_max, today, spot):
+    """Pure gamma/OI aggregation over a chain — extracted from analyze() so the
+    math is golden-testable without a network call (P1-2)."""
     call_oi = put_oi = call_vol = put_vol = 0
     net_gamma = 0.0                      # signed Σ gamma*OI (calls +, puts -)
     by_strike: dict[float, float] = {}
@@ -95,6 +93,16 @@ def analyze(symbol, dte_max, today):
     dollar_gex = net_gamma * CONTRACT * spot * spot * 0.01 if spot else None
     call_wall = max(by_strike.items(), key=lambda kv: kv[1], default=(None, 0))[0]
     put_wall = min(by_strike.items(), key=lambda kv: kv[1], default=(None, 0))[0]
+    return call_oi, put_oi, call_vol, put_vol, dollar_gex, call_wall, put_wall
+
+
+def analyze(symbol, dte_max, today):
+    d = json.loads(http_get(URL.format(sym=symbol.upper())))
+    data = d.get("data", {})
+    spot = data.get("current_price") or data.get("close")
+    rows = data.get("options", [])
+    call_oi, put_oi, call_vol, put_vol, dollar_gex, call_wall, put_wall = \
+        aggregate(rows, dte_max, today, spot)
     return {
         "symbol": symbol.upper(), "spot": spot, "dte_max": dte_max,
         "pc_oi": (put_oi / call_oi) if call_oi else None,
