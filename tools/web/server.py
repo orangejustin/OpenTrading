@@ -893,6 +893,29 @@ def fusion_view(ticker: str) -> dict:
     }
 
 
+_RANK_CACHE: dict = {}
+
+
+def rank_view(fresh: bool = False) -> dict:
+    """ot rank — the composite Top-3, cached 30 min (decide+quant underneath)."""
+    with _CACHE_LOCK:
+        hit = _RANK_CACHE.get("v")
+    if hit and not fresh and time.time() - hit[0] < 1800:
+        return dict(hit[1], cached=True)
+    try:  # not ot_json: a cold 14-name run (decide+quant each) can pass 90s
+        out = subprocess.run([PY, str(ROOT / "tools/rank/rank.py"), "--format", "json"],
+                             capture_output=True, text=True, timeout=420, cwd=str(ROOT))
+        d = json.loads(out.stdout) if out.returncode == 0 and out.stdout.strip() \
+            else {"error": (out.stderr or "rank failed")[-200:]}
+    except Exception as e:  # noqa: BLE001
+        d = {"error": f"rank failed: {e}"}
+    d["as_of"] = _now_et()
+    if not d.get("error"):
+        with _CACHE_LOCK:
+            _RANK_CACHE["v"] = (time.time(), d)
+    return d
+
+
 def calibration() -> dict:
     """ot reflect stats + the lessons block — the desk's own track record."""
     stats = ot_json(ROOT / "tools/reflect/reflect.py") or None
@@ -1004,6 +1027,9 @@ class Handler(BaseHTTPRequestHandler):
                 if not tk:
                     return self._send(400, json.dumps({"error": "ticker required"}))
                 return self._send(200, json.dumps(fusion_view(tk)))
+            if u.path == "/api/rank":
+                return self._send(200, json.dumps(rank_view(
+                    qs.get("fresh", ["0"])[0] in ("1", "true"))))
             if u.path == "/api/calibration":
                 return self._send(200, json.dumps(calibration()))
             if u.path == "/api/health":

@@ -22,6 +22,7 @@
 #   ot quant    TICKER [--horizon N]  keyless regression: P(up) + empirical range cone
 #   ot forecast TICKER [--horizon N]  TimesFM quantile cone (opt-in: install.sh --with-forecast)
 #   ot debate   TICKER [--log]        bull/bear/judge desk: 3 LLM calls on a deterministic pack
+#   ot rank     [TICKERS] [--top 3]   composite desk score per name — the shared Top-3 (no LLM)
 #   ot web      [--port N] [--no-open] [--engine gemini|openrouter|claude] [--model SLUG]
 #               local dashboard: market + watchlist + AI ticker analysis (engines optional)
 #   ot ibkr     quote SYM | positions | pnl | bars SYM | chain SYM | order ...   (needs TWS/IB Gateway)
@@ -161,6 +162,8 @@ case "$cmd" in
     pyrun "$ROOT/tools/llm/debate.py" "$@" ;;
   quant)
     pyrun "$ROOT/tools/quant/quant.py" "$@" ;;
+  rank)
+    pyrun "$ROOT/tools/rank/rank.py" "$@" ;;
   forecast|tfm)
     # Opt-in TimesFM module: prefer its isolated venv (install.sh --with-forecast);
     # without it tfm.py degrades to a clear install hint.

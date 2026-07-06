@@ -116,6 +116,7 @@ def build_pack(ticker: str, dte: int, market: str) -> dict:
         "news": _tool_json("tools/financialjuice/fj.py", "fetch", "--ticker", t,
                            "--minutes", "2880", "--limit", "10"),
         "lessons": _tool_text("tools/reflect/reflect.py", "lessons", "--ticker", t),
+        "stats": _tool_json("tools/reflect/reflect.py"),
         "quant": _tool_json("tools/quant/quant.py", t, timeout=120),
     }
     # Optional power module: TimesFM cone, only when its venv exists (ot forecast).
@@ -176,6 +177,21 @@ def _pack_text(t: str, pack: dict) -> str:
         L.append("NEWS (48h, this name):\n" + "\n".join(f"  - {h}" for h in heads if h))
     if pack.get("lessons"):
         L.append(pack["lessons"])
+    s = pack.get("stats")
+    if s and s.get("total"):
+        n = s["total"]
+        rows = []
+        for dim in ("by_action", "by_grade"):
+            for k, b in (s.get(dim) or {}).items():
+                if b.get("n"):
+                    rows.append(f"{k}: {b['right']}/{b['n']} right, avg {b['ret']/b['n']:+.1f}%")
+        # F4 scaffold: the calibration table rides in every pack, but the judge
+        # is only licensed to WEIGHT analysts by it once the sample is real.
+        rule = ("weight the analysts by this track record — it is statistically meaningful"
+                if n >= 30 else
+                f"sample too small (n={n} < 30) — keep analyst weights EQUAL; use this only "
+                "as a humility check")
+        L.append(f"DESK CALIBRATION ({n} graded calls; {rule}): " + " · ".join(rows[:8]))
     return "\n".join(L)
 
 
@@ -235,8 +251,30 @@ def run_debate(ticker: str, dte: int, market: str,
         "rationale": verdict.get("rationale"), "weakest_link": verdict.get("weakest_link"),
         "bull": bull, "bear": bear,
         "engines": {"bull": tag(bmeta), "bear": tag(rmeta), "judge": tag(jmeta)},
+        "analysts": _analyst_tilts(pack),
         "elapsed_s": round(time.time() - t0, 1),
     }
+
+
+def _analyst_tilts(pack: dict) -> dict:
+    """Each analyst's stance AT decision time — journaled with the verdict so
+    `ot reflect` can eventually grade analysts individually (F4)."""
+    out: dict = {}
+    d = pack.get("decide") or {}
+    if d.get("ticker"):
+        side = ((d.get("plan") or {}).get("side") or "watch").lower()
+        out["engine"] = {"long": "bull", "short": "bear"}.get(side, "flat")
+    q = pack.get("quant") or {}
+    if isinstance(q.get("p_up"), (int, float)):
+        pu, oos = q["p_up"], q.get("oos_hit_rate")
+        tilt = "bull" if pu >= 55 else "bear" if pu <= 45 else "flat"
+        out["quant"] = {"tilt": tilt, "p_up": pu, "oos": oos}
+    fc = pack.get("forecast") or {}
+    if fc.get("point_end") and fc.get("last"):
+        drift = (fc["point_end"] / fc["last"] - 1) * 100
+        out["timesfm"] = {"tilt": "bull" if drift > 0.5 else "bear" if drift < -0.5 else "flat",
+                          "drift_pct": round(drift, 2)}
+    return out
 
 
 def render_text(r: dict) -> str:
@@ -262,23 +300,39 @@ def render_text(r: dict) -> str:
 
 def _journal(r: dict) -> None:
     """--log: drop the verdict into the ot reflect journal (closes the loop).
-    Re-runs the same day skip the append — one graded call per name per day."""
+    Re-runs the same day skip the append — one graded DEBATE call per name per
+    day. The check must be debate-specific: the daily pipeline also journals
+    plain decide reads under the same ticker-date id, and matching on the bare
+    id silently swallowed every debate verdict on email days."""
     from datetime import date
-    marker = f'"id": "{r["ticker"]}-{date.today().isoformat()}"'
+    today = date.today().isoformat()
     jf = ROOT / "data/journal/decisions.jsonl"
-    if jf.exists() and marker in jf.read_text():
-        return
+    if jf.exists():
+        for line in jf.read_text(encoding="utf-8").splitlines():
+            try:
+                d = json.loads(line)
+            except ValueError:
+                continue
+            if (d.get("ticker") == r["ticker"] and str(d.get("date")) == today
+                    and (d.get("source") == "debate"
+                         or (d.get("source") == "manual"
+                             and d.get("time_stop_days") is not None))):
+                return
     action = {"STRONG_BUY": "CALL", "BUY": "CALL",
               "SELL": "PUT", "STRONG_SELL": "PUT"}.get(r["verdict"], "NO-ACTION")
     args = [sys.executable, str(ROOT / "tools/reflect/reflect.py"), "log",
-            "--ticker", r["ticker"], "--action", action,
+            "--ticker", r["ticker"], "--action", action, "--source", "debate",
             "--thesis", (r.get("rationale") or "")[:200]]
+    if r.get("confidence") is not None:
+        args += ["--conviction", str(r["confidence"])]
     if r.get("price") is not None:
         args += ["--price", str(r["price"])]
     if r.get("invalidation") is not None:
         args += ["--invalidation", str(r["invalidation"])]
     if r.get("time_stop_days") is not None:
         args += ["--time-stop", str(r["time_stop_days"])]
+    if r.get("analysts"):
+        args += ["--analysts", json.dumps(r["analysts"], ensure_ascii=False)]
     subprocess.run(args, capture_output=True, text=True, timeout=15, cwd=str(ROOT),
                    stdin=subprocess.DEVNULL)
 

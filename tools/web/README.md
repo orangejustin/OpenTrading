@@ -87,6 +87,12 @@ Everything runs **on your machine** — positions never leave `localhost`.
   how to interpret the output, a real annotated case, and numbered citations — TimesFM
   paper, GEX white paper, prediction-market literature, …) with real screenshots
   served from `docs/assets/learn/` via the `/assets/*` route.
+- **Today's Top 3 + Morning desk (Strategy tab)** — `ot rank`'s composite score
+  (grade + OOS-gated quant edge + cone tilt + zone proximity + today's debate −
+  event risk) as a Top-3 strip; the action-board cards re-order by rank and carry
+  their score. **⚔️ Run the desk** debates every HELD name sequentially and
+  renders the morning verdict table (verdict · confidence · entry · invalidation ·
+  time stop), each row cached 24 h and auto-journaled.
 - **Desk Calibration (Strategy tab)** — `ot reflect`'s track record as a table
   (hit-rate · avg return · alpha, by action/grade/market) plus the exact
   lessons block that gets injected into every debate's judge prompt.

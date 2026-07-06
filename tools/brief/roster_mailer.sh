@@ -101,6 +101,10 @@ $("$OT" decide "$code" --market "$mkt" 2>/dev/null | grep -E "$GREP" || true)
   EARN=""
   [ -n "$USTICK" ] && EARN="$("$OT" earnings $USTICK --days 14 2>/dev/null || true)"
 
+  # Composite desk rank (ot rank) — the ONE ordering both web + email use for Top-3.
+  RANK=""
+  [ -n "$USTICK" ] && RANK="$("$OT" rank $USTICK --top 3 2>/dev/null || true)"
+
   DATA="### OWNER: $OWNER
 ### EVENT GATE (ot catalysts — Step 0: is a binary macro print near?)
 $CATAL
@@ -112,6 +116,8 @@ $NEWS7
 $MACRO
 ### SMART MONEY (Fear&Greed, BTC funding)
 $SMART
+### DESK RANK (ot rank — composite score; USE THIS ORDERING for every Top-3 table)
+$RANK
 ### ENGINE-CONSTRUCTED STRATEGY (ot strategy)
 $STRAT
 ### PER-NAME RANGE PLANS (ot decide — local currency)

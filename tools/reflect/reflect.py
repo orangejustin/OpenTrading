@@ -241,6 +241,9 @@ def main(argv=None):
     pl.add_argument("--invalidation", type=float, help="price that voids the thesis (schema v2)")
     pl.add_argument("--time-stop", dest="time_stop", type=int,
                     help="days after which the call self-expires (schema v2)")
+    pl.add_argument("--analysts", help="JSON dict of per-analyst tilts at decision time "
+                                       "(schema v3 — enables per-analyst calibration, F4)")
+    pl.add_argument("--source", help="who logged this (manual | debate | decide …)")
     sub.add_parser("grade").add_argument("--days", type=int, default=5)
     sub.add_parser("stats")
     pls = sub.add_parser("lessons")
@@ -266,7 +269,13 @@ def main(argv=None):
         if entry is None:
             entry = {"ticker": a.ticker, "market": a.market or "US", "action": a.action, "grade": a.grade,
                      "conviction": a.conviction, "entry_price": a.price, "invalidation": a.invalidation,
-                     "time_stop_days": a.time_stop, "thesis": a.thesis, "source": "manual"}
+                     "time_stop_days": a.time_stop, "thesis": a.thesis,
+                     "source": a.source or "manual"}
+            if a.analysts:
+                try:
+                    entry["analysts"] = json.loads(a.analysts)
+                except ValueError:
+                    pass
         if not entry.get("ticker"):
             print("reflect log: need a ticker (stdin JSON or --ticker)", file=sys.stderr)
             return 1

@@ -342,11 +342,19 @@
   </section>
 
   <section id="view-strat" style="display:none">
+    <div class="sec-h" style="margin-top:18px">Today's Top 3 — ot rank <a class="qhelp" href="#/learn/pipeline" title="One composite score: grade + gated quant edge + cone tilt + zone proximity + today's debate − event risk — click for how the desk fits together">?</a>
+      <span class="sub">selection &gt; timing — the same ordering the morning email uses</span>
+      <span class="rerun" style="margin-left:auto" onclick="loadRank(true)">↻ Re-rank</span></div>
+    <div id="rankrow" class="calrow"><div class="loading" style="padding:10px">Scoring the whole watchlist (decide + quant per name — ~1 min cold, then cached)…</div></div>
+    <div class="sec-h" style="margin-top:18px">Morning desk — debate the book
+      <span class="sub">one click = a verdict · entry · invalidation per HELD name (LLM; cached 24h)</span>
+      <span class="rerun" style="margin-left:auto" onclick="runDesk()">⚔️ Run the desk</span></div>
+    <div id="deskrun" style="margin:0 0 6px"></div>
     <div class="sec-h" style="margin-top:18px">Strategy — the action board
       <span class="sub" id="s-asof"></span>
       <span class="rerun" style="margin-left:auto" onclick="loadStrategy(true)">↻ Refresh reads</span></div>
     <div class="sub" style="font-size:12px;color:#94a3b8;margin:0 4px 12px">
-      One deterministic <b>ot decide</b> read per name — direction · grade · zones · stop. No LLM, no waiting; the learned risk-first policy. Click a card for the full page.</div>
+      One deterministic <b>ot decide</b> read per name — direction · grade · zones · stop. No LLM, no waiting; the learned risk-first policy. Cards are ordered by <b>ot rank</b> once it loads. Click a card for the full page.</div>
     <div class="sgrid" id="sgrid"><div class="card pad loading" style="grid-column:1/-1">Running the decision engine over your book + watchlist…</div></div>
     <div class="sec-h" style="margin-top:22px">Desk Calibration <a class="qhelp" href="#/learn/calibration" title="Every call graded — hit-rate, alpha, lessons — click for the explainer">?</a> <span class="sub">ot reflect — the desk grading its own past calls</span></div>
     <div class="card pad" id="calib"><div class="loading" style="padding:12px">Loading the journal…</div></div>
@@ -902,25 +910,77 @@ function tapeRead(){
 }
 
 /* ---------- strategy page ---------- */
-let STRATLOADED=false;
+let STRATLOADED=false,STRATCARDS=[],RANKROWS=null;
 const zfmt=z=>Array.isArray(z)&&z.length===2?`${fmt(z[0])}–${fmt(z[1])}`:'—';
-async function loadStrategy(fresh){
-  STRATLOADED=true;
-  if(fresh) $('#sgrid').innerHTML='<div class="card pad loading" style="grid-column:1/-1">Re-running the decision engine…</div>';
-  const d=await fetch('/api/strategy'+(fresh?'?fresh=1':'')).then(r=>r.json()).catch(()=>null);
-  if(!d||!d.cards){$('#sgrid').innerHTML='<div class="card pad loading" style="grid-column:1/-1">Strategy board unavailable.</div>';return;}
-  $('#s-asof').textContent=`${d.cards.length} names · ${d.as_of||''}${d.cached?' · cached':''}`;
-  $('#sgrid').innerHTML=d.cards.map(c=>{
+async function loadRank(fresh){
+  const d=await fetch('/api/rank'+(fresh?'?fresh=1':'')).then(r=>r.json()).catch(()=>null);
+  const el=$('#rankrow'); if(!el) return;
+  if(!d||d.error||!d.rows){el.innerHTML=`<div class="cal"><span class="e" style="color:#64748b;font-weight:600">rank unavailable${d&&d.error?' — '+d.error:''}</span></div>`;return;}
+  RANKROWS=d.rows;
+  el.innerHTML=d.rows.slice(0,3).map((r,i)=>{
+    const col=r.side==='long'?'var(--up)':r.side==='short'?'var(--down)':'var(--amber)';
+    return `<div class="cal" style="cursor:pointer;border-left:4px solid ${col}" onclick="location.hash='${r.ticker}'">
+      <span class="d mono" style="font-size:15px;color:#0f172a;font-weight:800">#${i+1}</span>
+      <span class="e" style="color:var(--accent)">${r.ticker}</span>
+      <span class="gbadge">${r.grade}</span>
+      <span class="d mono" title="grade ${r.components.grade} · quant ${r.components.quant_edge} · cone ${r.components.cone_tilt} · zone ${r.components.proximity} · debate ${r.components.debate} · event ${r.components.event}">${r.score}</span>
+      <span class="away ${r.in_zone?'high':'low'}" style="${r.in_zone?'background:var(--upbg);color:var(--up)':''}">${r.in_zone?'IN ZONE':'wait '+r.zone}</span>
+      ${r.held?'<span class="heldtag">held</span>':''}</div>`;
+  }).join('')+`<div class="cal"><span class="e" style="color:#94a3b8;font-weight:600;font-size:11.5px">${d.rows.length} scored · ${d.as_of||''}${d.cached?' · cached':''} — hover a score for its components</span></div>`;
+  orderCardsByRank();
+}
+function orderCardsByRank(){
+  if(!RANKROWS||!STRATCARDS.length) return;
+  const pos=Object.fromEntries(RANKROWS.map((r,i)=>[r.ticker,i]));
+  const sc=Object.fromEntries(RANKROWS.map(r=>[r.ticker,r.score]));
+  STRATCARDS.sort((a,b)=>(pos[a.ticker]??99)-(pos[b.ticker]??99));
+  renderStratCards(sc);
+}
+async function runDesk(){
+  const held=STRATCARDS.filter(c=>c.held&&!c.error).map(c=>c.ticker);
+  const el=$('#deskrun'); if(!el) return;
+  if(!held.length){el.innerHTML='<div class="banner">No held names on the board yet — load the strategy board first.</div>';return;}
+  const rows={};
+  const paint=()=>{el.innerHTML=`<div class="card pad"><table style="width:100%;border-collapse:collapse;font-size:12.5px">
+    <tr style="color:#94a3b8;font-size:10.5px;text-transform:uppercase;text-align:left">
+      <th>name</th><th>verdict</th><th>conf</th><th>entry</th><th>invalidation</th><th>time stop</th><th></th></tr>
+    ${held.map(t=>{const d=rows[t];
+      if(d===undefined) return `<tr><td class="tk" style="font-weight:700">${t}</td><td colspan="6" style="color:#94a3b8">queued…</td></tr>`;
+      if(d===null) return `<tr><td class="tk" style="font-weight:700">${t}</td><td colspan="6" style="color:#94a3b8">debating… (bull → bear → judge, ~1–2 min)</td></tr>`;
+      if(d.error) return `<tr><td class="tk" style="font-weight:700">${t}</td><td colspan="6" style="color:var(--down)">${d.error}</td></tr>`;
+      const vc={STRONG_BUY:'buy',BUY:'buy',HOLD:'hold',SELL:'sell',STRONG_SELL:'sell'}[d.verdict]||'mixed';
+      return `<tr><td class="tk" style="font-weight:700;cursor:pointer" onclick="location.hash='${t}'">${t}</td>
+        <td><span class="chip ${vc}">${(d.verdict||'').replace('_',' ')}</span>${d.cached?' <span class="cachetag">cached</span>':''}</td>
+        <td class="mono">${d.confidence??'—'}</td><td style="max-width:280px">${d.entry||'—'}</td>
+        <td class="mono">${fmt(d.invalidation)}</td><td class="mono">${d.time_stop_days??'—'}d</td>
+        <td><span class="rerun" onclick="reDesk('${t}')">↻</span></td></tr>`;}).join('')}
+  </table><div class="d" style="margin-top:8px;color:#94a3b8">verdicts auto-journal to ot reflect · educational only — not financial advice</div></div>`;};
+  paint();
+  for(const t of held){
+    rows[t]=null;paint();
+    rows[t]=await fetch(`/api/debate?ticker=${encodeURIComponent(t)}`).then(r=>r.json()).catch(()=>({error:'failed'}));
+    paint();
+  }
+}
+async function reDesk(t){
+  const el=$('#deskrun');
+  el.querySelectorAll('tr').forEach(tr=>{if(tr.firstChild&&tr.firstChild.textContent===t)tr.lastChild.innerHTML='…';});
+  await fetch(`/api/debate?ticker=${encodeURIComponent(t)}&fresh=1`).then(r=>r.json()).catch(()=>null);
+  runDesk();
+}
+function renderStratCards(scores){
+  $('#sgrid').innerHTML=STRATCARDS.map(c=>{
     if(c.error) return `<div class="scard watch" onclick="location.hash='${c.ticker}'">
       <div class="h"><span class="tk">${c.ticker}</span>${c.held?'<span class="heldtag">held</span>':''}
         <span class="sbadge watch">Wait</span></div>
       <div class="why">${c.error}</div></div>`;
     const side=(c.side||'watch').toLowerCase(), dir=side==='long'?'Long':side==='short'?'Short':'Wait';
     const badge=side==='long'?'long':side==='short'?'short':'watch';
+    const rk=scores&&scores[c.ticker]!=null?`<span class="cat" title="ot rank composite score" style="background:#eef2f7;color:#475569">rank ${scores[c.ticker]}</span>`:'';
     return `<div class="scard ${badge}" onclick="location.hash='${c.ticker}'">
       <div class="h"><span class="tk">${c.ticker}</span>${c.held?'<span class="heldtag">held</span>':''}
         <span class="sbadge ${badge}">${side==='watch'&&c.action&&c.action!=='NO-ACTION'?c.action:dir}</span>
-        ${c.grade?`<span class="gbadge">${c.grade}</span>`:''}
+        ${c.grade?`<span class="gbadge">${c.grade}</span>`:''}${rk}
         ${c.event?`<span class="cat" style="background:var(--downbg);color:var(--down)">${c.event}</span>`:''}
         <span class="px mono">${fmt(c.price)}</span></div>
       <div class="zones">buy <b>${zfmt(c.buy_zone)}</b> (core <b>${fmt(c.core)}</b>) · add <b>${zfmt(c.add_zone)}</b><br>
@@ -928,6 +988,17 @@ async function loadStrategy(fresh){
       ${c.reason?`<div class="why">${c.reason}</div>`:''}
       ${c.scenario?`<div class="why">⚠ ${c.scenario}</div>`:''}</div>`;
   }).join('');
+}
+async function loadStrategy(fresh){
+  STRATLOADED=true;
+  if(fresh) $('#sgrid').innerHTML='<div class="card pad loading" style="grid-column:1/-1">Re-running the decision engine…</div>';
+  const d=await fetch('/api/strategy'+(fresh?'?fresh=1':'')).then(r=>r.json()).catch(()=>null);
+  if(!d||!d.cards){$('#sgrid').innerHTML='<div class="card pad loading" style="grid-column:1/-1">Strategy board unavailable.</div>';return;}
+  $('#s-asof').textContent=`${d.cards.length} names · ${d.as_of||''}${d.cached?' · cached':''}`;
+  STRATCARDS=d.cards;
+  orderCardsByRank();      // rank may already be in — sort before first paint
+  renderStratCards(RANKROWS?Object.fromEntries(RANKROWS.map(r=>[r.ticker,r.score])):null);
+  loadRank(fresh);
   loadCalibration();
 }
 async function loadCalibration(){
@@ -968,7 +1039,7 @@ const REFS=[
  ['fng','CNN Business — <a href="https://www.cnn.com/markets/fear-and-greed" target="_blank" rel="noopener">Fear &amp; Greed Index</a> (7-factor composite; contrarian at extremes).'],
  ['murphy','Murphy, J. — <i>Technical Analysis of the Financial Markets</i> (1999), ch. 4: support/resistance and why levels named by several independent methods carry more weight (“confluence”).'],
 ];
-const R=id=>{const i=REFS.findIndex(r=>r[0]===id);return `<sup><a href="#learn-refs" title="${REFS[i][1].replace(/<[^>]+>/g,'')}">[${i+1}]</a></sup>`;};
+const R=id=>{const i=REFS.findIndex(r=>r[0]===id);return `<sup><a href="#/learn/refs" title="${REFS[i][1].replace(/<[^>]+>/g,'')}">[${i+1}]</a></sup>`;};
 const LEARN=[
 {id:'pipeline',mod:'the big picture',title:'How the desk fits together',html:()=>`
 <p>Every ticker page runs the same pipeline: independent <b>forecasters</b> each produce a view from different information — a rules engine (<code>ot decide</code>), a statistical model (<code>ot quant</code>), a foundation model (TimesFM)${R('tfm')}, dealer-positioning data (GEX), an LLM analyst, and a crowd (Polymarket)${R('arrow')} — then a <b>fusion layer</b> (the consensus strip, the confluence ladder, the bull-vs-bear debate) combines them, and a <b>learning loop</b> (<code>ot reflect</code>) grades every committed call afterwards${R('tetlock')}.</p>
