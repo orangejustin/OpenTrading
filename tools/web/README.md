@@ -100,6 +100,11 @@ Everything runs **on your machine** — positions never leave `localhost`.
   prompts (separate caches per language), and `ot debate --lang zh` writes its
   free-text fields in Chinese while keeping tickers, prices and JSON enums
   as-is.
+- **Hyperliquid perps + Engine diagnostics (Macro & Flow)** — BTC/ETH funding
+  and open interest from the keyless Hyperliquid info API (the BTC-beta
+  crowd's leverage bill), and a per-engine health check: one click runs a tiny
+  structured call through Gemini / OpenRouter / Claude Code / Codex and stamps
+  latency + resolved model (or the exact error).
 - **Desk Calibration (Strategy tab)** — `ot reflect`'s track record as a table
   (hit-rate · avg return · alpha, by action/grade/market) plus the exact
   lessons block that gets injected into every debate's judge prompt.

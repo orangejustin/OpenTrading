@@ -29,7 +29,7 @@ leaving your laptop. Pair the trading *skill* (the expertise) with small, depend
 
 ## Preview
 
-<p align="center"><img src="docs/assets/tour_20260704.gif" alt="ot web tour — dashboard · strategy board · news + event gate · one-click AI analysis" width="880"></p>
+<p align="center"><img src="docs/assets/tour_20260706.gif" alt="ot web tour — dashboard · META prediction desk (cones + debate + ladder) · rank strategy board · the Learn textbook" width="880"></p>
 <p align="center"><sub>≈12s tour of <code>ot web</code>: dashboard with Macro&nbsp;&amp;&nbsp;Flow → the Strategy action board → News + event gate → a ticker page (instant keyless chart) → one-click AI analysis with sniper levels.</sub></p>
 
 <table align="center"><tr>

@@ -563,9 +563,41 @@ async function loadMacro(){
     <div class="card"><div class="k">${ZHM?'SPY 做市商 Gamma（<7 DTE）':'SPY dealer gamma (&lt;7 DTE)'} ${qh('gex','Positive gamma dampens moves; walls = the hedging shelves')}</div>
       <div class="v ${g.sign==='positive'?'up':g.sign==='negative'?'down':''}">${g.net_usd_bn!=null?('$'+g.net_usd_bn+'bn/1%'):'—'}</div>
       <div class="d">${g.sign||''} · ${ZHM?'Call 墙':'call wall'} <b>${g.call_wall??'—'}</b> · ${ZHM?'Put 墙':'put wall'} <b>${g.put_wall??'—'}</b> · ${ZHM?'现价':'spot'} ${g.spot??'—'}</div></div>
+    <div class="card" id="hlcard" style="grid-column:span 2"><div class="k">${ZHM?'Hyperliquid 永续持仓':'Hyperliquid perps'}</div>
+      <div class="d" style="margin-top:6px">${ZHM?'加载中…':'loading…'}</div></div>
+    <div class="card" id="diagcard" style="grid-column:span 2"><div class="k">${ZHM?'引擎诊断':'Engine diagnostics'}</div>
+      <div class="d" id="diagrow" style="margin-top:6px">${ZHM?'加载中…':'loading…'}</div></div>
     <div class="card" id="polycard" style="grid-column:1/-1"><div class="k">${ZHM?'人群赔率 — Polymarket':'Crowd odds — Polymarket'}</div>
       <div class="d" style="margin-top:6px">${ZHM?'加载中…':'loading…'}</div></div>`;
-  loadPoly();
+  loadPoly();loadHL();renderDiag();
+}
+async function loadHL(){
+  const el=$('#hlcard'); if(!el) return;
+  const d=await fetch('/api/hl').then(r=>r.json()).catch(()=>null);
+  if(!d||d.error||!d.rows){el.innerHTML=`<div class="k">${ZHM?'Hyperliquid 永续持仓':'Hyperliquid perps'}</div><div class="d" style="margin-top:6px">${ZHM?'不可用':'unavailable'}</div>`;return;}
+  const rows=d.rows.filter(r=>!r.error).map(r=>{
+    const hot=Math.abs(r.funding_8h_pct)>=0.02;
+    return `<div style="margin-top:4px"><b>${r.symbol}</b> <span class="mono">${r.funding_8h_pct>=0?'+':''}${r.funding_8h_pct}%/8h</span>
+      <span style="color:#94a3b8">· OI $${(r.open_interest_usd/1e9).toFixed(2)}bn</span>
+      ${hot?`<span class="pill ${r.funding_8h_pct>0?'m1':'p1'}">${r.funding_8h_pct>0?(ZHM?'多头拥挤':'crowded longs'):(ZHM?'空头付费':'shorts pay')}</span>`:''}</div>`;
+  }).join('');
+  el.innerHTML=`<div class="k">${ZHM?'Hyperliquid 永续持仓':'Hyperliquid perps'} ${qh('odds','Funding = the leverage bill of the crypto crowd — extreme positive = crowded longs')}</div>
+    ${rows}<div class="d" style="margin-top:5px;color:#94a3b8">${ZHM?'资金费率极端为正 = 杠杆多头拥挤 — IBIT/MSTR β 相应控制仓位':'extreme +funding = crowded leverage — size IBIT/MSTR beta accordingly'}</div>`;
+}
+function renderDiag(){
+  const el=$('#diagrow'); if(!el) return;
+  if(!ENG.list.length){el.textContent=ZHM?'未配置引擎':'no engines';return;}
+  el.innerHTML=ENG.list.map(e=>`<div style="margin-top:4px;display:flex;gap:6px;align-items:center">
+    <b style="min-width:84px">${e.label}</b>
+    ${e.ok?`<span class="rerun" id="dg-${e.id}" onclick="runDiag('${e.id}')">${ZHM?'测试':'test'}</span>`:`<span style="color:#cbd5e1;font-size:11px">${e.hint||''}</span>`}
+    <span id="dgres-${e.id}" style="font-size:11px;color:#94a3b8"></span></div>`).join('');
+}
+async function runDiag(id){
+  const res=$('#dgres-'+id); if(res) res.textContent=ZHM?'测试中…':'testing…';
+  const d=await fetch('/api/diag?engine='+encodeURIComponent(id)).then(r=>r.json()).catch(()=>null);
+  if(!res) return;
+  if(d&&d.ok) res.innerHTML=`<span class="up">✓ ${d.model||''} · ${d.elapsed}s</span>`;
+  else res.innerHTML=`<span class="down">✗ ${(d&&d.error||'failed').slice(0,60)}</span>`;
 }
 async function loadPoly(){
   const p=await fetch('/api/poly').then(r=>r.json()).catch(()=>null);

@@ -105,6 +105,19 @@ $("$OT" decide "$code" --market "$mkt" 2>/dev/null | grep -E "$GREP" || true)
   RANK=""
   [ -n "$USTICK" ] && RANK="$("$OT" rank $USTICK --top 3 2>/dev/null || true)"
 
+  # Run manifest + freshness gate (P2-8): snapshot every feed's size, warn the
+  # composer about thin/empty sections so it hedges instead of inventing.
+  MANIFEST="$(OT_M_CATAL="$CATAL" OT_M_EARN="$EARN" OT_M_NEWS7="$NEWS7" \
+    OT_M_MACRO="$MACRO" OT_M_SMART="$SMART" OT_M_STRAT="$STRAT" \
+    OT_M_PLANS="$PLANS" OT_M_OPTS="$OPTS" OT_M_RANK="$RANK" OWNER="$OWNER" \
+    python3 -c '
+import json, os, subprocess, sys
+sec = {k[5:]: v for k, v in os.environ.items() if k.startswith("OT_M_")}
+r = subprocess.run([sys.executable, "tools/report/manifest.py", "--run",
+                    "roster-email", "--owner", os.environ.get("OWNER", "")],
+                   input=json.dumps(sec), capture_output=True, text=True)
+print(r.stdout.strip())' 2>/dev/null || true)"
+
   DATA="### OWNER: $OWNER
 ### EVENT GATE (ot catalysts — Step 0: is a binary macro print near?)
 $CATAL
@@ -125,11 +138,20 @@ $PLANS
 ### ALPHA / NEW-NAME IDEAS (ot decide — watch universe)
 $ALPHA
 ### OPTIONS / DEALER GAMMA (US names only)
-$OPTS"
+$OPTS
+### RUN MANIFEST (feed freshness — if a section is thin/EMPTY, say so, don't invent)
+$MANIFEST"
 
   LANG_FLAG="en"; LANG_INSTR=""
   case "$RLANG" in
-    zh|cn|zh-CN|zh_CN|chinese) LANG_FLAG="zh"
+    zh|cn|zh-CN|zh_CN|chinese)
+      # CN pack (P2-7): 涨停池 temperature + a net-of-cost reminder for the
+      # A-share roster — appended only for Chinese-language rosters.
+      CNPK="$("$OT" cnpack --zt 10 2>/dev/null || true)"
+      [ -n "$CNPK" ] && DATA="$DATA
+### CN PACK (涨停池 — A股情绪温度计; remind net-of-cost: 佣金万2.5最低5元 + 卖出印花税0.05%)
+$CNPK"
+      LANG_FLAG="zh"
       LANG_INSTR="IMPORTANT: write the ENTIRE email in fluent native Simplified Chinese (简体中文); keep tickers/codes/numbers and the HTML tag/class NAMES exactly as-is — but the VISIBLE TEXT inside every badge MUST be Chinese, not English. Map action badges (keep the class, translate the label): <span class=\"buy\">买入</span>, <span class=\"trim\">减仓</span>, <span class=\"hold\">持有</span>, <span class=\"watch\">观察</span>, <span class=\"avoid\">回避</span>; bull/bear labels: <span class=\"bull\">看多</span>, <span class=\"bear\">看空</span>. Translate section TITLES and badge MEANINGS too: 'Watchlist — Top 3' → '今日观望 · Top 3'; 'Hedge &amp; options — calls / puts / cash' → '对冲与期权 — 买Call / 买Put / 加现金'. Alpha-Watch Top-3 ACTION column: 'Enter' → '买入', 'Wait' → '等待' (keep the exact price); the 'also watching, not today' line → '也在候选池，今日不占优'. Hedge section badges: 'Hedge' → '对冲', 'Calls' → '买Call', 'Raise cash' → '加现金'; 'no calls today' → '今日不买call'. Earnings → '财报'. Grade badges stay A/B/C/D. NEVER emit an English word like hold/trim/buy/watch/avoid/Bull/Bear/Calls/Puts/Cash as visible text in a Chinese email." ;;
   esac
 
