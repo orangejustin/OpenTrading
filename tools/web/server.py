@@ -1057,6 +1057,25 @@ def hl_view() -> dict:
     return d
 
 
+_WHALES_CACHE: dict = {}
+
+
+def whales_view() -> dict:
+    """On-chain labeled-wallet ETH balances + Δ vs last snapshot, cached 15 min.
+    Keyless public RPC; upgrades to the Antalpha feed if configured (the tool
+    handles the env-gate — see tools/whales/whales.py)."""
+    with _CACHE_LOCK:
+        hit = _WHALES_CACHE.get("v")
+    if hit and time.time() - hit[0] < 900:
+        return dict(hit[1], cached=True)
+    d = ot_json(ROOT / "tools/whales/whales.py") or {"error": "whales unavailable"}
+    d["as_of"] = _now_et()
+    if not d.get("error"):
+        with _CACHE_LOCK:
+            _WHALES_CACHE["v"] = (time.time(), d)
+    return d
+
+
 def diag(engine_id: str) -> dict:
     """P2-10: one tiny structured call through the chosen engine — proves the
     whole path (key/CLI, JSON mode, model resolution) and measures latency."""
@@ -1220,6 +1239,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, json.dumps(fusion_view(tk)))
             if u.path == "/api/hl":
                 return self._send(200, json.dumps(hl_view()))
+            if u.path == "/api/whales":
+                return self._send(200, json.dumps(whales_view()))
             if u.path == "/api/diag":
                 eng = (qs.get("engine", [""])[0] or "").strip()
                 if not eng:

@@ -590,11 +590,13 @@ async function loadMacro(){
       <div class="d">${g.sign||''} · ${ZHM?'Call 墙':'call wall'} <b>${g.call_wall??'—'}</b> · ${ZHM?'Put 墙':'put wall'} <b>${g.put_wall??'—'}</b> · ${ZHM?'现价':'spot'} ${g.spot??'—'}</div></div>
     <div class="card" id="hlcard" style="grid-column:span 2"><div class="k">${ZHM?'Hyperliquid 永续持仓':'Hyperliquid perps'}</div>
       <div class="d" style="margin-top:6px">${ZHM?'加载中…':'loading…'}</div></div>
+    <div class="card" id="whalescard" style="grid-column:span 2"><div class="k">${ZHM?'链上巨鲸流向（ETH）':'On-chain whale flow (ETH)'}</div>
+      <div class="d" style="margin-top:6px">${ZHM?'加载中…':'loading…'}</div></div>
     <div class="card" id="diagcard" style="grid-column:span 2"><div class="k">${ZHM?'引擎诊断':'Engine diagnostics'}</div>
       <div class="d" id="diagrow" style="margin-top:6px">${ZHM?'加载中…':'loading…'}</div></div>
     <div class="card" id="polycard" style="grid-column:1/-1"><div class="k">${ZHM?'人群赔率 — Polymarket':'Crowd odds — Polymarket'}</div>
       <div class="d" style="margin-top:6px">${ZHM?'加载中…':'loading…'}</div></div>`;
-  loadPoly();loadHL();renderDiag();
+  loadPoly();loadHL();loadWhales();renderDiag();
 }
 async function loadHL(){
   const el=$('#hlcard'); if(!el) return;
@@ -608,6 +610,34 @@ async function loadHL(){
   }).join('');
   el.innerHTML=`<div class="k">${ZHM?'Hyperliquid 永续持仓':'Hyperliquid perps'} ${qh('odds','Funding = the leverage bill of the crypto crowd — extreme positive = crowded longs')}</div>
     ${rows}<div class="d" style="margin-top:5px;color:#94a3b8">${ZHM?'资金费率极端为正 = 杠杆多头拥挤 — IBIT/MSTR β 相应控制仓位':'extreme +funding = crowded leverage — size IBIT/MSTR beta accordingly'}</div>`;
+}
+async function loadWhales(){
+  const el=$('#whalescard'); if(!el) return;
+  const hdr=`${ZHM?'链上巨鲸流向（ETH）':'On-chain whale flow (ETH)'} ${qh('smartmoney',ZHM?'已打标签钱包的 ETH 余额（公共 RPC）— 交易所净流入=抛压，净流出=吸筹':'Labeled-wallet ETH via public RPC — exchange inflows = sell-side supply, outflows = accumulation')}`;
+  const d=await fetch('/api/whales').then(r=>r.json()).catch(()=>null);
+  if(!d||d.error||!d.rows){el.innerHTML=`<div class="k">${hdr}</div><div class="d" style="margin-top:6px">${ZHM?'不可用':'unavailable'}</div>`;return;}
+  const flow=d.exchange_net_flow_eth||0;
+  const dir=flow>0?'down':flow<0?'up':'';  // inflow = sell-side supply = bearish (red); outflow = accumulation = bullish (green)
+  const sorted=[...d.rows].sort((a,b)=>Math.abs(b.delta_eth||0)-Math.abs(a.delta_eth||0)||(b.eth||0)-(a.eth||0)).slice(0,5);
+  const list=sorted.map(r=>{
+    const dl=(r.delta_eth!=null)?`<span class="mono ${r.delta_eth>0?'down':r.delta_eth<0?'up':''}">${r.delta_eth>0?'+':''}${r.delta_eth.toLocaleString()}</span>`
+             :`<span style="color:#cbd5e1">${d.prev_snapshot?'—':(ZHM?'首次':'first')}</span>`;
+    const bal=(r.eth!=null)?Number(r.eth).toLocaleString(undefined,{maximumFractionDigits:0}):'err';
+    const cls=r.class?`<span class="pill z" style="font-size:9.5px">${r.class}</span>`:'';
+    return `<div style="margin-top:4px;display:flex;gap:7px;align-items:baseline;font-size:12.5px"><b style="min-width:104px">${r.label}</b>${cls}
+      <span style="color:#94a3b8">${bal} ETH</span> <span style="margin-left:auto">Δ ${dl}</span></div>`;
+  }).join('');
+  const readZH={'exchange INFLOW — potential sell-side supply':'交易所净流入 — 潜在抛压',
+    'exchange OUTFLOW — accumulation/custody':'交易所净流出 — 吸筹/自托管',
+    'flat — no notable movement since last snapshot':'持平 — 自上次快照无显著变动'};
+  const read=ZHM?(readZH[d.read]||d.read):d.read;
+  const src=d.source==='antalpha'?(ZHM?'来源：Antalpha（已接入）':'source: Antalpha (connected)')
+    :(ZHM?'免密公共 RPC · 起步为知名冷钱包，自有清单放 data/wallets.json':'keyless public RPC · starter = known cold wallets; your list → data/wallets.json');
+  el.innerHTML=`<div class="k">${hdr}</div>
+    <div class="v ${dir}" style="font-size:15px">${flow>0?'+':''}${flow.toLocaleString()} ETH <span style="font-size:11px;font-weight:700;color:#64748b">${ZHM?'交易所净流':'net exch flow'}</span></div>
+    <div class="d" style="margin-top:1px">${read}</div>
+    ${list}
+    <div class="d" style="margin-top:6px;color:#94a3b8">${src} · ${ZHM?'仅供学习':'educational only'}</div>`;
 }
 function renderDiag(){
   const el=$('#diagrow'); if(!el) return;
@@ -1241,6 +1271,13 @@ META Jul 5: the desk said CONSENSUS LONG, but the AI said WATCH — “patience 
 META Jul 5: call wall 650, put wall 550 — and the put wall landed on the quant cone’s P10 (550.41, ×2 on the ladder): statistics and dealer flows independently naming the same floor.<br><br>
 <b>Playbook:</b> in positive GEX, fading toward the walls beats chasing breakouts — long near the put wall with a stop just below it is the structurally-backed trade; buying calls <i>into</i> a call wall pays theta to fight the hedgers. Premium sellers use the walls as short-strike anchors (e.g. credit spreads outside 550/650). In negative GEX, walls act as accelerants, not magnets — cut size. And walls are strongest into OPEX, when the gamma concentrated at those strikes expires.</div>
 <p><b>Caveat.</b> GEX assumes dealers are short the options customers bought — an approximation${R('gexwp')}; walls move as OI rolls, so refresh after big sessions.</p>`},
+{id:'smartmoney',mod:'forecasters · positioning',title:'Smart money — sentiment vs on-chain whale flow',html:()=>`
+<p><b>Two different "smart money" reads — don't confuse them.</b> The desk watches positioning from two independent angles that answer different questions.</p>
+<p><b>1 · Sentiment / positioning</b> (<code>ot smart</code>). CNN equity Fear &amp; Greed (with its 7 sub-signals — put/call, VIX, momentum, breadth, price strength, junk-bond demand, safe-haven demand), the crypto Fear &amp; Greed index, and BTC perpetual funding. Read <b>contrarian</b>: extreme fear = washed-out = a long is safer; extreme greed = crowded = fade. Funding shows how much the leveraged crowd is paying to hold its position${R('crowd')}.</p>
+<p><b>2 · On-chain whale flow</b> (<code>ot whales</code>). Balances of <i>labeled</i> Ethereum wallets, read live from a public RPC node — no key, no account. The signal is the <b>delta</b> since the last snapshot: coins moving <i>into</i> exchange wallets are potential sell-side supply (bearish); coins moving <i>out</i> to cold storage read as accumulation/custody (bullish). It ships a starter set of well-known wallets across several classes (exchange, bridge, fund, foundation, staking); your own tracked list lives in the git-ignored <code>data/wallets.json</code> and never leaves your machine.</p>
+<div class="case"><div class="ct">Why keyless — and the optional upgrade</div>
+The reference build is deliberately <b>account-free</b>: it reads <code>eth_getBalance</code> straight off a public node, so anyone can run it with zero setup and nothing proprietary is required. A hosted feed (Antalpha) with richer professionally-labeled wallets wires in as an <b>opt-in</b> — drop the credentials in <code>.env</code> and the card upgrades automatically; without them the keyless path is the default. The philosophy: the free tier must stand on its own; paid data is an enhancement, never a dependency.</div>
+<p><b>How to use it.</b> Whale flow is a <i>context</i> layer, not a trigger — a large exchange inflow into a rally is a caution flag on crypto-beta names (IBIT, MSTR, COIN); an outflow during a washout supports the accumulation thesis. Cross-reference it with funding (<code>ot smart</code>) and the macro gate before it changes your size.</p>`},
 {id:'odds',mod:'the event gate',title:'Macro score &amp; crowd odds — what’s already priced',html:()=>`
 <p><b>Macro score</b> (<code>ot macro</code>) reads rates &amp; liquidity plumbing — SOFR, 2Y/10Y, TGA, RRP — into one put/call bias: the tide every single-name trade swims in. <b>Crowd odds</b> (<code>ot poly</code>) pulls Polymarket prices for the Step-0 questions — P(Fed holds), P(25bp cut), P(hike this year), P(zero cuts), P(recession). A liquid prediction-market price is the best available real-time probability estimate — people betting money, updating continuously${R('arrow')}.</p>
 <p><b>The one rule:</b> a print <i>inside</i> the priced odds is a non-event; the trade only exists <i>outside</i> them. If the crowd already prices 77.6% “zero cuts”, a hawkish Fed headline is not news — positioning for it is chasing what’s already in the price.</p>
@@ -1310,6 +1347,13 @@ gex:{mod:'预测者 · 持仓结构',title:'做市商 Gamma — Call 墙、Put �
 META 7/05：Call 墙 650、Put 墙 550 — 而 Put 墙恰好落在量化锥的 P10 上（550.41，价位梯 ×2）：统计与做市商资金流独立地点名了同一个地板。<br><br>
 <b>打法：</b>正 GEX 里，向墙回归的反向操作胜过追突破 — 在 Put 墙附近做多、止损放在墙下一点，是有结构背书的交易；对着 Call 墙买 call 等于付 theta 与对冲盘对打。卖权利金的人用墙做短腿锚（比如 550/650 之外的信用价差）。负 GEX 里，墙是加速器不是磁铁 — 砍仓位。墙在临近 OPEX 时最强，因为集中在这些行权价上的 gamma 将到期。</div>
 <p><b>注意。</b>GEX 假设做市商做空客户买入的期权 — 是近似${R('gexwp')}；未平仓量滚动后墙会移动，大波动日之后要刷新。</p>`},
+smartmoney:{mod:'预测者 · 持仓',title:'聪明钱 — 情绪 vs 链上巨鲸流向',html:()=>`
+<p><b>两种不同的"聪明钱"，别混为一谈。</b>研判台从两个相互独立的角度观察持仓，它们回答的是不同的问题。</p>
+<p><b>1 · 情绪 / 持仓</b>（<code>ot smart</code>）。CNN 股市恐惧与贪婪指数（含 7 个子信号 — 认沽/认购、VIX、动量、广度、价格强度、垃圾债需求、避险需求）、加密恐惧与贪婪指数、以及 BTC 永续资金费率。要<b>反向</b>读：极度恐惧 = 筹码出清 = 做多更安全；极度贪婪 = 拥挤 = 逢高减。资金费率显示杠杆人群为维持仓位所付的代价${R('crowd')}。</p>
+<p><b>2 · 链上巨鲸流向</b>（<code>ot whales</code>）。<i>已打标签</i>的以太坊钱包余额，通过公共 RPC 节点实时读取 — 无需密钥、无需账号。信号是相对上次快照的<b>变化量</b>：流<i>入</i>交易所钱包 = 潜在抛压（偏空）；流<i>出</i>到冷钱包 = 吸筹/自托管（偏多）。工具自带一组知名钱包作为起步（涵盖交易所、跨链桥、基金、基金会、质押等类别）；你自己追踪的清单放在被 git 忽略的 <code>data/wallets.json</code>，永不离开本机。</p>
+<div class="case"><div class="ct">为什么免密 — 以及可选的升级</div>
+参考实现刻意<b>不需要账号</b>：直接从公共节点读取 <code>eth_getBalance</code>，任何人零配置即可运行，不依赖任何专有服务。更丰富、专业打标签的托管数据源（Antalpha）可作为<b>可选项</b>接入 — 在 <code>.env</code> 里填好凭据，卡片会自动升级；没有凭据时默认走免密路径。理念：免费层必须能独立成立；付费数据是增强，绝不是依赖。</div>
+<p><b>怎么用。</b>巨鲸流向是<i>背景</i>层，不是扳机 — 上涨中出现大额交易所净流入，是对加密 β 标的（IBIT、MSTR、COIN）的警示；洗盘中出现净流出，则支持吸筹逻辑。在它影响仓位之前，先和资金费率（<code>ot smart</code>）、宏观闸门交叉验证。</p>`},
 odds:{mod:'事件闸门',title:'宏观评分与人群赔率 — 什么已被定价',html:()=>`
 <p><b>宏观评分</b>（<code>ot macro</code>）读取利率与流动性管道 — SOFR、2Y/10Y、TGA、RRP — 汇总成一个看跌/看涨倾向：每笔个股交易都泡在这股潮水里。<b>人群赔率</b>（<code>ot poly</code>）拉取 Polymarket 对 Step-0 问题的定价 — P(按兵不动)、P(降25bp)、P(年内加息)、P(零降息)、P(衰退)。流动性充足的预测市场价格，是实时可得的最好概率估计 — 真金白银在持续押注、持续更新${R('arrow')}。</p>
 <p><b>唯一规则：</b>落在已定价赔率<i>之内</i>的数据是非事件；交易只存在于赔率<i>之外</i>。如果人群已把"零降息"定价到 77.6%，一条鹰派美联储新闻就不是新闻 — 为它建仓等于追已在价内的东西。</p>
