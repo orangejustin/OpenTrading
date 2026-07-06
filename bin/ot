@@ -24,6 +24,9 @@
 #   ot debate   TICKER [--log]        bull/bear/judge desk: 3 LLM calls on a deterministic pack
 #   ot rank     [TICKERS] [--top 3]   composite desk score per name — the shared Top-3 (no LLM)
 #   ot validate [TICKERS]             cross-source quote sanity: yahoo q1 vs q2 vs cboe
+#   ot hl       [BTC ETH SOL]         Hyperliquid perp funding/OI — the BTC-beta leverage bill
+#   ot whales                         labeled-wallet ETH balances + Δ (public RPC; data/wallets.json)
+#   ot cnpack   [--zt N] [--cost b s n]  A股: 涨停池 + 净成本计算 (for the CN roster email)
 #   ot privacy-audit [--push|--install-hook]   pre-push gate: branch/tracked-files/secret grep
 #   ot web      [--port N] [--no-open] [--engine gemini|openrouter|claude] [--model SLUG]
 #               local dashboard: market + watchlist + AI ticker analysis (engines optional)
@@ -168,6 +171,12 @@ case "$cmd" in
     pyrun "$ROOT/tools/rank/rank.py" "$@" ;;
   validate)
     pyrun "$ROOT/tools/validate/validate.py" "$@" ;;
+  hl|hyperliquid)
+    pyrun "$ROOT/tools/crypto/hl.py" "$@" ;;
+  whales)
+    pyrun "$ROOT/tools/whales/whales.py" "$@" ;;
+  cnpack|zt)
+    pyrun "$ROOT/tools/china/cnpack.py" "$@" ;;
   privacy-audit|audit)
     pyrun "$ROOT/tools/audit/privacy_audit.py" "$@" ;;
   forecast|tfm)
