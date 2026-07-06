@@ -68,4 +68,4 @@ book (e.g. *single-factor BTC beta*) — the portfolio-review workflow with conc
 ---
 
 > Your positions live only in git-ignored `watchlist.json` — nothing here leaves your machine.
-> See the [README](README.md) for setup. **Educational only — not financial advice.**
+> See the [README](../README.md) for setup. **Educational only — not financial advice.**

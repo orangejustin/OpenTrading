@@ -86,7 +86,7 @@ Everything runs **on your machine** — positions never leave `localhost`.
   to `#/learn/<topic>`: a self-contained explainer page (concepts, the models used,
   how to interpret the output, a real annotated case, and numbered citations — TimesFM
   paper, GEX white paper, prediction-market literature, …) with real screenshots
-  served from `docs/assets/learn/` via the `/assets/*` route.
+  served from `assets/learn/` via the `/assets/*` route.
 - **Today's Top 3 + Morning desk (Strategy tab)** — `ot rank`'s composite score
   (grade + OOS-gated quant edge + cone tilt + zone proximity + today's debate −
   event risk) as a Top-3 strip; the action-board cards re-order by rank and carry

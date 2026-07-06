@@ -6,7 +6,7 @@ cut internal versions here so the history reads like a real project. Newest firs
 
 > 🔒 **Private by design.** Your positions and secrets live only in git-ignored files
 > (`watchlist.json`, `.env`) and are **never** committed or released publicly. See
-> [README → Privacy & your data](README.md#privacy--your-data).
+> [README → Privacy & your data](../README.md#privacy--your-data).
 >
 > ⚠️ **Educational only — not financial advice.**
 

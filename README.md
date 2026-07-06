@@ -1,6 +1,6 @@
 <div align="center">
 
-<h1><img src="docs/assets/opentrading-mark.png" alt="OpenTrading logo" width="44" align="center"> OpenTrading</h1>
+<h1><img src="assets/opentrading-mark.png" alt="OpenTrading logo" width="44" align="center"> OpenTrading</h1>
 
 **A local-first trading copilot — macro-first, risk-first, zero API keys.**
 
@@ -29,12 +29,12 @@ leaving your laptop. Pair the trading *skill* (the expertise) with small, depend
 
 ## Preview
 
-<p align="center"><img src="docs/assets/tour_20260706.gif" alt="ot web tour — dashboard · META prediction desk (cones + debate + ladder) · rank strategy board · the Learn textbook" width="880"></p>
+<p align="center"><img src="assets/tour_20260706.gif" alt="ot web tour — dashboard · META prediction desk (cones + debate + ladder) · rank strategy board · the Learn textbook" width="880"></p>
 <p align="center"><sub>≈12s tour of <code>ot web</code>: dashboard with Macro&nbsp;&amp;&nbsp;Flow → the Strategy action board → News + event gate → a ticker page (instant keyless chart) → one-click AI analysis with sniper levels.</sub></p>
 
 <table align="center"><tr>
-<td align="center" width="50%"><img src="docs/assets/web-strategy.png" alt="Strategy — the action board"><br><sub><b>Strategy — the action board.</b> One deterministic <code>ot decide</code> read per name: Long/Short/Wait · A–D grade · buy/add/trim zones · stop. No LLM, ~1s.</sub></td>
-<td align="center" width="50%"><img src="docs/assets/email-sample.png" alt="daily pre-market email (demo data)"><br><sub><b>The daily pre-market email.</b> Position-aware, Claude-written, Outlook-safe HTML: regime call, book levels, graded Top-3, hedge plan, event gate.</sub></td>
+<td align="center" width="50%"><img src="assets/web-strategy.png" alt="Strategy — the action board"><br><sub><b>Strategy — the action board.</b> One deterministic <code>ot decide</code> read per name: Long/Short/Wait · A–D grade · buy/add/trim zones · stop. No LLM, ~1s.</sub></td>
+<td align="center" width="50%"><img src="assets/email-sample.png" alt="daily pre-market email (demo data)"><br><sub><b>The daily pre-market email.</b> Position-aware, Claude-written, Outlook-safe HTML: regime call, book levels, graded Top-3, hedge plan, event gate.</sub></td>
 </tr></table>
 
 <p align="center"><sub>All demos use a fictional book — your real positions never leave your machine.</sub></p>
@@ -58,18 +58,44 @@ Three rules the whole system enforces, in order:
 | Piece | Command | What it does |
 |-------|---------|--------------|
 | **Market report** | `ot` | Fuses macro + news + smart money + options + your book → one regime read |
-| **Web dashboard** | `ot web` | Local dashboard: scrolling tape · indices · Macro & Flow · Strategy board · News + event gate · per-ticker AI analysis on switchable engines |
+| **Web dashboard** | `ot web` | Local cockpit: tape · Macro & Flow · Strategy board · News + event gate · **prediction desk** per ticker · a **Learn** textbook · a **中文/EN** toggle |
+| **Prediction desk** | `ot debate` / `ot rank` | Bull vs bear on different engines → a committed verdict; one composite score ranks your whole book |
+| **Forecast cones** | `ot quant` / `ot forecast` | Keyless logistic P(up) + empirical cone; optional TimesFM foundation-model cone |
 | **Decision engine** | `ot decide` | CALL / PUT / NO-ACTION + conviction + zones, from the learned policy |
-| **Daily email** | `ot email` / `ot schedule` | Position-aware, Outlook-safe HTML pre-market brief via SMTP |
+| **Daily email** | `ot email` / `ot schedule` | Position-aware, Outlook-safe HTML pre-market brief via SMTP (EN or 中文) |
 | **News** | `ot news` | FinancialJuice squawk (public RSS) — windowed, ticker-filtered, storable |
-| **Macro** | `ot macro` | SOFR / 2s10s / TGA / RRP → scored put/call bias |
-| **Smart money** | `ot smart` | CNN + crypto Fear&Greed, BTC funding (contrarian) |
+| **Macro & flow** | `ot macro` / `ot smart` / `ot poly` | Rates/liquidity bias · Fear&Greed · BTC funding · Polymarket crowd odds |
 | **Options** | `ot options` | Put/Call + dealer gamma (GEX) + gamma walls (CBOE) |
+| **Positioning** | `ot hl` / `ot whales` | Hyperliquid perp funding/OI · labeled-wallet ETH flows (keyless RPC) |
 | **Event gate** | `ot catalysts` / `ot earnings` | FOMC/CPI/PCE/NFP/OPEX + per-name earnings → size-up verdict |
-| **Quotes** | `ot quote` / `ot cn` | No-key quotes incl. premarket + `^VIX`; China A-shares / HK |
-| **Deep report** | `ot report --deep` | Parallel analyst desks + a synthesis pass (multi-agent prototype) |
+| **Quotes** | `ot quote` / `ot cn` / `ot cnpack` | No-key quotes incl. pre/post/**overnight** + `^VIX`; China A / HK · 涨停池 |
+| **Data sanity** | `ot validate` / `ot privacy-audit` | Cross-source quote check (Yahoo × CBOE) · pre-push secret/branch gate |
 
 Add `--json` to any tool for machine-readable output. Full help: `ot help`.
+
+---
+
+## The prediction desk
+
+The flagship: a **personal short-term prediction desk** — an ensemble of independent
+forecasters, fused by an LLM judge, scored by a learning loop. Deterministic SOP throughout
+(scripts build a frozen evidence pack → the LLM reads it; never agentic).
+
+```
+FORECASTERS  regression P(up)+cone · TimesFM cone · dealer gamma · macro · crowd odds · news
+     │       (each an independent "analyst" — different math, different data)
+     ▼
+FUSION       ot debate  → bull vs bear on DIFFERENT engines → judge commits (5-tier verdict
+             + entry + invalidation + time stop) · consensus strip (STAND-ASIDE on disagreement)
+             · confluence ladder (a level named by 2+ methods is real structure) · ot rank
+     ▼
+LEARNING     ot reflect → every verdict journaled with its invalidation, graded on outcome,
+             the lessons fed back into the next judge prompt
+```
+
+On every ticker page in `ot web`: dual forecast cones, the one-click **⚔️ debate**, the
+confluence ladder drawn on the chart, and a **?** on each module linking to the **Learn**
+tab — a cited textbook (with a full 简体中文 edition) on how each piece works and how to read it.
 
 ---
 
@@ -87,7 +113,7 @@ ot web                 # the dashboard → http://127.0.0.1:8787
 
 > Don't want to touch your PATH? Skip `install.sh` and run in place: `bin/ot …`
 
-**New here?** Start with the three [hero workflows](WORKFLOWS.md) — *morning read*, *is it
+**New here?** Start with the three [hero workflows](docs/WORKFLOWS.md) — *morning read*, *is it
 safe to size up?*, and *grade my book* — each is one command plus one prompt to Claude.
 
 ### Ask Claude
@@ -136,7 +162,9 @@ ot web --engine openrouter --model z-ai/glm-5.2 # boot on GLM 5.2
 - **Dashboard** — scrolling macro tape (TradingView deep links) · index cards · **Macro & Flow** (macro score · Fear&Greed · BTC funding · SPY dealer gamma + walls) · your watchlist.
 - **Strategy** — the action board: one deterministic `ot decide` card per name (Long/Short/Wait · grade · zones · stop), ~1s, no LLM.
 - **News** — 6h–7d window (deep windows merge the local archive), instant keyword filter, event-gate strip, and a **🧠 AI read of the tape** (bias · drivers · portfolio tilt).
-- **Ticker pages** — instant keyless candlestick chart + stats + per-name news (Yahoo RSS fallback), then **⚡ Analyze on demand**; deep links like `/#NVDA`; optional TradingView chart embed (off by default).
+- **Ticker pages** — instant keyless candlestick chart (with pre/post/**overnight** price) + the **prediction desk** (dual cones · ⚔️ debate verdict · confluence ladder) + per-name news, then **⚡ Analyze on demand**; deep links like `/#NVDA`; optional TradingView chart embed.
+- **Learn** — a **?** on every module opens the textbook: concepts, the models used, how to read each output, real annotated cases, and citations. Full 简体中文 edition.
+- **中文 / EN** — the header toggle (or `?lang=zh`) flips every label *and* the LLM output; point the dashboard at another roster with `OT_WATCHLIST=path ot web`.
 
 Details: [`tools/web/README.md`](tools/web/README.md).
 
@@ -212,17 +240,18 @@ are **optional** — nothing in the core depends on them.
 
 ## Roadmap
 
-Shipped history in [`RELEASE_NOTES.md`](RELEASE_NOTES.md); detail in [`ROADMAP.md`](ROADMAP.md):
+Shipped history in [`docs/RELEASE_NOTES.md`](docs/RELEASE_NOTES.md); detail in
+[`docs/ROADMAP.md`](docs/ROADMAP.md). Recently shipped: the multi-engine **debate**,
+**decision-log v2** (grade + lessons loop), **`ot whales`**, the **confluence ladder /
+consensus** fusion, **`ot rank`**, the **Learn** textbook, the **中文/EN** toggle, and
+**`ot validate`**. On the horizon:
 
-- **Multi-engine debate.** Gemini argues bull, GLM argues bear, Claude judges — a 5-tier
-  verdict with entry + invalidation, distilling
-  [TradingAgents](https://github.com/TauricResearch/TradingAgents) into three keyless-friendly calls.
-- **Decision-log v2.** Every call logged with its invalidation; D1/D3 outcome checks grade
-  realized alpha and feed the lessons back into future reads.
-- **Smart-money on-chain.** `ot whales`: labeled whale wallets polled over keyless public
-  RPC, classified HIGH/MED/LOW, surfaced in the email's smart-money section.
-- **Web dashboard v2.** Charts in the analysis view grew in v3 — next: sector aggregation
-  and a personalized strategy lab.
+- **Calibration-weighted fusion.** Once ~30 calls are graded, the judge weights each
+  analyst by its *track record* instead of voting them equally.
+- **IBKR paper execution.** Debate verdicts auto-executed in a **paper** account behind an
+  explicit guard — the on-ramp to (gated) tiny real sizing. Never auto-submits live orders.
+- **Cross-device / cloud.** An optional hosted tier (Cloudflare Pages + Workers + Supabase)
+  so the dashboard is viewable from your phone — see [`docs/CLOUD.md`](docs/CLOUD.md).
 
 ---
 

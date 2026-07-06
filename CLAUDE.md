@@ -8,7 +8,7 @@ This is a **Claude Code project**. The trading *expertise* lives in an embedded
 skill; the live *data* lives in small, dependency-free Python CLIs.
 
 > **New session / new machine?** Start with **[`README.md`](README.md)** (setup, the daily
-> email, privacy, optional power modules) and **[`RELEASE_NOTES.md`](RELEASE_NOTES.md)** (what
+> email, privacy, optional power modules) and **[`RELEASE_NOTES.md`](docs/RELEASE_NOTES.md)** (what
 > shipped + future work). Recreate the two git-ignored files first: `.env` and `watchlist.json`.
 
 ## How this project is wired
@@ -41,7 +41,32 @@ ot email                        # email the report via SMTP (.env creds; see too
 ot decide   TICKER [--dte N] [--market US|A|HK]  # CALL/PUT/NO-ACTION + range plan (US + China A/HK via Yahoo)
 ot strategy [TICKERS] [--roster ID]              # portfolio constructor: graded, allocated book (--style/--risk; A/HK ok)
 ot doctor                       # python / deps / network health check
+
+# --- prediction desk (the fusion pipeline; see docs/ROADMAP.md) ---
+ot rank     [TICKERS] [--top 3] # composite desk score per name — the shared Top-3 (no LLM; web + email use it)
+ot quant    TICKER              # keyless logistic P(up) + empirical range cone (OOS-gated)
+ot forecast TICKER              # TimesFM 2.5 quantile cone (opt-in: install.sh --with-forecast)
+ot poly                         # Polymarket crowd odds for the macro event gate
+ot debate   TICKER [--log] [--lang zh]  # bull/bear/judge desk — 3 LLM calls on a deterministic pack
+ot reflect  [stats|grade|lessons]       # decision journal + self-calibration (the learning loop)
+
+# --- forecasters / positioning / data ---
+ot hl       [BTC ETH SOL]       # Hyperliquid perp funding + OI (BTC-beta leverage bill)
+ot whales                       # labeled-wallet ETH balances + Δ (public RPC; data/wallets.json)
+ot cnpack   [--zt N|--cost b s n]  # A股 涨停池 + 净成本 math (for the CN-language roster email)
+ot validate [TICKERS]           # cross-source quote sanity: yahoo q1 vs q2 vs CBOE
+ot privacy-audit [--push|--install-hook]  # pre-push gate: branch/tracked-files/secret grep
+
+# --- web ---
+ot web [--engine gemini|openrouter|claude|codex] [--model SLUG]  # dashboard → 127.0.0.1:8787
+#   OT_WATCHLIST=path ot web    # point the dashboard at another roster (e.g. a private-vault list)
 ```
+
+> **Prediction desk in the web:** every ticker page fuses these into a **confluence
+> ladder** (levels named by 2+ independent methods) + a **consensus strip**
+> (STAND-ASIDE when analysts disagree); the **Learn** tab (`#/learn`) is the
+> textbook. A header **中文/EN** toggle (or `?lang=zh`) flips the whole UI *and*
+> the LLM output. Run `bash install.sh --with-forecast` only if you want TimesFM.
 
 Add `--json` (or `--format json`) to any tool for machine-readable output.
 `ot` shells out to the stdlib-only Python CLIs under `tools/` (Python 3.9+,
@@ -62,7 +87,7 @@ instead of scraping — it handles ET timezones, categorization, caching, and ba
 
 ## Roadmap
 
-Optional, opt-in modules (details in `ROADMAP.md`; shipped history in `RELEASE_NOTES.md`).
+Optional, opt-in modules (details in `docs/ROADMAP.md`; shipped history in `docs/RELEASE_NOTES.md`).
 The **plain tier stays zero-config**; these need manual setup and the core never depends on them:
 - **TradingView** — live charts via MCP (shipped, optional); fold into the report (planned).
 - **IBKR** (`tools/ibkr/`) — quotes / option chains / paper execution via `ib_async` (planned).

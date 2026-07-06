@@ -1125,8 +1125,8 @@ class Handler(BaseHTTPRequestHandler):
             if u.path in ("/", "/index.html"):
                 return self._send(200, (HERE / "index.html").read_bytes(), "text/html; charset=utf-8")
             if u.path.startswith("/assets/"):
-                # static files for the Learn page (docs/assets), traversal-safe
-                base = (ROOT / "docs/assets").resolve()
+                # static files for the Learn page (assets/), traversal-safe
+                base = (ROOT / "assets").resolve()
                 f = (base / u.path[len("/assets/"):]).resolve()
                 if base in f.parents and f.is_file():
                     ct = {".png": "image/png", ".gif": "image/gif", ".jpg": "image/jpeg",
