@@ -1,8 +1,12 @@
 <div align="center">
 
-<h1><img src="assets/opentrading-mark.png" alt="OpenTrading logo" width="44" align="center"> OpenTrading</h1>
+<img src="assets/logo-cat.png" alt="OpenTrading" width="180">
+
+<h1>OpenTrading</h1>
 
 **A local-first trading copilot — macro-first, risk-first, zero API keys.**
+
+📖 **[Documentation & tutorial site →](docs-site/)** &nbsp;·&nbsp; built with Docusaurus, deploy free to Vercel / Cloudflare Pages / GitHub Pages
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-blue.svg)](#requirements)
