@@ -48,7 +48,11 @@ CONTENT_PATTERNS = [
     ("google api key", re.compile(r"AIza[0-9A-Za-z_\-]{30,}")),
     ("generic api key assign", re.compile(r"(API_KEY|APIKEY|SECRET|TOKEN)\s*=\s*['\"][^'\"]{12,}", re.I)),
     ("smtp credential", re.compile(r"SMTP_(PASS|PASSWORD|USER)\s*=\s*\S{4,}", re.I)),
-    ("app password (gmail-style)", re.compile(r"\b[a-z]{4} [a-z]{4} [a-z]{4} [a-z]{4}\b")),
+    # gmail-style 16-char app password (4×4). Anchored to a credential context or
+    # a quoted value so ordinary prose ("tool docs live next") doesn't trip it.
+    ("app password (gmail-style)",
+     re.compile(r"""(?:pass\w*|pwd|smtp|app[- ]?password)\W{0,6}[a-z]{4} [a-z]{4} [a-z]{4} [a-z]{4}\b"""
+                r"""|["'][a-z]{4} [a-z]{4} [a-z]{4} [a-z]{4}["']""", re.I)),
     ("personal email", re.compile(r"\b[\w.+-]+@(outlook|qq|gmail|163)\.com\b", re.I)),
     ("P&L context", re.compile(r"(realized (gain|loss|p&l)|1099|盈亏|持仓成本)", re.I)),
 ]
