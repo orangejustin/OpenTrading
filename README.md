@@ -96,6 +96,7 @@ LEARNING     ot reflect → every verdict journaled with its invalidation, grade
 On every ticker page in `ot web`: dual forecast cones, the one-click **⚔️ debate**, the
 confluence ladder drawn on the chart, and a **?** on each module linking to the **Learn**
 tab — a cited textbook (with a full 简体中文 edition) on how each piece works and how to read it.
+The full computation reference is [`docs/METHODOLOGY.md`](docs/METHODOLOGY.md).
 
 ---
 

@@ -54,7 +54,12 @@ CONTENT_PATTERNS = [
      re.compile(r"""(?:pass\w*|pwd|smtp|app[- ]?password)\W{0,6}[a-z]{4} [a-z]{4} [a-z]{4} [a-z]{4}\b"""
                 r"""|["'][a-z]{4} [a-z]{4} [a-z]{4} [a-z]{4}["']""", re.I)),
     ("personal email", re.compile(r"\b[\w.+-]+@(outlook|qq|gmail|163)\.com\b", re.I)),
-    ("P&L context", re.compile(r"(realized (gain|loss|p&l)|1099|盈亏|持仓成本)", re.I)),
+    # A P&L *figure* — a P&L/tax term within ~25 chars of an actual number/currency.
+    # Descriptive mentions ("not your P&L", "1099 form", "不是你的盈亏") carry no
+    # adjacent figure and are allowed; a real leak ("realized loss -$4,200") is caught.
+    ("P&L figure", re.compile(
+        r"(?:realized (?:gain|loss|p&l)|1099|盈亏|持仓成本)[^\n]{0,12}?[$¥€£]?\s?\d[\d,]{1,}"
+        r"|[$¥€£]\s?\d[\d,]{1,}[^\n]{0,12}?(?:realized (?:gain|loss|p&l)|盈亏|持仓成本)", re.I)),
 ]
 
 

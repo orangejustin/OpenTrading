@@ -7,6 +7,7 @@ image/GIF assets live in [`../assets/`](../assets).
 |-----|--------------|
 | [`RELEASE_NOTES.md`](RELEASE_NOTES.md) | Internal versioned changelog — what shipped, newest first |
 | [`ROADMAP.md`](ROADMAP.md) | Optional/opt-in modules and the forward plan |
+| [`METHODOLOGY.md`](METHODOLOGY.md) | How every number is computed — forecasters, fusion, the grading loop (timing, horizon, provenance, retention) |
 | [`WORKFLOWS.md`](WORKFLOWS.md) | The three hero workflows (morning read · size-up check · grade my book) |
 | [`CLOUD.md`](CLOUD.md) | Optional hosted tier (Cloudflare + Supabase) for cross-device access, and the docs/dependency tooling plan |
 
