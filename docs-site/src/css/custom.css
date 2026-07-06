@@ -1,0 +1,40 @@
+/**
+ * Global styles. Infima variables overridden to OpenTrading's orange.
+ */
+
+:root {
+  --ifm-color-primary: #ea6a0a;
+  --ifm-color-primary-dark: #d35f09;
+  --ifm-color-primary-darker: #c75a08;
+  --ifm-color-primary-darkest: #a44a07;
+  --ifm-color-primary-light: #f5771a;
+  --ifm-color-primary-lighter: #f67e28;
+  --ifm-color-primary-lightest: #f8964f;
+  --ifm-code-font-size: 95%;
+  --ifm-font-family-base: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.08);
+}
+
+/* Lighter palette in dark mode for contrast. */
+[data-theme='dark'] {
+  --ifm-color-primary: #fb923c;
+  --ifm-color-primary-dark: #fa8420;
+  --ifm-color-primary-darker: #f97d12;
+  --ifm-color-primary-darkest: #d9670a;
+  --ifm-color-primary-light: #fca058;
+  --ifm-color-primary-lighter: #fca866;
+  --ifm-color-primary-lightest: #fdc191;
+  --ifm-background-color: #0f1115;
+  --ifm-background-surface-color: #171a21;
+  --docusaurus-highlighted-code-line-bg: rgba(255, 255, 255, 0.08);
+}
+
+/* The navbar logo is on a white circle — keep it crisp in both themes. */
+.navbar__logo img {
+  border-radius: 50%;
+}
+
+/* Callout used in the tutorial for "not financial advice" etc. */
+.theme-admonition {
+  border-radius: 8px;
+}

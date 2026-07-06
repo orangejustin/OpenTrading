@@ -1,0 +1,30 @@
+.features {
+  display: flex;
+  align-items: center;
+  padding: 3rem 0 2rem;
+  width: 100%;
+}
+
+.featureCard {
+  height: 100%;
+  padding: 1.6rem 1.2rem;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  border-radius: 12px;
+  background: var(--ifm-background-surface-color);
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.featureCard:hover {
+  border-color: var(--ifm-color-primary);
+  transform: translateY(-2px);
+}
+
+.featureIcon {
+  font-size: 2.6rem;
+  line-height: 1;
+  margin-bottom: 0.8rem;
+}
+
+.row > .col {
+  margin-bottom: 1.5rem;
+}

@@ -1,0 +1,70 @@
+/**
+ * Landing hero — scoped CSS module.
+ */
+
+.heroBanner {
+  padding: 4.5rem 0 3.5rem;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  background: radial-gradient(
+    120% 100% at 50% 0%,
+    rgba(234, 106, 10, 0.08) 0%,
+    transparent 60%
+  );
+}
+
+[data-theme='dark'] .heroBanner {
+  background: radial-gradient(
+    120% 100% at 50% 0%,
+    rgba(251, 146, 60, 0.1) 0%,
+    transparent 60%
+  );
+}
+
+.heroLogo {
+  width: 132px;
+  height: 132px;
+  border-radius: 50%;
+  margin-bottom: 1rem;
+  box-shadow: 0 8px 30px rgba(234, 106, 10, 0.18);
+}
+
+.heroTitle {
+  font-size: 3rem;
+  font-weight: 800;
+  margin-bottom: 0.4rem;
+  letter-spacing: -0.02em;
+}
+
+.heroSubtitle {
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: var(--ifm-color-primary);
+  margin-bottom: 1rem;
+}
+
+.heroBlurb {
+  max-width: 640px;
+  margin: 0 auto 2rem;
+  font-size: 1.02rem;
+  line-height: 1.6;
+  color: var(--ifm-color-emphasis-700);
+}
+
+.buttons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+}
+
+@media screen and (max-width: 996px) {
+  .heroBanner {
+    padding: 2.5rem 1rem;
+  }
+  .heroTitle {
+    font-size: 2.2rem;
+  }
+}
