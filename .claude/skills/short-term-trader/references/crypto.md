@@ -53,15 +53,22 @@
 
 ## On-Chain Signals
 
+**Run `ot whales`** for a keyless read: it snapshots the ETH balances of ~18
+labeled wallets (exchange / bridge / staking / foundation / whale) and reports
+the Δ since last run, plus the exchange net-flow verdict. Extend it with your own
+list in `data/wallets.json`. (Optional paid upgrade — Antalpha's Smart Money
+Tracker MCP — is documented in `docs/SMART_MONEY.md`; skill-level, not required.)
+
 ### Exchange Net Flow
 - Net inflow to exchanges (coins moving to exchanges): potential sell pressure
 - Net outflow from exchanges (coins leaving to wallets): accumulation, bullish signal
 - Large BTC inflows to exchanges historically precede selloffs
+- `ot whales` computes this directly from labeled exchange wallets
 
 ### Whale Activity
 - Large wallet movements tracked on-chain
 - "Dormant whale" wallets moving after years of inactivity → often precedes price moves
-- Watch: Whale Alert (Twitter/X), Nansen, Arkham Intelligence
+- `ot whales` for tracked-wallet deltas; Whale Alert (X), Nansen, Arkham for discovery
 
 ### MVRV Ratio (Market Value to Realized Value)
 - Realized value = sum of all coins valued at last time they moved (avg cost basis)

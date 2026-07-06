@@ -2,19 +2,26 @@
 """
 whales.py — `ot whales`: labeled-wallet ETH balances via public RPC (P2-6).
 
-Keyless JSON-RPC (eth_getBalance) against a public node. Ships with a small
-set of WELL-KNOWN, publicly documented exchange cold wallets as a starter
-taxonomy; put YOUR labeled list (any wallets you track) in the git-ignored
-`data/wallets.json`:
+Keyless JSON-RPC (eth_getBalance) against a public node. Ships with a starter
+set of WELL-KNOWN, publicly documented wallets (Etherscan name-tags / official
+docs) across five classes — exchange, bridge, foundation, staking, whale — so
+exchange-inflow isn't the only signal. Put YOUR labeled list (any wallets you
+track) in the git-ignored `data/wallets.json` to extend or replace it:
 
-    [{"label": "binance-cold-1", "address": "0x...", "class": "exchange"}]
+    [{"label": "my-whale-1", "address": "0x...", "class": "whale"}]
 
 Each run snapshots balances to data/whales/last.json and prints the DELTA vs
 the previous snapshot — exchange inflows (balance up) historically read as
-sell-side supply; outflows as accumulation/custody.
+sell-side supply; outflows as accumulation/custody. Output also carries a
+per-class net delta (`by_class`).
 
     python3 whales.py
     python3 whales.py --format json
+
+Optional paid upgrade: Antalpha's hosted "Smart Money Tracker" MCP adds richer,
+professionally-labeled whale/VC/market-maker wallets + dollar-threshold signals.
+It is a skill/agent-level MCP (register once, attribution required) — NOT wired
+into this keyless tool. See docs/SMART_MONEY.md.
 
 Educational only — not financial advice. Stdlib only.
 """
@@ -32,14 +39,33 @@ UA = "Mozilla/5.0 (OpenTrading whales)"
 SNAP = ROOT / "data/whales/last.json"
 USER_WALLETS = ROOT / "data/wallets.json"
 
-# public knowledge, widely documented exchange cold wallets (starter set —
-# extend/replace via data/wallets.json, which never leaves your machine)
+# Publicly + reliably labeled Ethereum wallets (Etherscan name-tags / official
+# docs), spanning five classes so exchange-inflow isn't the only signal. This is
+# a STARTER set — extend or replace entirely via data/wallets.json, which never
+# leaves your machine. Addresses are EIP-55 checksummed.
 DEFAULT_WALLETS = [
-    {"label": "binance-cold-7", "address": "0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8", "class": "exchange"},
-    {"label": "binance-cold-8", "address": "0xF977814e90dA44bFA03b6295A0616a897441aceC", "class": "exchange"},
-    {"label": "bitfinex-cold", "address": "0x742d35Cc6634C0532925a3b844Bc454e4438f44e", "class": "exchange"},
-    {"label": "kraken-cold-4", "address": "0x2910543Af39abA0Cd09dBb2D50200b3E800A63D2", "class": "exchange"},
-    {"label": "okx-cold-1", "address": "0x6Cc5F688a315f3dC28A7781717a9A798a59fDA7b", "class": "exchange"},
+    # exchanges — inflow reads as sell-side supply, outflow as accumulation/custody
+    {"label": "coinbase-1", "address": "0x71660c4005BA85c37ccec55d0C4493E66Fe775d3", "class": "exchange"},
+    {"label": "coinbase-2", "address": "0x503828976D22510aad0201ac7EC88293211D23Da", "class": "exchange"},
+    {"label": "kraken-1", "address": "0x2910543Af39abA0Cd09dBb2D50200b3E800A63D2", "class": "exchange"},
+    {"label": "kraken-4", "address": "0x267be1C1D684F78cb4F6a176C4911b741E4Ffdc0", "class": "exchange"},
+    {"label": "binance-14", "address": "0x28C6c06298d514Db089934071355E5743bf21d60", "class": "exchange"},
+    {"label": "binance-hot-20", "address": "0xF977814e90dA44bFA03b6295A0616a897441aceC", "class": "exchange"},
+    {"label": "okx-1", "address": "0x6cC5F688a315f3dC28A7781717a9A798a59fDA7b", "class": "exchange"},
+    {"label": "bitfinex-2", "address": "0x742d35Cc6634C0532925a3b844Bc454e4438f44e", "class": "exchange"},
+    {"label": "gemini-1", "address": "0xd24400ae8BfEBb18cA49Be86258a3C749cf46853", "class": "exchange"},
+    # L2 bridges — rising locked ETH = capital rotating onto L2s
+    {"label": "arbitrum-bridge", "address": "0x8315177aB297bA92A06054cE80a67Ed4DBd7ed3a", "class": "bridge"},
+    {"label": "optimism-gateway", "address": "0x99C9fc46f92E8a1c0deC1b1747d010903E884bE1", "class": "bridge"},
+    {"label": "polygon-ether-bridge", "address": "0x8484Ef722627bf18ca5Ae6BcF031c23E6e922B30", "class": "bridge"},
+    {"label": "polygon-pos-bridge", "address": "0xA0c68C638235ee32657e8f720a23ceC1bFc77C77", "class": "bridge"},
+    {"label": "base-bridge", "address": "0x3154Cf16ccdb4C6d922629664174b904d80F2C35", "class": "bridge"},
+    # foundation / staking — structural, slow-moving supply
+    {"label": "ethereum-foundation", "address": "0xde0B295669a9FD93d5F28D9Ec85E40f4cb697BAe", "class": "foundation"},
+    {"label": "beacon-deposit", "address": "0x00000000219ab540356cBB839Cbe05303d7705Fa", "class": "staking"},
+    {"label": "lido-steth", "address": "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84", "class": "staking"},
+    # a canonical whale, as a public example
+    {"label": "vitalik-eth", "address": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045", "class": "whale"},
 ]
 
 
@@ -104,11 +130,18 @@ def run() -> dict:
         indent=2), encoding="utf-8")
     inflow = sum(r["delta_eth"] for r in rows
                  if r.get("class") == "exchange" and r.get("delta_eth"))
+    by_class: dict[str, float] = {}
+    for r in rows:
+        if r.get("delta_eth"):
+            c = r.get("class") or "other"
+            by_class[c] = round(by_class.get(c, 0.0) + r["delta_eth"], 2)
     return {"rows": rows, "exchange_net_flow_eth": round(inflow, 2),
+            "by_class": by_class,
             "read": ("exchange INFLOW — potential sell-side supply" if inflow > 100
                      else "exchange OUTFLOW — accumulation/custody" if inflow < -100
                      else "flat — no notable movement since last snapshot"),
-            "prev_snapshot": bool(prev)}
+            "prev_snapshot": bool(prev),
+            "source": "keyless"}
 
 
 def main(argv=None):
