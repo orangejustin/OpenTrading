@@ -119,6 +119,8 @@
   .trend{font-size:13px;color:#334155}.trend b{color:var(--ink)}
   .rerun{font-size:12px;font-weight:700;color:var(--accent);cursor:pointer;user-select:none}
   .rerun:hover{text-decoration:underline}
+  .dbmode{font-size:11px;font-weight:700;color:#64748b;cursor:pointer;user-select:none;white-space:nowrap}
+  .dbmode:hover{color:var(--accent)} .dbmode b{color:var(--accent)}
   .via{font-size:11.5px;color:#94a3b8;margin-left:auto}
   .cachetag{font-size:10.5px;font-weight:700;background:#eef2f7;color:#64748b;
     padding:2px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.3px}
@@ -523,6 +525,21 @@ async function loadEngines(){
 }
 const engQS=()=>ENG.engine?`&engine=${encodeURIComponent(ENG.engine)}&model=${encodeURIComponent(ENG.model||'')}`:'';
 const engName=()=>{const e=ENG.list.find(x=>x.id===ENG.engine);return e?(ENG.model&&ENG.model!=='default'?nice(ENG.engine,ENG.model):e.label):'AI';};
+/* debate engine mode: 'diverse' (default cross-engine) or 'single' (all 3 roles on the header engine) */
+let DBMODE=localStorage.getItem('ot_debate_mode')||'diverse';
+const dbEngQS=()=>DBMODE==='single'&&ENG.engine?`&engine=${encodeURIComponent(ENG.engine)}`:'';
+function debateModeChip(tk){
+  const single=DBMODE==='single';
+  const lbl=single?(ZHM?'单引擎 · '+engName():'single · '+engName()):(ZHM?'多引擎':'diverse');
+  const tip=single?(ZHM?'三个角色都在你选的引擎上运行 — 点击切换为多引擎（下次运行生效）':'all three roles run on your selected engine — click for cross-engine diversity (applies on next run)')
+                  :(ZHM?'多方/空方/裁判在不同引擎上，视角更多样 — 点击改为单引擎（下次运行生效）':'bull/bear/judge on different engines for perspective diversity — click to run all on your pick (applies on next run)');
+  return `<span class="dbmode" id="dbmodechip" title="${tip}" onclick="toggleDebateMode('${tk}')">⚙︎ ${ZHM?'引擎':'engines'}: <b>${lbl}</b></span>`;
+}
+function toggleDebateMode(tk){
+  DBMODE=DBMODE==='single'?'diverse':'single';
+  localStorage.setItem('ot_debate_mode',DBMODE);
+  const c=$('#dbmodechip'); if(c) c.outerHTML=debateModeChip(tk);  // update label in place; next Run/↻ applies it
+}
 
 /* ---------- dashboard ---------- */
 async function loadDash(){
@@ -662,7 +679,7 @@ async function showTicker(tk){
   loadLiveQuote(tk);
   loadCones(tk);
   renderDebateInvite(tk);
-  fetch(`/api/debate?ticker=${encodeURIComponent(tk)}&peek=1${langQS()}`).then(r=>r.json())
+  fetch(`/api/debate?ticker=${encodeURIComponent(tk)}&peek=1${langQS()}${dbEngQS()}`).then(r=>r.json())
     .then(d=>{if(CHART.tk===tk&&d&&d.verdict)renderDebate(tk,d);}).catch(()=>{});
   const d=await fetch(`/api/analyze?ticker=${encodeURIComponent(tk)}&mode=auto${engQS()}${langQS()}`).then(r=>r.json()).catch(()=>null);
   if(!d){$('#ai-area').innerHTML='<div class="banner">Failed to load data.</div>';return;}
@@ -927,7 +944,7 @@ function renderLadder(d){
 }
 function renderDebateInvite(tk){
   const el=$('#desk-debate'); if(!el) return;
-  el.innerHTML=`<div class="lbl">${tr('Bull vs Bear — the research desk')} ${qh('debate','Adversarial debate on different engines; the judge commits')}</div>
+  el.innerHTML=`<div class="lbl" style="display:flex;gap:8px;align-items:center">${tr('Bull vs Bear — the research desk')} ${qh('debate','Adversarial debate on different engines; the judge commits')}<span style="margin-left:auto">${debateModeChip(tk)}</span></div>
     <div style="text-align:center;padding:14px 6px 8px">
       <button class="aibtn" onclick="runDebate('${tk}',false)">${tr('Run the debate')}</button>
       <div class="aihint">${ZHM?'3 次 LLM 调用：多方与空方在不同引擎上辩论，裁判做出承诺 — 5 档判决 · 入场 · 失效价 · 时间止损。约1–2分钟；写入 <b>ot reflect</b>。缓存直到 ↻。':'3 LLM calls: bull and bear argue on different engines, the judge commits — 5-tier verdict · entry · invalidation · time stop. ~1–2 min; journaled to <b>ot reflect</b>. Cached until ↻.'}</div></div>`;
@@ -946,7 +963,7 @@ function runDebate(tk,fresh){
   DBTIMER=setInterval(()=>{const s=(Date.now()-t0)/1000;
     $('#db-el')&&($('#db-el').textContent=s.toFixed(1)+'s');
     $('#db-stage')&&($('#db-stage').textContent=stages[s<25?0:s<50?1:s<75?2:3]);},150);
-  fetch(`/api/debate?ticker=${encodeURIComponent(tk)}${langQS()}${fresh?'&fresh=1':''}`)
+  fetch(`/api/debate?ticker=${encodeURIComponent(tk)}${langQS()}${dbEngQS()}${fresh?'&fresh=1':''}`)
     .then(r=>r.json()).then(d=>{clearInterval(DBTIMER);
       if(CHART.tk!==tk) return;
       if(!d||d.error){el.innerHTML=`<div class="lbl">Bull vs Bear</div><div class="banner">${d&&d.error||'Debate failed.'}</div>`;return;}
@@ -958,7 +975,7 @@ function renderDebate(tk,d){
   const vc={STRONG_BUY:'buy',BUY:'buy',HOLD:'hold',SELL:'sell',STRONG_SELL:'sell'}[d.verdict]||'mixed';
   el.innerHTML=`<div class="lbl" style="display:flex;gap:8px;align-items:center">${tr('Bull vs Bear — verdict')} ${qh('debate','Verdict + entry + invalidation + time stop — how to read it')}
       ${d.cached?`<span class="cachetag">${tr('cached')}</span>`:''}
-      <span class="rerun" style="margin-left:auto" onclick="runDebate('${tk}',true)">↻ ${tr('Re-run')}</span></div>
+      <span style="margin-left:auto;display:flex;gap:10px;align-items:center">${debateModeChip(tk)}<span class="rerun" onclick="runDebate('${tk}',true)">↻ ${tr('Re-run')}</span></span></div>
     <div style="display:flex;align-items:center;gap:12px;margin-top:4px">
       <span class="chip ${vc}" style="font-size:14px;padding:6px 14px">${trv(d.verdict)}</span>
       <span style="font-size:13px;color:#64748b">${tr('confidence')} <b class="mono">${d.confidence}/100</b></span></div>
@@ -1084,14 +1101,14 @@ async function runDesk(){
   paint();
   for(const t of held){
     rows[t]=null;paint();
-    rows[t]=await fetch(`/api/debate?ticker=${encodeURIComponent(t)}${langQS()}`).then(r=>r.json()).catch(()=>({error:'failed'}));
+    rows[t]=await fetch(`/api/debate?ticker=${encodeURIComponent(t)}${langQS()}${dbEngQS()}`).then(r=>r.json()).catch(()=>({error:'failed'}));
     paint();
   }
 }
 async function reDesk(t){
   const el=$('#deskrun');
   el.querySelectorAll('tr').forEach(tr=>{if(tr.firstChild&&tr.firstChild.textContent===t)tr.lastChild.innerHTML='…';});
-  await fetch(`/api/debate?ticker=${encodeURIComponent(t)}&fresh=1${langQS()}`).then(r=>r.json()).catch(()=>null);
+  await fetch(`/api/debate?ticker=${encodeURIComponent(t)}&fresh=1${langQS()}${dbEngQS()}`).then(r=>r.json()).catch(()=>null);
   runDesk();
 }
 function renderStratCards(scores){
