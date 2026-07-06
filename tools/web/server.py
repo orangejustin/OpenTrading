@@ -639,7 +639,9 @@ def forecast_view(ticker: str) -> dict:
     key = ("tfm", ticker.upper())
     with _CACHE_LOCK:
         hit = _DESK_CACHE.get(key)
-    if hit and time.time() - hit[0] < 1800:
+    # 6h TTL: the cone is fit on DAILY closes, so it doesn't change intraday —
+    # and a short TTL silently drops TimesFM out of the consensus row.
+    if hit and time.time() - hit[0] < 21600:
         return dict(hit[1], cached=True)
     try:
         out = subprocess.run([str(venv_py), str(ROOT / "tools/forecast/tfm.py"),
@@ -762,7 +764,7 @@ def fusion_view(ticker: str) -> dict:
         lambda o: o[0] if isinstance(o, list) and o else None)(
         ot_json(ROOT / "tools/options/opt.py", T, "--dte", "30"))) or {}
     marks = _cached_part(("marks", T), 1800, lambda: _marks(T)) or {}
-    tfm = _peek_part(("tfm", T), 1800)
+    tfm = _peek_part(("tfm", T), 21600)
     debate = _peek_part(("debate", T), _CACHE_TTL)
     ai = _ai_peek(T)
     plan = (decide or {}).get("plan") or {}
@@ -924,6 +926,16 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if u.path in ("/", "/index.html"):
                 return self._send(200, (HERE / "index.html").read_bytes(), "text/html; charset=utf-8")
+            if u.path.startswith("/assets/"):
+                # static files for the Learn page (docs/assets), traversal-safe
+                base = (ROOT / "docs/assets").resolve()
+                f = (base / u.path[len("/assets/"):]).resolve()
+                if base in f.parents and f.is_file():
+                    ct = {".png": "image/png", ".gif": "image/gif", ".jpg": "image/jpeg",
+                          ".jpeg": "image/jpeg", ".svg": "image/svg+xml"}.get(f.suffix.lower())
+                    if ct:
+                        return self._send(200, f.read_bytes(), ct)
+                return self._send(404, json.dumps({"error": "not found"}))
             if u.path == "/api/overview":
                 return self._send(200, json.dumps(overview()))
             if u.path == "/api/watchlist":
@@ -1010,7 +1022,7 @@ def main(argv=None):
     p.add_argument("--port", type=int, default=int(os.environ.get("OT_WEB_PORT") or 8787))
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--no-open", action="store_true", help="don't open a browser")
-    p.add_argument("--engine", choices=["gemini", "openrouter", "claude"],
+    p.add_argument("--engine", choices=["gemini", "openrouter", "claude", "codex"],
                    help="default AI engine (overrides OT_LLM_ENGINE; still switchable in the UI)")
     p.add_argument("--model", help="default model for the chosen engine (e.g. z-ai/glm-5.2, sonnet)")
     a = p.parse_args(argv)
@@ -1030,7 +1042,7 @@ def main(argv=None):
         eng = a.engine or (os.environ.get("OT_LLM_ENGINE") or "").lower() \
             or (llm.default_engine() if llm else "")
         envkey = {"gemini": "GEMINI_MODEL", "openrouter": "OPENROUTER_MODEL",
-                  "claude": "OT_CLAUDE_MODEL"}.get(eng)
+                  "claude": "OT_CLAUDE_MODEL", "codex": "OT_CODEX_MODEL"}.get(eng)
         if envkey:
             os.environ[envkey] = a.model
 

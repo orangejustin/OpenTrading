@@ -82,6 +82,11 @@ Everything runs **on your machine** — positions never leave `localhost`.
     by **2+ independent sources** get a confluence badge — those are the lines that
     matter. The quant cone band + dealer walls are also drawn on the candlestick
     chart itself. Assembled from cached parts — never triggers an LLM call.
+- **Learn — the desk textbook** — every module carries a small **?** chip that jumps
+  to `#/learn/<topic>`: a self-contained explainer page (concepts, the models used,
+  how to interpret the output, a real annotated case, and numbered citations — TimesFM
+  paper, GEX white paper, prediction-market literature, …) with real screenshots
+  served from `docs/assets/learn/` via the `/assets/*` route.
 - **Desk Calibration (Strategy tab)** — `ot reflect`'s track record as a table
   (hit-rate · avg return · alpha, by action/grade/market) plus the exact
   lessons block that gets injected into every debate's judge prompt.
@@ -104,6 +109,7 @@ Everything runs **on your machine** — positions never leave `localhost`.
   | **Gemini** | `GEMINI_API_KEY` in `.env` (free — <https://aistudio.google.com>) | `gemini-2.5-flash` (default), `-pro`, … |
   | **OpenRouter** | `OPENROUTER_API_KEY` in `.env` (<https://openrouter.ai/settings/keys>) | **one key → any model**: GLM 5.2, DeepSeek v4, GPT-5.5/4o, Claude, Gemini, Grok, Qwen… pick from the list or type any slug |
   | **Claude Code** | **no key** — appears automatically when the `claude` CLI is on PATH | your Claude subscription (default / sonnet / opus / haiku) |
+  | **Codex** | **no key** — appears automatically when the `codex` CLI is on PATH | your ChatGPT/Codex subscription, headless `codex exec` in a read-only sandbox |
 
   ```env
   GEMINI_API_KEY=...                 # engine 1

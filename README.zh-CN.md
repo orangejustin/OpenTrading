@@ -1,6 +1,6 @@
 <div align="center">
 
-# 📈 OpenTrading
+<h1><img src="docs/assets/opentrading-mark.png" alt="OpenTrading logo" width="44" align="center"> OpenTrading</h1>
 
 **本地优先的交易副驾 —— 宏观优先、风险优先、零 API key。**
 

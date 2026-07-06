@@ -262,6 +262,34 @@
   .lnow{display:flex;align-items:center;gap:10px;padding:4px 2px;font-size:10.5px;font-weight:800;color:var(--accent)}
   .lnow::before,.lnow::after{content:'';flex:1;border-top:2px dashed #bfdbfe}
 
+  /* learn: the "?" help chips + the textbook page */
+  .qhelp{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;
+    border-radius:50%;border:1.2px solid #cbd5e1;color:#94a3b8;font-size:10px;font-weight:800;
+    cursor:pointer;flex:none;vertical-align:1px;margin-left:2px}
+  .qhelp:hover{border-color:var(--accent);color:var(--accent);background:#eff6ff}
+  .learn{max-width:840px;margin:0 auto}
+  .learn h2{font-size:20px;letter-spacing:-.3px;margin:38px 0 10px;scroll-margin-top:20px;
+    display:flex;align-items:baseline;gap:10px}
+  .learn h2 .mod{font-size:10.5px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px}
+  .learn h3{font-size:14px;margin:18px 0 6px}
+  .learn p,.learn li{font-size:14px;line-height:1.7;color:#1f2937}
+  .learn .case{background:#f8fafc;border:1px solid var(--line);border-left:4px solid var(--accent);
+    border-radius:10px;padding:12px 16px;margin:12px 0;font-size:13.5px;line-height:1.65}
+  .learn .case .ct{font-size:10.5px;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+  .learn figure{margin:14px 0;padding:0}
+  .learn figure img{max-width:100%;border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow)}
+  .learn figcaption{font-size:11.5px;color:#94a3b8;margin-top:6px;line-height:1.5}
+  .learn sup a{font-size:10px;color:var(--accent);font-weight:700;text-decoration:none}
+  .learn .refs{font-size:12px;color:#475569;line-height:1.8;border-top:1px solid var(--line);
+    margin-top:34px;padding-top:14px}
+  .learn .refs li{font-size:12px}
+  .learn code{background:#eef2f7;border-radius:5px;padding:1px 6px;font-size:12.5px}
+  .learn table{border-collapse:collapse;font-size:12.5px;margin:10px 0;width:100%}
+  .learn th{text-align:left;color:#94a3b8;font-size:10.5px;text-transform:uppercase;padding:4px 10px 4px 0}
+  .learn td{padding:4px 10px 4px 0;border-top:1px solid var(--line)}
+  .learn .toc{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 18px;box-shadow:var(--shadow)}
+  .learn .toc a{display:inline-block;margin:3px 12px 3px 0;font-size:13px;font-weight:600}
+
   footer{max-width:1180px;margin:0 auto;padding:18px 24px 40px;color:#94a3b8;font-size:11px;line-height:1.5}
 </style>
 </head>
@@ -275,6 +303,7 @@
     <a id="nav-dash" href="#" onclick="location.hash='';return false">Dashboard</a>
     <a id="nav-strat" href="#/strategy">Strategy</a>
     <a id="nav-news" href="#/news" >News</a>
+    <a id="nav-learn" href="#/learn">Learn</a>
   </nav>
   <div class="engctl" id="engctl" style="display:none">
     <select id="llmsel" title="AI engine · model — one click to switch"></select>
@@ -319,11 +348,12 @@
     <div class="sub" style="font-size:12px;color:#94a3b8;margin:0 4px 12px">
       One deterministic <b>ot decide</b> read per name — direction · grade · zones · stop. No LLM, no waiting; the learned risk-first policy. Click a card for the full page.</div>
     <div class="sgrid" id="sgrid"><div class="card pad loading" style="grid-column:1/-1">Running the decision engine over your book + watchlist…</div></div>
-    <div class="sec-h" style="margin-top:22px">Desk Calibration <span class="sub">ot reflect — the desk grading its own past calls</span></div>
+    <div class="sec-h" style="margin-top:22px">Desk Calibration <a class="qhelp" href="#/learn/calibration" title="Every call graded — hit-rate, alpha, lessons — click for the explainer">?</a> <span class="sub">ot reflect — the desk grading its own past calls</span></div>
     <div class="card pad" id="calib"><div class="loading" style="padding:12px">Loading the journal…</div></div>
   </section>
 
   <section id="view-ticker" style="display:none"></section>
+  <section id="view-learn" style="display:none"></section>
 </main>
 
 <footer>
@@ -376,7 +406,7 @@ const NICE={'z-ai/glm-5.2':'GLM 5.2','deepseek/deepseek-v4-pro':'DeepSeek v4 Pro
   'openai/gpt-5.5':'GPT-5.5','openai/gpt-4o':'GPT-4o','google/gemini-3.5-flash':'Gemini 3.5 Flash',
   'anthropic/claude-sonnet-5':'Claude Sonnet 5','anthropic/claude-fable-5':'Claude Fable 5',
   'x-ai/grok-4.3':'Grok 4.3','qwen/qwen3.7-max':'Qwen 3.7 Max'};
-const nice=(eng,m)=>eng==='claude'?('Claude Code · '+m):(NICE[m]||m);
+const nice=(eng,m)=>eng==='claude'?('Claude Code · '+m):eng==='codex'?('Codex · '+m):(NICE[m]||m);
 function optionsFor(e,custom){
   let ms=e.models||[];
   if(e.id==='openrouter') ms=ms.concat(custom.filter(m=>!ms.includes(m)));
@@ -459,7 +489,7 @@ async function loadMacro(){
     <div class="card"><div class="k">BTC funding</div>
       <div class="v">${m.btc_funding?.rate_8h_pct!=null?(m.btc_funding.rate_8h_pct*1).toFixed(4)+'%/8h':'—'}</div>
       <div class="d">${m.btc_funding?.read||''} — extreme positive = crowded longs</div></div>
-    <div class="card"><div class="k">SPY dealer gamma (&lt;7 DTE)</div>
+    <div class="card"><div class="k">SPY dealer gamma (&lt;7 DTE) ${qh('gex','Positive gamma dampens moves; walls = the hedging shelves')}</div>
       <div class="v ${g.sign==='positive'?'up':g.sign==='negative'?'down':''}">${g.net_usd_bn!=null?('$'+g.net_usd_bn+'bn/1%'):'—'}</div>
       <div class="d">${g.sign||''} · call wall <b>${g.call_wall??'—'}</b> · put wall <b>${g.put_wall??'—'}</b> · spot ${g.spot??'—'}</div></div>
     <div class="card" id="polycard" style="grid-column:1/-1"><div class="k">Crowd odds — Polymarket</div>
@@ -475,7 +505,7 @@ async function loadPoly(){
     const col=warnHigh&&x.p>=40?'var(--down)':x.p>=65?'var(--ink)':'#334155';
     return `<div style="min-width:130px"><div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.3px">${lbl}</div>
       <div class="mono" style="font-size:19px;font-weight:800;color:${col};margin-top:2px">${x.p}%</div></div>`;};
-  el.innerHTML=`<div class="k">Crowd odds — Polymarket <span style="color:#cbd5e1">· priced forecast, no key</span></div>
+  el.innerHTML=`<div class="k">Crowd odds — Polymarket ${qh('odds','Market-priced probabilities — inside the odds = non-event')} <span style="color:#cbd5e1">· priced forecast, no key</span></div>
     <div style="display:flex;gap:26px;flex-wrap:wrap;margin-top:9px">
       ${stat('Fed holds next FOMC',g.no_change_next_fomc)}
       ${stat('25bp cut next FOMC',g.cut_25_next_fomc)}
@@ -645,7 +675,7 @@ function renderAnalysis(d){
   const via=d.engine?`${nice(d.engine.engine,d.engine.model)}${d.engine.engine!=='claude'?' · '+d.engine.engine:''}${d.elapsed?' · '+d.elapsed+'s':''}${d.finished_at?' · '+d.finished_at:''}`:'';
   $('#ai-area').innerHTML=`<div class="top">
       <div class="card pad">
-        <div class="lbl" style="display:flex;gap:8px;align-items:center">AI Analysis ${d.cached?'<span class="cachetag">cached</span>':''}</div>
+        <div class="lbl" style="display:flex;gap:8px;align-items:center">AI Analysis ${qh('ai','One engine, grounded prompt — the desk’s second opinion')} ${d.cached?'<span class="cachetag">cached</span>':''}</div>
         <div class="summary">${d.summary||''}</div>
         <div class="meta-row"><span class="chip ${(d.action||'').toLowerCase()}">${d.action||'—'}</span>
           <span class="trend"><b>Trend:</b> ${d.trend||'—'}</span>
@@ -653,10 +683,10 @@ function renderAnalysis(d){
           ${via?`<span class="via">${via}</span>`:''}</div>
         <div class="meta-row trend" style="color:#64748b">${techLine}${typeof d.technicals==='string'?' · '+d.technicals:''}</div>
       </div>
-      <div class="card pad gcard"><div class="lbl">Sentiment</div>${gauge(d.sentiment_score,d.sentiment_label)}
+      <div class="card pad gcard"><div class="lbl">Sentiment ${qh('ai','0–100 for THIS name — contrarian at the extremes')}</div>${gauge(d.sentiment_score,d.sentiment_label)}
         <div class="gsub">AI read for ${d.symbol} · 0–100</div></div>
     </div>
-    <div class="sec-h" style="margin-top:18px">Sniper Levels</div>
+    <div class="sec-h" style="margin-top:18px">Sniper Levels ${qh('ai','Four levels with reasons — they also feed the confluence ladder')}</div>
     <div class="levels">
       <div class="lv buy"><div class="k">Ideal Buy</div><div class="v">${e.ideal_buy||'—'}</div></div>
       <div class="lv sec"><div class="k">Secondary Buy</div><div class="v">${e.secondary_buy||'—'}</div></div>
@@ -692,7 +722,7 @@ async function loadCones(tk){
   const el=$('#desk-cones'); if(!el) return;
   const q=await fetch(`/api/quant?ticker=${encodeURIComponent(tk)}`).then(r=>r.json()).catch(()=>null);
   if(CHART.tk!==tk) return;
-  let h='<div class="lbl">Forecast cones <span style="color:#cbd5e1">· 5 sessions</span></div>';
+  let h=`<div class="lbl">Forecast cones ${qh('cones','Quant logistic + empirical cone; TimesFM foundation model')} <span style="color:#cbd5e1">· 5 sessions</span></div>`;
   if(q&&!q.error){
     const edge=(q.p_up-q.base_rate_up).toFixed(1);
     h+=`<div style="display:flex;align-items:baseline;gap:10px;margin-top:4px">
@@ -735,7 +765,7 @@ function renderConsensus(d){
   const V={CONSENSUS_LONG:['long','CONSENSUS LONG'],CONSENSUS_SHORT:['short','CONSENSUS SHORT'],
     STAND_ASIDE:['aside','⚠ STAND ASIDE — models disagree'],NEUTRAL:['','NEUTRAL'],THIN:['','THIN — run more analysts']};
   const [vc,vt]=V[c.verdict]||['','—'];
-  el.innerHTML=`<span style="font-size:10px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px">Desk<br>consensus</span>
+  el.innerHTML=`<span style="font-size:10px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px">Desk<br>consensus ${qh('consensus','One chip per analyst; STAND ASIDE when they split')}</span>
     ${chips||'<span style="font-size:12px;color:#94a3b8">no analyst reads yet</span>'}
     ${missing.length?`<span style="font-size:10.5px;color:#cbd5e1">idle: ${missing.join(' · ')}</span>`:''}
     <span class="cverdict ${vc}" title="agreement ${c.agreement??'—'}% across ${c.chips?c.chips.length:0} analysts">${vt}</span>`;
@@ -755,14 +785,14 @@ function renderLadder(d){
       ${badges}<span class="what">${what}</span></div>`;
   }
   if(!placed) html+=`<div class="lnow">last ${fmt(d.last)}</div>`;
-  el.innerHTML=`<div class="lbl" style="display:flex;gap:8px;align-items:baseline">Confluence ladder
+  el.innerHTML=`<div class="lbl" style="display:flex;gap:8px;align-items:baseline">Confluence ladder ${qh('ladder','Every level, one axis — ×2+ = independent methods on the same line')}
       <span style="color:#cbd5e1;font-weight:600;text-transform:none;letter-spacing:0">every level the desk emits, clustered — <b>×2+</b> = independent methods naming the SAME line</span>
       <span class="rerun" style="margin-left:auto" onclick="loadFusion('${d.ticker}')">↻</span></div>${html}
     <div class="d" style="margin-top:8px;color:#94a3b8;font-size:11px">agreement between a statistical cone and a dealer wall is tradeable structure neither shows alone — the ×2+ rows are the only levels that matter</div>`;
 }
 function renderDebateInvite(tk){
   const el=$('#desk-debate'); if(!el) return;
-  el.innerHTML=`<div class="lbl">Bull vs Bear — the research desk</div>
+  el.innerHTML=`<div class="lbl">Bull vs Bear — the research desk ${qh('debate','Adversarial debate on different engines; the judge commits')}</div>
     <div style="text-align:center;padding:14px 6px 8px">
       <button class="aibtn" onclick="runDebate('${tk}',false)">⚔️ Run the debate</button>
       <div class="aihint">3 LLM calls: bull and bear argue on different engines, the judge commits —
@@ -792,7 +822,7 @@ function runDebate(tk,fresh){
 function renderDebate(tk,d){
   const el=$('#desk-debate'); if(!el) return;
   const vc={STRONG_BUY:'buy',BUY:'buy',HOLD:'hold',SELL:'sell',STRONG_SELL:'sell'}[d.verdict]||'mixed';
-  el.innerHTML=`<div class="lbl" style="display:flex;gap:8px;align-items:center">Bull vs Bear — verdict
+  el.innerHTML=`<div class="lbl" style="display:flex;gap:8px;align-items:center">Bull vs Bear — verdict ${qh('debate','Verdict + entry + invalidation + time stop — how to read it')}
       ${d.cached?'<span class="cachetag">cached</span>':''}
       <span class="rerun" style="margin-left:auto" onclick="runDebate('${tk}',true)">↻ Re-run</span></div>
     <div style="display:flex;align-items:center;gap:12px;margin-top:4px">
@@ -923,20 +953,122 @@ async function loadCalibration(){
       <pre style="font-size:11.5px;line-height:1.6;color:#334155;white-space:pre-wrap;margin:4px 0 0;font-family:ui-monospace,monospace">${d.lessons.replace(/</g,'&lt;')}</pre>`:'');
 }
 
+/* ---------- learn: the desk textbook ---------- */
+const REFS=[
+ ['tfm','Das, A., Kong, W., Sen, R., Zhou, Y. — “A decoder-only foundation model for time-series forecasting”, ICML 2024. <a href="https://arxiv.org/abs/2310.10688" target="_blank" rel="noopener">arXiv:2310.10688</a> · <a href="https://github.com/google-research/timesfm" target="_blank" rel="noopener">google-research/timesfm</a>'],
+ ['fpp','Hyndman, R.J. &amp; Athanasopoulos, G. — <i>Forecasting: Principles and Practice</i>, ch. “Evaluating forecast accuracy” (out-of-sample / walk-forward testing). <a href="https://otexts.com/fpp3/" target="_blank" rel="noopener">otexts.com/fpp3</a>'],
+ ['cont','Cont, R. — “Empirical properties of asset returns: stylized facts and statistical issues”, <i>Quantitative Finance</i> 1 (2001): fat tails &amp; volatility clustering — why we use empirical quantiles, not Gaussian bands.'],
+ ['gexwp','SqueezeMetrics — “Gamma Exposure (GEX)” white paper. <a href="https://squeezemetrics.com/monitor/download/pdf/white_paper.pdf" target="_blank" rel="noopener">squeezemetrics.com</a>'],
+ ['cboe','CBOE delayed option chains (open interest &amp; gamma inputs) — <a href="https://www.cboe.com/delayed_quotes/" target="_blank" rel="noopener">cboe.com/delayed_quotes</a>; served keyless from cdn.cboe.com.'],
+ ['debate','Irving, G., Christiano, P., Amodei, D. — “AI safety via debate”, 2018. <a href="https://arxiv.org/abs/1805.00899" target="_blank" rel="noopener">arXiv:1805.00899</a>'],
+ ['judge','Zheng, L. et al. — “Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena”, NeurIPS 2023. <a href="https://arxiv.org/abs/2306.05685" target="_blank" rel="noopener">arXiv:2306.05685</a>'],
+ ['crowd','Surowiecki, J. — <i>The Wisdom of Crowds</i> (2004); Condorcet’s jury theorem: independent, better-than-chance voters beat any single voter — the argument for engine diversity.'],
+ ['tetlock','Tetlock, P. &amp; Gardner, D. — <i>Superforecasting</i> (2015): keep score, grade every call, weight forecasters by track record.'],
+ ['arrow','Arrow, K.J. et al. — “The Promise of Prediction Markets”, <i>Science</i> 320 (2008). Data: <a href="https://gamma-api.polymarket.com" target="_blank" rel="noopener">Polymarket Gamma API</a> (keyless).'],
+ ['fng','CNN Business — <a href="https://www.cnn.com/markets/fear-and-greed" target="_blank" rel="noopener">Fear &amp; Greed Index</a> (7-factor composite; contrarian at extremes).'],
+ ['murphy','Murphy, J. — <i>Technical Analysis of the Financial Markets</i> (1999), ch. 4: support/resistance and why levels named by several independent methods carry more weight (“confluence”).'],
+];
+const R=id=>{const i=REFS.findIndex(r=>r[0]===id);return `<sup><a href="#learn-refs" title="${REFS[i][1].replace(/<[^>]+>/g,'')}">[${i+1}]</a></sup>`;};
+const LEARN=[
+{id:'pipeline',mod:'the big picture',title:'How the desk fits together',html:()=>`
+<p>Every ticker page runs the same pipeline: independent <b>forecasters</b> each produce a view from different information — a rules engine (<code>ot decide</code>), a statistical model (<code>ot quant</code>), a foundation model (TimesFM)${R('tfm')}, dealer-positioning data (GEX), an LLM analyst, and a crowd (Polymarket)${R('arrow')} — then a <b>fusion layer</b> (the consensus strip, the confluence ladder, the bull-vs-bear debate) combines them, and a <b>learning loop</b> (<code>ot reflect</code>) grades every committed call afterwards${R('tetlock')}.</p>
+<p>The design rule is <i>deterministic SOP</i>: scripts fetch and compute the evidence, the evidence is frozen into a text pack, and only then does an LLM read it. No agent wanders off mid-analysis; the same inputs give the same pack every time. The value of an ensemble comes from <b>independence</b> — five analysts that share one brain are one analyst${R('crowd')} — which is why the pieces deliberately use different math, different data, and (in the debate) different model vendors.</p>
+<div class="case"><div class="ct">How to read a ticker page, top to bottom</div>
+1. <b>Consensus strip</b> — do the analysts even agree? &nbsp;2. <b>Chart + walls + cone</b> — where is price inside the structure? &nbsp;3. <b>Forecast cones</b> — what range is realistic in 5 sessions? &nbsp;4. <b>Debate verdict</b> — the committed call: direction, entry, invalidation, time stop. &nbsp;5. <b>Confluence ladder</b> — the exact prices where methods stack up. &nbsp;6. <b>AI analysis</b> — a second opinion to stress-test the story.</div>`},
+{id:'consensus',mod:'fusion · F2',title:'Desk consensus — the agreement strip',html:()=>`
+<p><b>What it is.</b> One chip per analyst — engine (<code>ot decide</code>), quant, TimesFM, AI, debate — colored by its tilt (green = bullish, red = bearish, grey = flat), plus a verdict computed from the votes: <b>CONSENSUS LONG/SHORT</b> when 2+ agree and none oppose, <b>NEUTRAL</b> when there’s no majority, <b>THIN</b> when fewer than two analysts have reported, and <b>⚠ STAND ASIDE</b> the moment any two analysts point in opposite directions.</p>
+<p><b>Why stand-aside is a signal, not a failure.</b> A jury of independent, better-than-chance voters is more reliable than its best member — but only when it votes one way${R('crowd')}. When methods that look at <i>different</i> information disagree, the honest read is “the situation is genuinely ambiguous”, and the right position size for ambiguity is zero. The strip turns that from a feeling into a rule.</p>
+<figure><img src="/assets/learn/meta-consensus.png" alt="META desk consensus strip and chart with walls and cone overlay">
+<figcaption>META, Jul 5 2026 — engine CALL·B, quant 68.6% and debate BUY align (AI abstains with WATCH): CONSENSUS LONG at 75% agreement. The chart below the strip carries the dealer walls (650/550) and the shaded 5-day quant cone.</figcaption></figure>
+<div class="case"><div class="ct">Real case — the two verdicts, one day apart</div>
+<b>META (above):</b> three bulls, one abstention → CONSENSUS LONG. The follow-up question is only <i>where</i> — answered by the ladder and the judge’s entry.<br>
+<b>MU (Jul 5):</b> quant said 80% up, the engine said PUT, TimesFM was flat, the judge said SELL — a genuine split. STAND ASIDE: the models were telling us the name was un-forecastable that day. Disagreement <i>is</i> the information.</div>
+<p><b>Caveat.</b> The chips are equal-weight votes for now. The journal (<code>ot reflect</code>) is accumulating per-analyst track records; once ~30 calls are graded, chips will be weighted by who has actually been right${R('tetlock')} (plan item F4).</p>`},
+{id:'ladder',mod:'fusion · F1',title:'Confluence ladder — one price axis, every method',html:()=>`
+<p><b>What it is.</b> Every price level the desk emits — engine buy/add/trim zones and stop, quant cone P10/P50/P90, TimesFM cone, dealer call/put walls, AI sniper levels, the judge’s entry and invalidation, MA20 and the true 52-week marks — projected onto one axis. Levels within <b>0.7%</b> of each other are clustered into a single rung; the <b>×N badge counts how many independent sources</b> named that rung.</p>
+<p><b>Why confluence matters.</b> Any single method can paint a line anywhere. But a statistical quantile, a dealer-hedging wall and a rules-engine zone are computed from unrelated inputs — when they land on the same price, that line reflects structure several kinds of market participants will actually react to${R('murphy')}. The ×1 rungs are opinions; the ×2+ rungs are structure.</p>
+<figure><img src="/assets/learn/meta-ladder.png" alt="META confluence ladder">
+<figcaption>META, Jul 5 2026. Above price: 651 = call wall + trim zone (×2) — the take-profit shelf. Below: 576.84 = buy zone + MA20 + judge entry (×3), 550.41 = put wall + quant P10 (×2), 533.27 = engine stop + judge invalidation (×2).</figcaption></figure>
+<div class="case"><div class="ct">How a trader actually uses the rungs</div>
+<b>Entries</b> at ×2+ support rungs (576.84 — the judge put his limit order exactly there, “do not chase”). <b>Stops</b> just beyond a ×2+ rung, not inside it (533.27: if THE line breaks, the thesis is wrong). <b>Targets</b> at the first opposing ×2+ rung (626 quant P90 + AI take-profit; 651 wall). <b>Sizing</b>: distance entry→stop = risk per share; the ladder hands you all three numbers of the R-multiple.</div>
+<p><b>One subtlety:</b> the ladder marks <i>lines</i>, not directions. On ORCL the same 140.19 rung was simultaneously the AI’s “ideal buy”, the judge’s <i>short</i> entry and quant P50 — three methods agreeing it’s the pivot, while disagreeing which way it resolves. Read the rung labels, not just the badge.</p>`},
+{id:'cones',mod:'forecasters',title:'Forecast cones — quant regression &amp; TimesFM',html:()=>`
+<p>Two <i>independent</i> 5-session forecasts, drawn as P10–P90 ranges so uncertainty is visible instead of hidden behind a point estimate.</p>
+<h3>Quant — logistic regression + empirical cone (keyless)</h3>
+<p>A tiny, fully-inspectable model refit per ticker on ~2 years of daily bars: six features (5d &amp; 20d momentum, centered RSI, MA10–MA20 spread, 20d volatility, position-in-range), z-scored, L2-regularized logistic regression → <b>P(up in 5 sessions)</b>. The cone is <i>empirical</i>: the actual distribution of historical 5-day forward returns, applied to the last price — no Gaussian assumption, because real return tails are fat${R('cont')}.</p>
+<p><b>The honesty gauge:</b> before fitting on everything, the model is trained on the first 70% and tested on the held-out last 30% — the <b>OOS hit-rate</b>${R('fpp')}. Read it like this: <b>&lt;55% ≈ coin-flip — discount P(up)</b>; 55–62% decent; ≥62% take it seriously. It’s printed next to every P(up) precisely so a confident-looking number can’t hide a weak model.</p>
+<h3>TimesFM — a time-series foundation model (opt-in)</h3>
+<p>Google Research’s 200M-parameter decoder-only model, pre-trained on ~100B real-world time points, forecasting zero-shot from the last ~500 closes${R('tfm')} — no per-ticker training, quantile head gives the cone directly. It has never seen news, fundamentals, or the other modules: a genuinely independent witness.</p>
+<div class="case"><div class="ct">Real case — META, Jul 5 2026</div>
+Quant: P(up) 68.6% but OOS 43% → treat the 68.6% as noise; use the cone (550.8–623.7). TimesFM: P50 582.71 vs price 582.90 — dead flat, cone 539.6–628.6. <b>The two cones agree on the range and both P50s sit on the price</b>: 5 sessions of chop between the walls is the base case. That’s exactly why the judge refused to chase and set a limit at 576.90. Two cones agreeing = a real range; disagreeing (MU: quant up, TimesFM down) = the uncertainty is the signal.</div>
+<p><b>Use it for sizing, not direction:</b> P10 is your realistic adverse excursion (stop must live outside it or you’ll be noise-stopped); P90 caps what “take profit” can honestly mean this week; cone width is the volatility regime — half-size when the cone is wide.</p>`},
+{id:'debate',mod:'fusion · the committed call',title:'Bull vs Bear — adversarial debate with a judge',html:()=>`
+<p><b>What it is.</b> The full evidence pack (decide plan · macro score · earnings gate · crowd odds · both cones · 48h of headlines · past-call lessons) is argued by a <b>bull</b> and a <b>bear</b> running on <i>different model vendors</i>, the bear is explicitly ordered to attack the bull’s strongest point, and a third model — the <b>judge</b> — must commit: a 5-tier verdict, confidence, an entry, a numeric <b>invalidation</b>, and a <b>time stop</b>. No fence-sitting allowed; HOLD is reserved for genuinely balanced evidence.</p>
+<p><b>Why adversarial, why different vendors.</b> A single model asked “what do you think?” pattern-matches to the most plausible narrative. Forcing a structured disagreement surfaces the strongest counter-evidence before commitment${R('debate')}, and putting bull and bear on different vendors decorrelates their blind spots${R('crowd')}. The judge is a separate call so the verdict weighs arguments rather than continuing one side’s text${R('judge')}.</p>
+<figure><img src="/assets/learn/meta-desk.png" alt="META bull vs bear verdict and forecast cones">
+<figcaption>META, Jul 5 2026 — BUY 55/100, but conditional: entry only at 576.90 (the ×3 ladder rung), voided at 533.27, dead in 5 days if nothing happens. Note the bear (GLM) attacking the bull (Gemini) with the quant model’s own 44.8% OOS — the honesty gauge being used as a weapon, as designed.</figcaption></figure>
+<div class="case"><div class="ct">How to read a verdict card</div>
+<b>Direction + confidence</b> — 55/100 means “act, but small”. <b>The three numbers are the trade</b>: entry (where you’re allowed in), invalidation (where you admit you’re wrong — hard exit, no averaging down), time stop (when being flat-right becomes wrong — capital has opportunity cost). <b>Weakest link</b> — the judge names the assumption that kills the thesis; watch that, not the P&amp;L. Every verdict auto-journals to <code>ot reflect</code> and is graded later${R('tetlock')}.</div>`},
+{id:'ai',mod:'second opinion',title:'AI analysis, sniper levels &amp; the sentiment gauge',html:()=>`
+<p><b>What it is.</b> One LLM (your pick — Gemini, any OpenRouter model, Claude Code or Codex, both subscription-billed and keyless) reads a grounded snapshot — price, MA10/MA20, RSI, 20d range, market Fear&amp;Greed${R('fng')}, fresh headlines — and returns a structured note: summary, an action on a fixed 8-word vocabulary (BUY…AVOID), trend with timeframe, 2–4 risks, and <b>sniper levels</b>: ideal buy, secondary buy, stop loss, take profit, each with a price <i>and a reason</i>.</p>
+<p><b>What it is not.</b> It’s a single voice, not the desk. Its role in the pipeline is the <i>second opinion</i>: it feeds one chip into the consensus strip and its four sniper levels into the ladder, where they either stack with other methods (META: its stop $538→ladder 540.20 rung with engine + TimesFM P10) or visibly stand alone.</p>
+<p><b>Sentiment gauge.</b> A 0–100 read <i>for this name</i> (not the market F&amp;G): below ~35 = washed out, above ~65 = crowded. Like the market gauge it’s most useful contrarian at the extremes and roughly ignorable in the middle${R('fng')}.</p>
+<div class="case"><div class="ct">Real case — when the second opinion abstains</div>
+META Jul 5: the desk said CONSENSUS LONG, but the AI said WATCH — “patience beats aggression, let price come to $567/MA10”. That’s not a contradiction; it’s the same conclusion as the judge’s “do not chase the 582.90 print”, reached from different evidence. When the AI actively opposes the debate verdict, treat it as the judge’s weakest-link warning firing — recheck before acting.</div>`},
+{id:'gex',mod:'forecasters · positioning',title:'Dealer gamma — call walls, put walls, and options',html:()=>`
+<p><b>The mechanism.</b> Market makers who sell options hedge continuously. When they are net <i>long</i> gamma (positive GEX), their hedging <b>opposes</b> price moves — they sell rallies and buy dips, dampening volatility. Net <i>short</i> gamma (negative GEX) flips it: their hedging <b>amplifies</b> moves${R('gexwp')}. <code>ot options</code> computes signed gamma × open interest per strike from CBOE chains${R('cboe')}.</p>
+<p><b>The walls.</b> The <b>call wall</b> is the strike with the largest positive dealer gamma — hedge-selling intensifies as price approaches it: resistance. The <b>put wall</b> is the most negative strike — below it, hedging pressure flips destabilizing: the floor that must not break. Between the walls in positive gamma, price tends to pin and mean-revert.</p>
+<div class="case"><div class="ct">Real case + how option traders use it</div>
+META Jul 5: call wall 650, put wall 550 — and the put wall landed on the quant cone’s P10 (550.41, ×2 on the ladder): statistics and dealer flows independently naming the same floor.<br><br>
+<b>Playbook:</b> in positive GEX, fading toward the walls beats chasing breakouts — long near the put wall with a stop just below it is the structurally-backed trade; buying calls <i>into</i> a call wall pays theta to fight the hedgers. Premium sellers use the walls as short-strike anchors (e.g. credit spreads outside 550/650). In negative GEX, walls act as accelerants, not magnets — cut size. And walls are strongest into OPEX, when the gamma concentrated at those strikes expires.</div>
+<p><b>Caveat.</b> GEX assumes dealers are short the options customers bought — an approximation${R('gexwp')}; walls move as OI rolls, so refresh after big sessions.</p>`},
+{id:'odds',mod:'the event gate',title:'Macro score &amp; crowd odds — what’s already priced',html:()=>`
+<p><b>Macro score</b> (<code>ot macro</code>) reads rates &amp; liquidity plumbing — SOFR, 2Y/10Y, TGA, RRP — into one put/call bias: the tide every single-name trade swims in. <b>Crowd odds</b> (<code>ot poly</code>) pulls Polymarket prices for the Step-0 questions — P(Fed holds), P(25bp cut), P(hike this year), P(zero cuts), P(recession). A liquid prediction-market price is the best available real-time probability estimate — people betting money, updating continuously${R('arrow')}.</p>
+<p><b>The one rule:</b> a print <i>inside</i> the priced odds is a non-event; the trade only exists <i>outside</i> them. If the crowd already prices 77.6% “zero cuts”, a hawkish Fed headline is not news — positioning for it is chasing what’s already in the price.</p>
+<div class="case"><div class="ct">Real case — odds as a conviction cap</div>
+In the META debate the judge explicitly cited “hawkish crowd odds (77.6% zero cuts, 10Y pinned at 4.50%)” as the reason confidence stopped at 55 and size stayed small — the crowd’s macro read capping a bullish single-name verdict. That’s the event gate working: macro first, setup second, size third.</div>`},
+{id:'calibration',mod:'the learning loop',title:'Desk calibration — ot reflect grades every call',html:()=>`
+<p><b>What it is.</b> Every debate verdict auto-journals (ticker, action, confidence, entry, invalidation, thesis). Days later, <code>ot reflect grade</code> scores it against what actually happened: right/wrong, return vs SPY (alpha), worst adverse excursion (MAE), and whether the invalidation was breached. The Strategy tab shows hit-rate by action, grade and market — and the <b>lessons block</b>: the last few graded calls, verbatim, which is injected into every future judge prompt.</p>
+<p><b>Why this is the endgame.</b> Forecasters improve only when they keep score${R('tetlock')} — most market opinions are never checked against outcomes. A desk that grades itself can (a) shame its own overconfidence (the META bear quoting “2 of 3 grade-B calls were wrong” <i>is</i> this loop firing), and (b) eventually weight analysts by demonstrated skill instead of equal votes — calibration-weighted fusion, unblocked at ~30 graded calls.</p>
+<div class="case"><div class="ct">How to read the table</div>
+<b>Hit-rate near 50% = no edge</b> — the judge is told so explicitly. <b>Alpha</b> matters more than raw return (being right in a rally is beta). <b>n is tiny for now</b> — single-digit cells are anecdotes, not statistics; that’s why F4 waits for ~30 calls before trusting the weights.</div>`},
+];
+let LEARNBUILT=false;
+function renderLearn(sec){
+  const el=$('#view-learn');
+  if(!LEARNBUILT){
+    el.innerHTML=`<div class="learn">
+      <div class="sec-h" style="margin-top:18px">Learn — how the desk works <span class="sub">concepts · models · how to read every module, with real cases</span></div>
+      <div class="toc">${LEARN.map(s=>`<a href="#/learn/${s.id}">${s.title.split('—')[0].replace(/&amp;/g,'&')}</a>`).join('')}</div>
+      ${LEARN.map(s=>`<h2 id="learn-${s.id}"><span class="mod">${s.mod}</span>${s.title}<a class="qhelp" style="visibility:hidden">?</a></h2>${s.html()}`).join('')}
+      <div class="refs" id="learn-refs"><b>References</b><ol>${REFS.map(r=>`<li>${r[1]}</li>`).join('')}</ol>
+      <p style="font-size:11.5px;color:#94a3b8">Screenshots are real desk output (META, Jul 5 2026 — public market data only). Educational only — not financial advice.</p></div>
+    </div>`;
+    LEARNBUILT=true;
+  }
+  const t=sec&&document.getElementById('learn-'+sec);
+  if(t) setTimeout(()=>t.scrollIntoView({behavior:'instant',block:'start'}),0);
+  else window.scrollTo(0,0);
+}
+const qh=(sec,hint)=>`<a class="qhelp" href="#/learn/${sec}" title="${hint} — click for the full explainer" onclick="event.stopPropagation()">?</a>`;
+
 /* ---------- routing ---------- */
 function setView(v){
   $('#view-dash').style.display=v==='dash'?'block':'none';
   $('#view-news').style.display=v==='news'?'block':'none';
   $('#view-strat').style.display=v==='strat'?'block':'none';
   $('#view-ticker').style.display=v==='ticker'?'block':'none';
+  $('#view-learn').style.display=v==='learn'?'block':'none';
   $('#nav-dash').classList.toggle('on',v==='dash');
   $('#nav-news').classList.toggle('on',v==='news');
   $('#nav-strat').classList.toggle('on',v==='strat');
+  $('#nav-learn').classList.toggle('on',v==='learn');
 }
 function route(){
   const h=decodeURIComponent(location.hash.slice(1));
   if(h==='/news'){setView('news');if(!NEWSLOADED)loadNews();window.scrollTo(0,0);return;}
   if(h==='/strategy'){setView('strat');if(!STRATLOADED)loadStrategy(false);window.scrollTo(0,0);return;}
+  if(h==='/learn'||h.startsWith('/learn/')){setView('learn');renderLearn(h.split('/')[2]);return;}
   if(h){showTicker(h.toUpperCase());return;}
   setView('dash');window.scrollTo(0,0);
 }
