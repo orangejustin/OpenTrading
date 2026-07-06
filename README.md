@@ -1,6 +1,6 @@
 <div align="center">
 
-# 📈 OpenTrading
+<h1><img src="docs/assets/opentrading-mark.png" alt="OpenTrading logo" width="44" align="center"> OpenTrading</h1>
 
 **A local-first trading copilot — macro-first, risk-first, zero API keys.**
 
@@ -115,6 +115,7 @@ engine**, switchable live from the dashboard header (or `ot web --engine … --m
 | **Gemini** | `GEMINI_API_KEY` (free tier) | gemini-2.5-flash / -pro |
 | **OpenRouter** | `OPENROUTER_API_KEY` — one key, **any** model | GLM 5.2 · DeepSeek v4 · GPT-5.5 · Claude · Grok · any slug |
 | **Claude Code** | **none** — your existing subscription | headless `claude -p` (default / sonnet / opus / haiku; the exact resolved model is stamped on every run) |
+| **Codex** | **none** — your ChatGPT/Codex subscription | headless `codex exec` in a read-only sandbox (appears when the `codex` CLI is on PATH) |
 
 Every analysis is stamped `engine · model · latency · finish time (ET)` and cached until
 you re-run. No engine configured? Everything still works — you just don't get the AI card.

@@ -10,6 +10,8 @@ cleanly to the keyless data panels:
                                       DeepSeek / GLM / Grok / Qwen …)
     claude      no key                your Claude Code subscription, via the
                                       `claude` CLI in headless print mode
+    codex       no key                your ChatGPT/Codex subscription, via
+                                      `codex exec` (headless, read-only sandbox)
 
 Pick per request (`generate_json(..., engine=, model=)`), or set a default with
 `OT_LLM_ENGINE` in .env. Unset → first available in the order above.
@@ -35,6 +37,10 @@ try:
     import claude_cli
 except Exception:  # noqa: BLE001
     claude_cli = None
+try:
+    import codex_cli
+except Exception:  # noqa: BLE001
+    codex_cli = None
 
 # Curated OpenRouter shortlist (UI suggestions; ANY slug can be typed in).
 OPENROUTER_CHOICES = [
@@ -79,6 +85,11 @@ def engines() -> list[dict]:
                 "models": claude_cli.MODELS if claude_cli else ["default"],
                 "model": claude_cli.default_model() if claude_cli else "default",
                 "hint": None if cl_ok else "install the claude CLI"})
+    cx_ok = bool(codex_cli and codex_cli.have_cli())
+    out.append({"id": "codex", "label": "Codex", "ok": cx_ok,
+                "models": codex_cli.MODELS if codex_cli else ["default"],
+                "model": codex_cli.default_model() if codex_cli else "default",
+                "hint": None if cx_ok else "install the codex CLI"})
     return out
 
 
@@ -113,10 +124,10 @@ def generate_json(prompt: str, schema: dict, *, engine: str | None = None,
     eng = (engine or "").strip().lower() or default_engine()
     if not eng:
         raise RuntimeError("no LLM engine available — set GEMINI_API_KEY or "
-                           "OPENROUTER_API_KEY in .env, or install the claude CLI")
+                           "OPENROUTER_API_KEY in .env, or install the claude/codex CLI")
     info = {e["id"]: e for e in engines()}.get(eng)
     if not info:
-        raise RuntimeError(f"unknown engine '{eng}' (gemini | openrouter | claude)")
+        raise RuntimeError(f"unknown engine '{eng}' (gemini | openrouter | claude | codex)")
     if not info["ok"]:
         raise RuntimeError(f"engine '{eng}' is not available — {info['hint']}")
     mdl = (model or "").strip() or info["model"]
@@ -127,6 +138,8 @@ def generate_json(prompt: str, schema: dict, *, engine: str | None = None,
         data = gemini.generate_json(prompt, schema)
     elif eng == "openrouter":
         data = openrouter.generate_json(prompt, schema, model=mdl)
+    elif eng == "codex":
+        data = codex_cli.generate_json(prompt, schema, model=mdl)
     else:
         data = claude_cli.generate_json(prompt, schema, model=mdl)
         # Surface the exact model the CLI resolved the alias to (e.g. "opus"
