@@ -555,6 +555,74 @@ RECENT HEADLINES:
 Return a JSON analysis: a 2-3 sentence summary; an action (one of {ACTIONS}); a trend call with timeframe; a 0-100 sentiment_score + sentiment_label for THIS name; concrete entry levels in `entries` (ideal_buy, secondary_buy, stop_loss, take_profit) as short strings with a $ level AND a one-phrase reason (e.g. "~$190 — near MA10 / prior support"); a one-line technicals read; 2-4 related sectors/themes; 2-4 concrete risks (events, invalidation); and one-paragraph advice. Risk-first: define the stop. Educational only, not financial advice."""
 
 
+def _fallback_analysis(ctx: dict, lang: str = "en") -> dict:
+    """Deterministic verdict from MA10/MA20/RSI/20d range — the same fields the
+    LLM would fill, computed by rules (P1-4). Runs when NO engine is configured."""
+    zh = lang == "zh"
+    t = ctx.get("technicals") or {}
+    last, ma10, ma20 = t.get("last"), t.get("ma10"), t.get("ma20")
+    hi20, lo20, rsi = t.get("hi20"), t.get("lo20"), t.get("rsi14")
+    if not (last and ma20):
+        return {"error": "not enough history for the deterministic read"}
+    up = last > ma20 and (ma10 or ma20) >= ma20
+
+    def near(a, b, pct=2.0):
+        return bool(a and b and abs(a / b - 1) * 100 <= pct)
+
+    if up and rsi is not None and rsi >= 70:
+        action = "REDUCE"
+    elif up and near(last, ma10):
+        action = "BUY"
+    elif up:
+        action = "HOLD"
+    elif rsi is not None and rsi <= 30:
+        action = "WATCH"
+    else:
+        action = "AVOID"
+    score = 50 + (last / ma20 - 1) * 400 - ((rsi - 50) * 0.3 if rsi is not None else 0)
+    score = max(5, min(95, round(score)))
+
+    def fp(v):
+        return f"${v:,.2f}" if v else "—"
+
+    if zh:
+        summary = (f"确定性读数（无 LLM）：价格 {fp(last)}{'高于' if up else '低于'} MA20 "
+                   f"{fp(ma20)}，RSI {rsi if rsi is not None else '—'}，20日区间 "
+                   f"{fp(lo20)}–{fp(hi20)}。趋势{'完好' if up else '偏弱'} — 规则给出 {action}。")
+        entries = {"ideal_buy": f"~{fp(ma10 or lo20)} — 回踩 MA10/动态支撑",
+                   "secondary_buy": f"~{fp(lo20)} — 20日低点，更深的价值区",
+                   "stop_loss": f"~{fp(lo20 * 0.985 if lo20 else None)} — 跌破20日低点即失效",
+                   "take_profit": f"~{fp(hi20)} — 20日高点/区间阻力"}
+        trend = "短线：MA20 之上，趋势完好" if up else "短线：MA20 之下，趋势偏弱"
+        risks = ["规则模板不读新闻/财报 — 事件风险自查（ot catalysts）",
+                 "RSI 极端时有均值回归风险", "无 LLM：只有技术结构，没有叙事层"]
+        advice = ("这是无引擎时的确定性备用读数：只用均线、RSI 和 20 日区间。"
+                  "配置任一引擎可获得叙事级分析。仅供学习 — 非投资建议。")
+        label = "规则读数"
+    else:
+        summary = (f"Deterministic read (no LLM): price {fp(last)} is "
+                   f"{'above' if up else 'below'} MA20 {fp(ma20)}, RSI "
+                   f"{rsi if rsi is not None else '—'}, 20d range {fp(lo20)}–{fp(hi20)}. "
+                   f"Trend {'intact' if up else 'weak'} — the rules say {action}.")
+        entries = {"ideal_buy": f"~{fp(ma10 or lo20)} — MA10 retest / dynamic support",
+                   "secondary_buy": f"~{fp(lo20)} — 20d low, deeper value zone",
+                   "stop_loss": f"~{fp(lo20 * 0.985 if lo20 else None)} — break of the 20d low voids it",
+                   "take_profit": f"~{fp(hi20)} — 20d high / range resistance"}
+        trend = "Short-term: above MA20, trend intact" if up else "Short-term: below MA20, trend weak"
+        risks = ["Rule template reads no news/earnings — check the event gate (ot catalysts)",
+                 "Mean-reversion risk at RSI extremes",
+                 "No LLM: structure only, no narrative layer"]
+        advice = ("Engine-free deterministic fallback: moving averages, RSI and the 20-day "
+                  "range only. Configure any engine for the narrative layer. "
+                  "Educational only — not financial advice.")
+        label = "rule-based"
+    return {"ai": True, "fallback": True, "summary": summary, "action": action,
+            "trend": trend, "sentiment_score": score, "sentiment_label": label,
+            "entries": entries, "sectors": [], "risks": risks, "advice": advice,
+            "engine": {"engine": "deterministic", "model": "technicals-v1"},
+            "elapsed": 0.0, "finished_at": _now_et()}
+
+
 # The LLM call is expensive, so a generated analysis is cached per (ticker,
 # engine, model) and stays until the user hits ↻ Re-run (24h safety TTL).
 _CACHE: dict = {}
@@ -585,7 +653,12 @@ def analyze(ticker: str, engine: str | None = None, model: str | None = None,
     if not ctx["can_ai"]:
         ctx["note"] = ("Set GEMINI_API_KEY or OPENROUTER_API_KEY in .env — or install "
                        "the claude CLI — to enable the AI analysis (data panels work without it).")
-    if mode != "ai" or not ctx["can_ai"]:
+    if mode == "ai" and not ctx["can_ai"]:
+        # P1-4: no engine configured → deterministic template verdict from the
+        # technicals. Zero LLM, honest about being rule-based.
+        ctx.update(_fallback_analysis(ctx, lang))
+        return ctx
+    if mode != "ai":
         return ctx
     smart = ot_json(ROOT / "tools/smartmoney/sm.py") or {}
     ctx["market_fng"] = _extract_fng(smart)

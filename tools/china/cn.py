@@ -28,9 +28,16 @@ import json
 import shutil
 import ssl
 import subprocess
+import time
 import urllib.request
 
 API = "https://push2.eastmoney.com/api/qt/stock/get"
+# Reliability knobs (P1-1, born from the 6/28 上证 rate-limit miss): rotate the
+# live host with the delayed mirror, retry with backoff.
+API_HOSTS = ("push2.eastmoney.com", "push2delay.eastmoney.com")
+TIMEOUT = 15          # seconds per attempt
+RETRIES = 2           # full host-rotation passes
+BACKOFF = 0.8         # seconds; doubles per pass
 TENCENT = "https://qt.gtimg.cn/q="   # fallback quote source (GBK, ~-delimited)
 UA = "Mozilla/5.0 (OpenTrading cn-cli)"
 # f43 last · f44 high · f45 low · f46 open · f47 vol · f48 amount · f57 code · f58 name
@@ -48,12 +55,25 @@ ALIASES = {
 
 
 def to_secid(code: str) -> str:
-    """Resolve a user code/alias to an Eastmoney secid (market.code). Markets: 1=SH, 0=SZ, 116=HK."""
+    """Resolve a user code/alias to an Eastmoney secid (market.code). Markets: 1=SH, 0=SZ, 116=HK.
+    Accepts every common spelling (P1-5): 600519 · 600519.SH · 600519.SS ·
+    sh600519 · 000001.SZ · hk00700 · 0700.HK · HK.00700."""
     c = code.strip().upper()
     if c in ALIASES:
         return ALIASES[c]
     if "." in c and c.split(".")[0] in ("0", "1", "116", "100"):
         return c                       # already a secid, e.g. 1.600519 / 116.00700
+    # suffix styles: 600519.SH / 600519.SS (Yahoo) / 000001.SZ / 0700.HK
+    if "." in c:
+        body, _, suf = c.rpartition(".")
+        if suf in ("SH", "SS") and body.isdigit():
+            return "1." + body
+        if suf == "SZ" and body.isdigit():
+            return "0." + body
+        if suf == "HK" and body.isdigit():
+            return "116." + body.zfill(5)
+    if c.startswith("HK.") and c[3:].isdigit():
+        return "116." + c[3:].zfill(5)
     if c.startswith("HK"):
         return "116." + c[2:].zfill(5)
     if c.startswith("SH"):
@@ -115,7 +135,21 @@ def _currency(secid: str) -> str:
 
 
 def _eastmoney_quote(code: str, secid: str) -> dict | None:
-    d = (json.loads(http_get(f"{API}?secid={secid}&fields={FIELDS}")).get("data") or {})
+    d, last_err = None, None
+    for attempt in range(RETRIES):
+        for host in API_HOSTS:
+            try:
+                url = f"https://{host}/api/qt/stock/get?secid={secid}&fields={FIELDS}"
+                d = json.loads(http_get(url, timeout=TIMEOUT)).get("data") or {}
+                if d:
+                    break
+            except Exception as e:  # noqa: BLE001
+                last_err = e
+        if d:
+            break
+        time.sleep(BACKOFF * (2 ** attempt))
+    if d is None and last_err:
+        raise last_err
     if not d or d.get("f43") in (None, "-"):
         return None
     dec = d.get("f59") or 2

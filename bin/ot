@@ -23,6 +23,8 @@
 #   ot forecast TICKER [--horizon N]  TimesFM quantile cone (opt-in: install.sh --with-forecast)
 #   ot debate   TICKER [--log]        bull/bear/judge desk: 3 LLM calls on a deterministic pack
 #   ot rank     [TICKERS] [--top 3]   composite desk score per name — the shared Top-3 (no LLM)
+#   ot validate [TICKERS]             cross-source quote sanity: yahoo q1 vs q2 vs cboe
+#   ot privacy-audit [--push|--install-hook]   pre-push gate: branch/tracked-files/secret grep
 #   ot web      [--port N] [--no-open] [--engine gemini|openrouter|claude] [--model SLUG]
 #               local dashboard: market + watchlist + AI ticker analysis (engines optional)
 #   ot ibkr     quote SYM | positions | pnl | bars SYM | chain SYM | order ...   (needs TWS/IB Gateway)
@@ -164,6 +166,10 @@ case "$cmd" in
     pyrun "$ROOT/tools/quant/quant.py" "$@" ;;
   rank)
     pyrun "$ROOT/tools/rank/rank.py" "$@" ;;
+  validate)
+    pyrun "$ROOT/tools/validate/validate.py" "$@" ;;
+  privacy-audit|audit)
+    pyrun "$ROOT/tools/audit/privacy_audit.py" "$@" ;;
   forecast|tfm)
     # Opt-in TimesFM module: prefer its isolated venv (install.sh --with-forecast);
     # without it tfm.py degrades to a clear install hint.

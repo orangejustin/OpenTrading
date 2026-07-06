@@ -630,7 +630,9 @@ async function showTicker(tk){
   renderNews(d);
   if(d.ai) renderAnalysis(d);
   else if(d.can_ai) renderAiInvite(tk,d);
-  else $('#ai-area').innerHTML=d.note?`<div class="banner">${d.note}</div>`:'';
+  else $('#ai-area').innerHTML=`${d.note?`<div class="banner">${d.note}</div>`:''}
+    <div class="card aibox"><button class="aibtn" style="background:linear-gradient(135deg,#475569,#64748b)" onclick="runAI('${tk}',false)">📐 ${ZHM?'确定性读数（无 LLM）':'Deterministic read (no LLM)'}</button>
+    <div class="aihint">${ZHM?'无引擎备用：仅用 MA10/MA20 · RSI · 20日区间的规则模板 — 即时、免费、可复现。':'Engine-free fallback: a rules template over MA10/MA20 · RSI · the 20d range — instant, free, reproducible.'}</div></div>`;
 }
 async function loadChart(){
   const {tk,rng}=CHART;
@@ -746,7 +748,7 @@ function renderAnalysis(d){
   const via=d.engine?`${nice(d.engine.engine,d.engine.model)}${d.engine.engine!=='claude'?' · '+d.engine.engine:''}${d.elapsed?' · '+d.elapsed+'s':''}${d.finished_at?' · '+d.finished_at:''}`:'';
   $('#ai-area').innerHTML=`<div class="top">
       <div class="card pad">
-        <div class="lbl" style="display:flex;gap:8px;align-items:center">${tr('AI Analysis')} ${qh('ai','One engine, grounded prompt — the desk’s second opinion')} ${d.cached?`<span class="cachetag">${tr('cached')}</span>`:''}</div>
+        <div class="lbl" style="display:flex;gap:8px;align-items:center">${tr('AI Analysis')} ${qh('ai','One engine, grounded prompt — the desk’s second opinion')} ${d.cached?`<span class="cachetag">${tr('cached')}</span>`:''}${d.fallback?`<span class="cachetag" style="background:#e2e8f0">${ZHM?'📐 规则模板 · 无 LLM':'📐 rules template · no LLM'}</span>`:''}</div>
         <div class="summary">${d.summary||''}</div>
         <div class="meta-row"><span class="chip ${(d.action||'').toLowerCase()}">${tra(d.action)||'—'}</span>
           <span class="trend"><b>${ZHM?'趋势：':'Trend:'}</b> ${d.trend||'—'}</span>
