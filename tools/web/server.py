@@ -160,6 +160,60 @@ def yahoo(sym: str, rng: str = "1mo", interval: str = "1d") -> dict:
                 "chg_pct": None, "series": [], "error": str(e)}
 
 
+def _session_label(last_ts: int, reg_ts: int) -> str:
+    """Name the session a tick belongs to, by its ET wall-clock hour — so the
+    dashboard can say 'overnight' / 'after-hours' like the Yahoo app does."""
+    if not last_ts:
+        return "regular"
+    dt = datetime.fromtimestamp(last_ts, NY)
+    mins = dt.hour * 60 + dt.minute
+    if 4 * 60 <= mins < 9 * 60 + 30:
+        return "pre-market"
+    if 9 * 60 + 30 <= mins < 16 * 60:
+        return "regular"
+    if 16 * 60 <= mins < 20 * 60:
+        return "after-hours"
+    return "overnight"
+
+
+def _live_quote(sym: str) -> dict:
+    """Live price INCLUDING pre/post/overnight — the same extended-hours logic
+    `ot quote` uses, so the dashboard header stops showing a stale regular close
+    when the 24h market has moved (the META $582.90-vs-$585-ext case). Keyless
+    Yahoo tops out at the after-hours print; true 24h-overnight needs a
+    dedicated feed (TradingView), noted in the UI."""
+    url = ("https://query1.finance.yahoo.com/v8/finance/chart/"
+           f"{urllib.parse.quote(sym)}?range=1d&interval=5m&includePrePost=true")
+    try:
+        res = (json.loads(_get(url)).get("chart", {}).get("result") or [{}])[0]
+        meta = res.get("meta", {}) or {}
+        ts = res.get("timestamp") or []
+        closes = (res.get("indicators", {}).get("quote") or [{}])[0].get("close") or []
+        reg = meta.get("regularMarketPrice")
+        reg_ts = meta.get("regularMarketTime") or 0
+        prev = meta.get("previousClose") or meta.get("chartPreviousClose")
+        last, last_ts = reg, reg_ts
+        for i in range(len(closes) - 1, -1, -1):          # latest tick, incl pre/post
+            if closes[i] is not None:
+                last = closes[i]
+                last_ts = ts[i] if i < len(ts) else reg_ts
+                break
+        out = {"symbol": sym.upper(),
+               "regular": reg, "prev": prev,
+               "reg_chg_pct": ((reg - prev) / prev * 100) if (reg and prev) else None}
+        # an extended tick is one that prints meaningfully after the regular close
+        if last is not None and reg and last_ts and reg_ts and last_ts > reg_ts + 300:
+            out["ext_price"] = round(last, 2)
+            out["ext_chg_pct"] = (last - reg) / reg * 100
+            out["session"] = _session_label(last_ts, reg_ts)
+            out["ext_time"] = _fmt_iso(datetime.fromtimestamp(last_ts, NY).isoformat())
+        else:
+            out["session"] = "regular"
+        return out
+    except Exception as e:  # noqa: BLE001
+        return {"symbol": sym.upper(), "error": str(e)}
+
+
 def yahoo_ohlc(sym: str, rng: str = "3mo", interval: str = "1d") -> dict:
     """Full OHLCV series + key stats for the ticker page's hand-rolled chart."""
     url = ("https://query1.finance.yahoo.com/v8/finance/chart/"
@@ -1099,6 +1153,11 @@ class Handler(BaseHTTPRequestHandler):
             if u.path == "/api/strategy":
                 fresh = qs.get("fresh", ["0"])[0] in ("1", "true")
                 return self._send(200, json.dumps(strategy(fresh)))
+            if u.path == "/api/quote":
+                tk = (qs.get("ticker", [""])[0] or "").strip()
+                if not tk:
+                    return self._send(400, json.dumps({"error": "ticker required"}))
+                return self._send(200, json.dumps(_live_quote(tk)))
             if u.path == "/api/chart":
                 tk = (qs.get("ticker", [""])[0] or "").strip()
                 if not tk:

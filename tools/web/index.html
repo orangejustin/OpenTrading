@@ -651,6 +651,7 @@ async function showTicker(tk){
   FUSION=null;
   $('#tvsw').checked=localStorage.getItem('ot_tv')==='1';
   loadChart();
+  loadLiveQuote(tk);
   loadCones(tk);
   renderDebateInvite(tk);
   fetch(`/api/debate?ticker=${encodeURIComponent(tk)}&peek=1${langQS()}`).then(r=>r.json())
@@ -658,7 +659,7 @@ async function showTicker(tk){
   const d=await fetch(`/api/analyze?ticker=${encodeURIComponent(tk)}&mode=auto${engQS()}${langQS()}`).then(r=>r.json()).catch(()=>null);
   if(!d){$('#ai-area').innerHTML='<div class="banner">Failed to load data.</div>';return;}
   $('#t-nm').textContent=d.name||'';
-  $('#t-px').innerHTML=`${fmt(d.last)} <span class="${cls(d.chg_pct)}">${pct(d.chg_pct)}</span>`;
+  if(!LIVEQ[tk]) $('#t-px').innerHTML=`${fmt(d.last)} <span class="${cls(d.chg_pct)}">${pct(d.chg_pct)}</span>`;
   renderNews(d);
   if(d.ai) renderAnalysis(d);
   else if(d.can_ai) renderAiInvite(tk,d);
@@ -806,6 +807,24 @@ function renderAnalysis(d){
   loadFusion(d.symbol);
 }
 
+/* ---------- live quote: regular + extended/overnight header ---------- */
+let LIVEQ={};
+const SESS_ZH={'pre-market':'盘前','after-hours':'盘后','overnight':'夜盘','regular':'盘中'};
+async function loadLiveQuote(tk){
+  const q=await fetch(`/api/quote?ticker=${encodeURIComponent(tk)}`).then(r=>r.json()).catch(()=>null);
+  if(CHART.tk!==tk||!q||q.error||q.regular==null) return;
+  LIVEQ[tk]=q;
+  const reg=`${fmt(q.regular)} <span class="${cls(q.reg_chg_pct)}">${pct(q.reg_chg_pct)}</span>`;
+  let ext='';
+  if(q.ext_price!=null){
+    const s=ZHM?(SESS_ZH[q.session]||q.session):q.session;
+    const tip=q.ext_time?`${ZHM?'延长时段最新一笔':'latest extended tick'} · ${q.ext_time} · ${ZHM?'真正夜盘需 TradingView 源':'true 24h-overnight needs the TradingView feed'}`:'';
+    ext=` <span title="${tip}" style="font-size:14px;color:#94a3b8;font-weight:600">· ${fmt(q.ext_price)}
+      <span class="${cls(q.ext_chg_pct)}">${pct(q.ext_chg_pct)}</span>
+      <span style="font-size:11px;color:#94a3b8">🌙 ${s}</span></span>`;
+  }
+  const el=$('#t-px'); if(el) el.innerHTML=reg+ext;
+}
 /* ---------- prediction desk ---------- */
 function coneBar(c,last,label,extra){
   if(!c) return '';

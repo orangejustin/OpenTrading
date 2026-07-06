@@ -150,6 +150,8 @@ Everything runs **on your machine** — positions never leave `localhost`.
 
 - `server.py` — stdlib `ThreadingHTTPServer`; routes `/api/overview`,
   `/api/watchlist`, `/api/analyze`, `/api/engines`, `/api/news`, plus the
+  `/api/quote` (live price incl **pre-market / after-hours / overnight** session,
+  the same extended-hours logic as `ot quote`),
   prediction desk: `/api/poly`, `/api/quant`, `/api/forecast`, `/api/debate`
   (`peek=1` = cached-only, never triggers LLM calls), `/api/fusion` (confluence
   ladder + consensus row, assembled from cached parts), `/api/calibration`.
