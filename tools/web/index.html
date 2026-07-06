@@ -300,10 +300,10 @@
   <div class="brand" onclick="location.hash=''"><span class="logo"></span>OpenTrading</div>
   <span id="regime" class="regime">—</span>
   <nav class="nav">
-    <a id="nav-dash" href="#" onclick="location.hash='';return false">Dashboard</a>
-    <a id="nav-strat" href="#/strategy">Strategy</a>
-    <a id="nav-news" href="#/news" >News</a>
-    <a id="nav-learn" href="#/learn">Learn</a>
+    <a id="nav-dash" data-i18n="Dashboard" href="#" onclick="location.hash='';return false">Dashboard</a>
+    <a id="nav-strat" data-i18n="Strategy" href="#/strategy">Strategy</a>
+    <a id="nav-news" data-i18n="News" href="#/news" >News</a>
+    <a id="nav-learn" data-i18n="Learn" href="#/learn">Learn</a>
   </nav>
   <div class="engctl" id="engctl" style="display:none">
     <select id="llmsel" title="AI engine · model — one click to switch"></select>
@@ -312,51 +312,52 @@
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
     <input id="q" placeholder="Search a ticker…  e.g. NVDA, AAPL, 600519" autocomplete="off">
   </div>
+  <a class="gh" id="langsw" style="cursor:pointer" title="切换语言 / switch language">中文</a>
   <a class="gh" href="https://github.com/orangejustin/OpenTrading" target="_blank" rel="noopener">open-source ↗</a>
 </header>
 
 <main>
   <section id="view-dash">
-    <div class="sec-h">Market Indices</div>
+    <div class="sec-h" data-i18n="Market Indices">Market Indices</div>
     <div id="indices" class="grid"></div>
-    <div class="sec-h">Macro &amp; Flow <span class="sub" id="mf-asof"></span></div>
+    <div class="sec-h" data-i18n="Macro & Flow">Macro &amp; Flow <span class="sub" id="mf-asof"></span></div>
     <div id="mflow" class="mf"><div class="card pad loading" style="grid-column:1/-1">Loading macro score · Fear&amp;Greed · dealer gamma…</div></div>
-    <div class="sec-h">My Watchlist <span id="wlcount" style="color:#94a3b8"></span></div>
+    <div class="sec-h" data-i18n="My Watchlist">My Watchlist <span id="wlcount" style="color:#94a3b8"></span></div>
     <div id="watchlist" class="wl"></div>
   </section>
 
   <section id="view-news" style="display:none">
-    <div class="sec-h" style="margin-top:18px">Event Gate <span class="sub">scheduled catalysts — size down into the red ones</span></div>
+    <div class="sec-h" style="margin-top:18px" data-i18n="Event Gate">Event Gate <span class="sub" data-i18n="eventgate.sub">scheduled catalysts — size down into the red ones</span></div>
     <div class="calrow" id="calrow"><div class="loading" style="padding:10px">Loading calendar…</div></div>
-    <div class="sec-h" style="margin-top:18px">Market News <span class="sub" id="n-asof"></span></div>
+    <div class="sec-h" style="margin-top:18px" data-i18n="Market News">Market News <span class="sub" id="n-asof"></span></div>
     <div class="ntools">
-      <div class="win"><span style="font-size:12px;color:#64748b;font-weight:600">Window</span>
+      <div class="win"><span style="font-size:12px;color:#64748b;font-weight:600" data-i18n="Window">Window</span>
         <input type="range" id="nwin" min="0" max="5" step="1" value="1">
         <b id="nwinlbl">12h</b></div>
       <input type="text" id="nfilter" placeholder="Filter — ticker or keyword" oninput="filterNews()">
-      <button class="nbtn" onclick="loadNews()">Refresh</button>
-      <button class="nbtn" style="background:linear-gradient(135deg,#7c3aed,#2563eb)" onclick="tapeRead()">🧠 AI read of the tape</button>
+      <button class="nbtn" data-i18n="Refresh" onclick="loadNews()">Refresh</button>
+      <button class="nbtn" style="background:linear-gradient(135deg,#7c3aed,#2563eb)" data-i18n="tape.btn" onclick="tapeRead()">🧠 AI read of the tape</button>
     </div>
     <div id="nai"></div>
     <div class="card pad" id="nlist"><div class="loading">Loading headlines…</div></div>
   </section>
 
   <section id="view-strat" style="display:none">
-    <div class="sec-h" style="margin-top:18px">Today's Top 3 — ot rank <a class="qhelp" href="#/learn/pipeline" title="One composite score: grade + gated quant edge + cone tilt + zone proximity + today's debate − event risk — click for how the desk fits together">?</a>
-      <span class="sub">selection &gt; timing — the same ordering the morning email uses</span>
-      <span class="rerun" style="margin-left:auto" onclick="loadRank(true)">↻ Re-rank</span></div>
+    <div class="sec-h" style="margin-top:18px" data-i18n="top3.h">Today's Top 3 — ot rank <a class="qhelp" href="#/learn/pipeline" title="One composite score: grade + gated quant edge + cone tilt + zone proximity + today's debate − event risk — click for how the desk fits together">?</a>
+      <span class="sub" data-i18n="top3.sub">selection &gt; timing — the same ordering the morning email uses</span>
+      <span class="rerun" style="margin-left:auto" data-i18n="rerank" onclick="loadRank(true)">↻ Re-rank</span></div>
     <div id="rankrow" class="calrow"><div class="loading" style="padding:10px">Scoring the whole watchlist (decide + quant per name — ~1 min cold, then cached)…</div></div>
-    <div class="sec-h" style="margin-top:18px">Morning desk — debate the book
-      <span class="sub">one click = a verdict · entry · invalidation per HELD name (LLM; cached 24h)</span>
-      <span class="rerun" style="margin-left:auto" onclick="runDesk()">⚔️ Run the desk</span></div>
+    <div class="sec-h" style="margin-top:18px" data-i18n="desk.h">Morning desk — debate the book
+      <span class="sub" data-i18n="desk.sub">one click = a verdict · entry · invalidation per HELD name (LLM; cached 24h)</span>
+      <span class="rerun" style="margin-left:auto" data-i18n="desk.run" onclick="runDesk()">⚔️ Run the desk</span></div>
     <div id="deskrun" style="margin:0 0 6px"></div>
-    <div class="sec-h" style="margin-top:18px">Strategy — the action board
+    <div class="sec-h" style="margin-top:18px" data-i18n="board.h">Strategy — the action board
       <span class="sub" id="s-asof"></span>
-      <span class="rerun" style="margin-left:auto" onclick="loadStrategy(true)">↻ Refresh reads</span></div>
+      <span class="rerun" style="margin-left:auto" data-i18n="board.refresh" onclick="loadStrategy(true)">↻ Refresh reads</span></div>
     <div class="sub" style="font-size:12px;color:#94a3b8;margin:0 4px 12px">
-      One deterministic <b>ot decide</b> read per name — direction · grade · zones · stop. No LLM, no waiting; the learned risk-first policy. Cards are ordered by <b>ot rank</b> once it loads. Click a card for the full page.</div>
+      <span data-i18n="board.sub">One deterministic <b>ot decide</b> read per name — direction · grade · zones · stop. No LLM, no waiting; the learned risk-first policy. Cards are ordered by <b>ot rank</b> once it loads. Click a card for the full page.</span></div>
     <div class="sgrid" id="sgrid"><div class="card pad loading" style="grid-column:1/-1">Running the decision engine over your book + watchlist…</div></div>
-    <div class="sec-h" style="margin-top:22px">Desk Calibration <a class="qhelp" href="#/learn/calibration" title="Every call graded — hit-rate, alpha, lessons — click for the explainer">?</a> <span class="sub">ot reflect — the desk grading its own past calls</span></div>
+    <div class="sec-h" style="margin-top:22px" data-i18n="calib.h">Desk Calibration <a class="qhelp" href="#/learn/calibration" title="Every call graded — hit-rate, alpha, lessons — click for the explainer">?</a> <span class="sub" data-i18n="calib.sub">ot reflect — the desk grading its own past calls</span></div>
     <div class="card pad" id="calib"><div class="loading" style="padding:12px">Loading the journal…</div></div>
   </section>
 
@@ -374,6 +375,68 @@
 
 <script>
 const $=s=>document.querySelector(s), fmt=(n,d=2)=>n==null?'—':Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+/* ---------- i18n (F6): full CN/EN toggle ---------- */
+const _lq=new URLSearchParams(location.search).get('lang');
+if(_lq==='zh'||_lq==='en') localStorage.setItem('ot_lang',_lq);
+const LANG=localStorage.getItem('ot_lang')==='zh'?'zh':'en', ZHM=LANG==='zh';
+const langQS=()=>ZHM?'&lang=zh':'';
+const ZH={
+ 'Dashboard':'总览','Strategy':'策略','News':'新闻','Learn':'学习',
+ 'Market Indices':'市场指数','Macro & Flow':'宏观与资金流','My Watchlist':'我的自选',
+ 'Event Gate':'事件闸门','eventgate.sub':'已排期的催化剂 — 红色事件前先降仓',
+ 'Market News':'市场新闻','Window':'窗口','Refresh':'刷新','tape.btn':'🧠 AI 解读盘面',
+ 'top3.h':'今日 Top 3 — ot rank ','top3.sub':'选股 > 择时 —— 与早报同一套排序',
+ 'rerank':'↻ 重新排序','desk.h':'早间研判 — 辩论整个持仓 ','desk.sub':'一键 = 每个持仓名的判决 · 入场 · 失效价（LLM；缓存24h）',
+ 'desk.run':'⚔️ 运行研判台','board.h':'策略 — 行动看板 ','board.refresh':'↻ 重新计算',
+ 'board.sub':'每个名字一条确定性 ot decide 读数 —— 方向 · 评级 · 区间 · 止损。无 LLM、零等待；已学习的风险优先策略。ot rank 加载后卡片按其排序。点卡片进入个股页。',
+ 'calib.h':'研判台校准 ','calib.sub':'ot reflect —— 研判台为自己过去的判断打分',
+ 'search.ph':'搜索代码… 例如 NVDA','filter.ph':'过滤 — 代码或关键词',
+ 'Price':'价格','TV chart':'TV 图表','Prediction Desk':'预测台',
+ 'pdesk.sub':'量化锥 · TimesFM · 多空辩论 —— 融合管线','Forecast cones':'预测锥',
+ 'Bull vs Bear — the research desk':'多空辩论 — 研判台','Bull vs Bear — verdict':'多空辩论 — 判决',
+ 'Confluence ladder':'共振价位梯','Related News':'相关新闻','AI Analysis':'AI 分析',
+ 'Sentiment':'情绪','Sniper Levels':'狙击价位','Ideal Buy':'理想买点','Secondary Buy':'次级买点',
+ 'Stop Loss':'止损','Take Profit':'止盈','Related Sectors':'相关板块','Risk Alerts':'风险提示',
+ 'Operation Advice':'操作建议','Entry':'入场','Invalidation':'失效价','Time stop':'时间止损',
+ 'Desk consensus':'台面共识','cached':'缓存','Re-run':'重跑','Back':'返回',
+ 'CONSENSUS LONG':'共识看多','CONSENSUS SHORT':'共识看空','STAND ASIDE — models disagree':'⚠ 观望 — 模型分歧',
+ 'NEUTRAL':'中性','THIN — run more analysts':'样本不足 — 先运行更多分析',
+ 'verdict.STRONG_BUY':'强烈买入','verdict.BUY':'买入','verdict.HOLD':'持有','verdict.SELL':'卖出','verdict.STRONG_SELL':'强烈卖出',
+ 'act.BUY':'买入','act.ADD':'加仓','act.HOLD':'持有','act.WATCH':'观察','act.REDUCE':'减仓','act.SELL':'卖出','act.AVOID':'回避','act.ALERT':'警报',
+ 'Long':'做多','Short':'做空','Wait':'观望','held':'持有','buy':'买入区','add':'加仓区','trim':'减仓区','stop':'止损',
+ 'confidence':'置信度','judge entry':'判决入场','judge invalidation':'判决失效价',
+ 'buy zone low':'买入区下沿','buy zone high':'买入区上沿','add zone low':'加仓区下沿','add zone high':'加仓区上沿',
+ 'trim zone low':'减仓区下沿','trim zone high':'减仓区上沿','core entry':'核心入场','call wall':'Call 墙','put wall':'Put 墙',
+ 'ideal buy':'理想买点','secondary buy':'次级买点','stop loss':'止损','take profit':'止盈',
+ 'quant P10':'量化 P10','quant P50':'量化 P50','quant P90':'量化 P90',
+ 'TimesFM P10':'TimesFM P10','TimesFM P50':'TimesFM P50','TimesFM P90':'TimesFM P90',
+ 'MA20':'MA20','52w high':'52周高点','52w low':'52周低点',
+ 'engine':'引擎','quant':'量化','timesfm':'TimesFM','ai':'AI','debate':'辩论','gex':'GEX','marks':'标记',
+ 'last':'现价','IN ZONE':'已入区间','wait':'等待','name':'名称','verdict':'判决','conf':'置信','time stop':'时间止损',
+ 'By action':'按操作','By grade':'按评级','By market':'按市场',
+ 'Crowd odds — Polymarket':'人群赔率 — Polymarket','SPY dealer gamma (<7 DTE)':'SPY 做市商 Gamma（<7 DTE）',
+ 'Macro score (rates & liquidity)':'宏观评分（利率与流动性）','Fear & Greed':'恐惧与贪婪','BTC funding':'BTC 资金费率',
+ 'Fed holds next FOMC':'下次FOMC按兵不动','25bp cut next FOMC':'下次FOMC降25bp','Fed HIKE this year':'年内加息','Zero cuts this year':'年内零降息','Recession':'衰退',
+ 'queued…':'排队中…','debating…':'辩论中…（多方 → 空方 → 裁判，约1–2分钟）','failed':'失败',
+ 'Analyze':'分析','analyzing':'分析中','loading':'加载中…','Quiet tape for this name.':'该名字暂无新闻。',
+ 'no name-tagged headlines — showing the market tape':'无该名字标注的新闻 — 显示大盘时讯',
+ 'Run the debate':'⚔️ 运行辩论','Prev close':'昨收','Volume':'成交量','52w range':'52周区间',
+};
+const tr=s=>ZHM&&ZH[s]!==undefined?ZH[s]:s;
+const trv=v=>ZHM?(ZH['verdict.'+v]||(v||'').replace('_',' ')):(v||'').replace('_',' ');
+const tra=a=>ZHM?(ZH['act.'+a]||a):a;
+const trl=s=>{if(!ZHM||!s)return s;return s.split(' · ').map(x=>ZH[x]!==undefined?ZH[x]:x).join(' · ');};
+function zhStatic(){
+  if(!ZHM){$('#langsw').textContent='中文';return;}
+  $('#langsw').textContent='EN';
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    const v=ZH[el.dataset.i18n]; if(v===undefined) return;
+    for(const n of el.childNodes){ if(n.nodeType===3&&n.nodeValue.trim()){ n.nodeValue=v; return; } }
+    el.innerHTML=v;
+  });
+  const q=$('#q'); if(q) q.placeholder=ZH['search.ph'];
+  const nf=$('#nfilter'); if(nf) nf.placeholder=ZH['filter.ph'];
+}
 const pct=n=>n==null?'':(n>=0?'+':'')+Number(n).toFixed(2)+'%', cls=n=>n==null?'flat':n>0?'up':n<0?'down':'flat';
 const ICON={Gold:['#d4a017','◆'],Silver:['#9ca3af','◆'],Oil:['#334155','▲'],Bitcoin:['#f7931a','₿'],Ethereum:['#627eea','◆'],
   'US 10Y':['#0e7490','%'],DXY:['#475569','$'],'S&P 500':['#2563eb','S'],'Nasdaq 100':['#7c3aed','N'],GLD:['#d4a017','G'],TLT:['#0f766e','T']};
@@ -488,20 +551,20 @@ async function loadMacro(){
   const pills=(m.indicators||[]).map(i=>`<span class="pill ${i.score>0?'p1':i.score<0?'m1':'z'}">${i.label} ${i.value||''}</span>`).join('');
   const g=m.gex||{};
   $('#mflow').innerHTML=`
-    <div class="card"><div class="k">Macro score (rates &amp; liquidity)</div>
+    <div class="card"><div class="k">${ZHM?'宏观评分（利率与流动性）':'Macro score (rates &amp; liquidity)'}</div>
       <div class="v ${sc>0?'up':sc<0?'down':''}">${sc>0?'+':''}${sc??'—'} <span style="font-size:12px;font-weight:700;color:#64748b">${bias||''}</span></div>
       <div class="d">${pills}</div></div>
-    <div class="card"><div class="k">Fear &amp; Greed</div>
+    <div class="card"><div class="k">${ZHM?'恐惧与贪婪':'Fear &amp; Greed'}</div>
       <div class="v">${m.equity_fng?.score??'—'} <span style="font-size:12px;color:#64748b;font-weight:700">${m.equity_fng?.rating||''}</span></div>
-      <div class="d">Crypto: <b>${m.crypto_fng?.score??'—'}</b> ${m.crypto_fng?.rating||''} — contrarian at extremes</div></div>
-    <div class="card"><div class="k">BTC funding</div>
+      <div class="d">${ZHM?'加密':'Crypto'}: <b>${m.crypto_fng?.score??'—'}</b> ${m.crypto_fng?.rating||''} — ${ZHM?'极端值反向看':'contrarian at extremes'}</div></div>
+    <div class="card"><div class="k">${ZHM?'BTC 资金费率':'BTC funding'}</div>
       <div class="v">${m.btc_funding?.rate_8h_pct!=null?(m.btc_funding.rate_8h_pct*1).toFixed(4)+'%/8h':'—'}</div>
-      <div class="d">${m.btc_funding?.read||''} — extreme positive = crowded longs</div></div>
-    <div class="card"><div class="k">SPY dealer gamma (&lt;7 DTE) ${qh('gex','Positive gamma dampens moves; walls = the hedging shelves')}</div>
+      <div class="d">${m.btc_funding?.read||''} — ${ZHM?'极端正值 = 多头拥挤':'extreme positive = crowded longs'}</div></div>
+    <div class="card"><div class="k">${ZHM?'SPY 做市商 Gamma（<7 DTE）':'SPY dealer gamma (&lt;7 DTE)'} ${qh('gex','Positive gamma dampens moves; walls = the hedging shelves')}</div>
       <div class="v ${g.sign==='positive'?'up':g.sign==='negative'?'down':''}">${g.net_usd_bn!=null?('$'+g.net_usd_bn+'bn/1%'):'—'}</div>
-      <div class="d">${g.sign||''} · call wall <b>${g.call_wall??'—'}</b> · put wall <b>${g.put_wall??'—'}</b> · spot ${g.spot??'—'}</div></div>
-    <div class="card" id="polycard" style="grid-column:1/-1"><div class="k">Crowd odds — Polymarket</div>
-      <div class="d" style="margin-top:6px">loading…</div></div>`;
+      <div class="d">${g.sign||''} · ${ZHM?'Call 墙':'call wall'} <b>${g.call_wall??'—'}</b> · ${ZHM?'Put 墙':'put wall'} <b>${g.put_wall??'—'}</b> · ${ZHM?'现价':'spot'} ${g.spot??'—'}</div></div>
+    <div class="card" id="polycard" style="grid-column:1/-1"><div class="k">${ZHM?'人群赔率 — Polymarket':'Crowd odds — Polymarket'}</div>
+      <div class="d" style="margin-top:6px">${ZHM?'加载中…':'loading…'}</div></div>`;
   loadPoly();
 }
 async function loadPoly(){
@@ -513,15 +576,15 @@ async function loadPoly(){
     const col=warnHigh&&x.p>=40?'var(--down)':x.p>=65?'var(--ink)':'#334155';
     return `<div style="min-width:130px"><div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.3px">${lbl}</div>
       <div class="mono" style="font-size:19px;font-weight:800;color:${col};margin-top:2px">${x.p}%</div></div>`;};
-  el.innerHTML=`<div class="k">Crowd odds — Polymarket ${qh('odds','Market-priced probabilities — inside the odds = non-event')} <span style="color:#cbd5e1">· priced forecast, no key</span></div>
+  el.innerHTML=`<div class="k">${ZHM?'人群赔率 — Polymarket':'Crowd odds — Polymarket'} ${qh('odds','Market-priced probabilities — inside the odds = non-event')} <span style="color:#cbd5e1">· ${ZHM?'市场定价的概率，免密钥':'priced forecast, no key'}</span></div>
     <div style="display:flex;gap:26px;flex-wrap:wrap;margin-top:9px">
-      ${stat('Fed holds next FOMC',g.no_change_next_fomc)}
-      ${stat('25bp cut next FOMC',g.cut_25_next_fomc)}
-      ${stat('Fed HIKE this year',g.hike_this_year,true)}
-      ${stat('Zero cuts this year',g.zero_cuts_this_year)}
-      ${stat('Recession',g.recession,true)}
+      ${stat(tr('Fed holds next FOMC'),g.no_change_next_fomc)}
+      ${stat(tr('25bp cut next FOMC'),g.cut_25_next_fomc)}
+      ${stat(tr('Fed HIKE this year'),g.hike_this_year,true)}
+      ${stat(tr('Zero cuts this year'),g.zero_cuts_this_year)}
+      ${stat(tr('Recession'),g.recession,true)}
     </div>
-    <div class="d" style="margin-top:7px;color:#94a3b8">what the crowd is braced for — a print inside these odds is a non-event; outside them is the trade</div>`;
+    <div class="d" style="margin-top:7px;color:#94a3b8">${ZHM?'人群已经定价的预期 — 落在赔率之内的数据是非事件；之外才是交易机会':'what the crowd is braced for — a print inside these odds is a non-event; outside them is the trade'}</div>`;
 }
 
 /* ---------- ticker page ---------- */
@@ -529,28 +592,28 @@ let CHART={tk:null,rng:'3mo'};
 async function showTicker(tk){
   setView('ticker');
   const a=$('#view-ticker');
-  a.innerHTML=`<div class="back" onclick="location.hash=''">← Back</div>
+  a.innerHTML=`<div class="back" onclick="location.hash=''">← ${tr('Back')}</div>
     <div class="ahead"><span class="sym">${tk}</span><span class="nm" id="t-nm"></span>
       <a class="tvlink" href="${tvUrl(tk,'ticker-page')}" target="_blank" rel="noopener">TradingView ↗</a>
       <span class="px mono" id="t-px"></span></div>
-    <div class="consensus" id="consensus"><span style="font-size:12px;color:#94a3b8">Desk consensus — reading the analysts…</span></div>
-    <div class="card pad"><div style="display:flex;align-items:center"><div class="lbl" style="margin:0">Price</div>
+    <div class="consensus" id="consensus"><span style="font-size:12px;color:#94a3b8">${ZHM?'台面共识 — 正在读取各分析模块…':'Desk consensus — reading the analysts…'}</span></div>
+    <div class="card pad"><div style="display:flex;align-items:center"><div class="lbl" style="margin:0">${tr('Price')}</div>
       <label class="tvsw" title="Swap in TradingView's interactive chart — loads tradingview.com (external); off = the built-in dependency-free chart">
-        <input type="checkbox" id="tvsw" onchange="tvToggle()"> TV chart</label>
+        <input type="checkbox" id="tvsw" onchange="tvToggle()"> ${tr('TV chart')}</label>
       <div class="rtabs" id="rtabs">${['1mo','3mo','6mo','1y'].map(r=>`<span class="rtab ${r==='3mo'?'on':''}" data-r="${r}" onclick="setRange('${r}')">${r.replace('mo','M').replace('y','Y').toUpperCase()}</span>`).join('')}</div></div>
       <div id="chart" style="margin-top:8px"><div class="loading">Loading chart…</div></div>
       <div class="chnote" id="chnote"></div>
       <div class="stats" id="t-stats"></div></div>
-    <div class="sec-h" style="margin-top:18px">Prediction Desk <span class="sub">quant cone · TimesFM · bull vs bear debate — the fusion pipeline</span></div>
+    <div class="sec-h" style="margin-top:18px">${tr('Prediction Desk')} <span class="sub">${ZHM?ZH['pdesk.sub']:'quant cone · TimesFM · bull vs bear debate — the fusion pipeline'}</span></div>
     <div class="top" style="margin-top:0">
       <div class="card pad" id="desk-debate"></div>
-      <div class="card pad" id="desk-cones"><div class="lbl">Forecast cones</div><div class="loading" style="padding:14px">Fitting the regression…</div></div>
+      <div class="card pad" id="desk-cones"><div class="lbl">${tr('Forecast cones')}</div><div class="loading" style="padding:14px">${ZHM?'正在拟合回归…':'Fitting the regression…'}</div></div>
     </div>
-    <div class="card pad" id="ladder" style="margin-top:14px"><div class="lbl">Confluence ladder</div>
-      <div class="d" style="color:#94a3b8;font-size:12px">merging every level the desk emits — engine zones · cones · dealer walls · AI snipers · judge lines…</div></div>
+    <div class="card pad" id="ladder" style="margin-top:14px"><div class="lbl">${tr('Confluence ladder')}</div>
+      <div class="d" style="color:#94a3b8;font-size:12px">${ZHM?'正在合并研判台的所有价位 — 引擎区间 · 预测锥 · 做市商墙 · AI 狙击位 · 判决线…':'merging every level the desk emits — engine zones · cones · dealer walls · AI snipers · judge lines…'}</div></div>
     <div id="ai-area"></div>
-    <div class="sec-h" style="margin-top:18px" id="news-h">Related News</div>
-    <div class="card pad news" id="t-news"><div class="loading">Loading headlines…</div></div>`;
+    <div class="sec-h" style="margin-top:18px" id="news-h">${tr('Related News')}</div>
+    <div class="card pad news" id="t-news"><div class="loading">${ZHM?'加载新闻中…':'Loading headlines…'}</div></div>`;
   window.scrollTo(0,0);
   CHART={tk,rng:'3mo'};
   FUSION=null;
@@ -558,9 +621,9 @@ async function showTicker(tk){
   loadChart();
   loadCones(tk);
   renderDebateInvite(tk);
-  fetch(`/api/debate?ticker=${encodeURIComponent(tk)}&peek=1`).then(r=>r.json())
+  fetch(`/api/debate?ticker=${encodeURIComponent(tk)}&peek=1${langQS()}`).then(r=>r.json())
     .then(d=>{if(CHART.tk===tk&&d&&d.verdict)renderDebate(tk,d);}).catch(()=>{});
-  const d=await fetch(`/api/analyze?ticker=${encodeURIComponent(tk)}&mode=auto${engQS()}`).then(r=>r.json()).catch(()=>null);
+  const d=await fetch(`/api/analyze?ticker=${encodeURIComponent(tk)}&mode=auto${engQS()}${langQS()}`).then(r=>r.json()).catch(()=>null);
   if(!d){$('#ai-area').innerHTML='<div class="banner">Failed to load data.</div>';return;}
   $('#t-nm').textContent=d.name||'';
   $('#t-px').innerHTML=`${fmt(d.last)} <span class="${cls(d.chg_pct)}">${pct(d.chg_pct)}</span>`;
@@ -583,9 +646,9 @@ async function loadChart(){
     ?`Young listing — only ${c.rows.length} sessions of history exist, so every range shows the full picture.`:'';
   const t=technicalsFromRows(c.rows);
   $('#t-stats').innerHTML=[
-    ['Prev close',fmt(c.prev)],['Volume',c.volume?Intl.NumberFormat('en',{notation:'compact'}).format(c.volume):'—'],
+    [tr('Prev close'),fmt(c.prev)],[tr('Volume'),c.volume?Intl.NumberFormat('en',{notation:'compact'}).format(c.volume):'—'],
     ['MA10',fmt(t.ma10)],['MA20',fmt(t.ma20)],['RSI 14',t.rsi14??'—'],
-    ['52w range',c.lo52&&c.hi52?`${fmt(c.lo52,0)}–${fmt(c.hi52,0)}`:'—'],
+    [tr('52w range'),c.lo52&&c.hi52?`${fmt(c.lo52,0)}–${fmt(c.hi52,0)}`:'—'],
   ].map(([k,v])=>`<div class="st"><div class="k">${k}</div><div class="v mono">${v}</div></div>`).join('');
 }
 function setRange(r){CHART.rng=r;document.querySelectorAll('.rtab').forEach(x=>x.classList.toggle('on',x.dataset.r===r));loadChart();}
@@ -627,13 +690,13 @@ function drawChart(el,rows,ov){
     const inR=v=>v!=null&&v>=lo&&v<=hi;
     const wall=(v,col,lbl)=>inR(v)?`<line x1="0" x2="${cw}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="${col}" stroke-width="1" stroke-dasharray="6 4" opacity=".6"/>
       <text x="4" y="${(y(v)-3).toFixed(1)}" font-size="9.5" fill="${col}" font-weight="700">${lbl} ${fmt(v,v>1000?0:2)}</text>`:'';
-    s+=wall(ov.call_wall,'#b45309','call wall')+wall(ov.put_wall,'#15803d','put wall');
+    s+=wall(ov.call_wall,'#b45309',ZHM?'Call 墙':'call wall')+wall(ov.put_wall,'#15803d',ZHM?'Put 墙':'put wall');
     const c=ov.cone;
     if(c&&inR(c.p50)){
       const x0=cw*0.82, yT=y(Math.min(c.p90,hi)), yB=y(Math.max(c.p10,lo));
       s+=`<rect x="${x0.toFixed(1)}" y="${yT.toFixed(1)}" width="${(cw-x0).toFixed(1)}" height="${Math.max(1,yB-yT).toFixed(1)}" fill="#2563eb" opacity=".08"/>
         <line x1="${x0.toFixed(1)}" x2="${cw}" y1="${y(c.p50).toFixed(1)}" y2="${y(c.p50).toFixed(1)}" stroke="#1d4ed8" stroke-width="1.2" stroke-dasharray="2 3" opacity=".7"/>
-        <text x="${(x0+3).toFixed(1)}" y="${(yT+10).toFixed(1)}" font-size="9.5" fill="#1d4ed8" opacity=".8">5d cone</text>`;
+        <text x="${(x0+3).toFixed(1)}" y="${(yT+10).toFixed(1)}" font-size="9.5" fill="#1d4ed8" opacity=".8">${ZHM?'5日锥':'5d cone'}</text>`;
     }
   }
   const lastP=rows[rows.length-1].c,ly=y(lastP);
@@ -647,17 +710,17 @@ function drawChart(el,rows,ov){
   el.innerHTML=`<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto;display:block">${grid}${s}${xl}</svg>`;
 }
 function renderNews(d){
-  $('#news-h').innerHTML='Related News'+(d.news_scope==='market'?' <span class="sub">no name-tagged headlines — showing the market tape</span>':'');
-  $('#t-news').innerHTML=(d.news&&d.news.length)?d.news.map(n=>`<a href="${n.url||'#'}" target="_blank" rel="noopener">${n.title}${n.time?`<span class="t">${n.time}</span>`:''}${n.src?`<span class="s">${n.src}</span>`:''}</a>`).join(''):'<div style="color:#94a3b8;font-size:13px">Quiet tape for this name.</div>';
+  $('#news-h').innerHTML=tr('Related News')+(d.news_scope==='market'?` <span class="sub">${tr('no name-tagged headlines — showing the market tape')}</span>`:'');
+  $('#t-news').innerHTML=(d.news&&d.news.length)?d.news.map(n=>`<a href="${n.url||'#'}" target="_blank" rel="noopener">${n.title}${n.time?`<span class="t">${n.time}</span>`:''}${n.src?`<span class="s">${n.src}</span>`:''}</a>`).join(''):`<div style="color:#94a3b8;font-size:13px">${tr('Quiet tape for this name.')}</div>`;
 }
 function renderAiInvite(tk,d){
   $('#ai-area').innerHTML=`<div class="card aibox">
-    <button class="aibtn" onclick="runAI('${tk}',false)">⚡ Analyze ${tk} with ${engName()}</button>
-    <div class="aihint">Summary · action · sentiment · sniper levels · risks — ~10–30s on API engines, ~20–60s on Claude Code. Cached until you re-run.</div></div>`;
+    <button class="aibtn" onclick="runAI('${tk}',false)">⚡ ${ZHM?`用 ${engName()} 分析 ${tk}`:`Analyze ${tk} with ${engName()}`}</button>
+    <div class="aihint">${ZHM?'摘要 · 操作 · 情绪 · 狙击价位 · 风险 — API 引擎约10–30秒，Claude Code 约20–60秒。缓存直到重跑。':'Summary · action · sentiment · sniper levels · risks — ~10–30s on API engines, ~20–60s on Claude Code. Cached until you re-run.'}</div></div>`;
 }
 let AITIMER=null;
 function runAI(tk,fresh){
-  const stages=['fetching fresh market data…','prompting '+engName()+'…','writing the analysis…'];
+  const stages=ZHM?['正在获取最新行情…','正在调用 '+engName()+'…','正在撰写分析…']:['fetching fresh market data…','prompting '+engName()+'…','writing the analysis…'];
   const t0=Date.now();
   $('#ai-area').innerHTML=`<div class="card aibox"><div class="prog">
     <div class="stage" id="ai-stage">${stages[0]}</div>
@@ -669,7 +732,7 @@ function runAI(tk,fresh){
     $('#ai-el')&&($('#ai-el').textContent=s.toFixed(1)+'s · '+engName());
     $('#ai-stage')&&($('#ai-stage').textContent=stages[s<3?0:s<9?1:2]);
   },100);
-  fetch(`/api/analyze?ticker=${encodeURIComponent(tk)}&mode=ai${engQS()}${fresh?'&fresh=1':''}`)
+  fetch(`/api/analyze?ticker=${encodeURIComponent(tk)}&mode=ai${engQS()}${langQS()}${fresh?'&fresh=1':''}`)
     .then(r=>r.json()).then(d=>{
       clearInterval(AITIMER);
       if(!d||CHART.tk!==tk) return;
@@ -683,28 +746,28 @@ function renderAnalysis(d){
   const via=d.engine?`${nice(d.engine.engine,d.engine.model)}${d.engine.engine!=='claude'?' · '+d.engine.engine:''}${d.elapsed?' · '+d.elapsed+'s':''}${d.finished_at?' · '+d.finished_at:''}`:'';
   $('#ai-area').innerHTML=`<div class="top">
       <div class="card pad">
-        <div class="lbl" style="display:flex;gap:8px;align-items:center">AI Analysis ${qh('ai','One engine, grounded prompt — the desk’s second opinion')} ${d.cached?'<span class="cachetag">cached</span>':''}</div>
+        <div class="lbl" style="display:flex;gap:8px;align-items:center">${tr('AI Analysis')} ${qh('ai','One engine, grounded prompt — the desk’s second opinion')} ${d.cached?`<span class="cachetag">${tr('cached')}</span>`:''}</div>
         <div class="summary">${d.summary||''}</div>
-        <div class="meta-row"><span class="chip ${(d.action||'').toLowerCase()}">${d.action||'—'}</span>
-          <span class="trend"><b>Trend:</b> ${d.trend||'—'}</span>
-          <span class="rerun" onclick="runAI('${d.symbol}',true)">↻ Re-run</span>
+        <div class="meta-row"><span class="chip ${(d.action||'').toLowerCase()}">${tra(d.action)||'—'}</span>
+          <span class="trend"><b>${ZHM?'趋势：':'Trend:'}</b> ${d.trend||'—'}</span>
+          <span class="rerun" onclick="runAI('${d.symbol}',true)">↻ ${tr('Re-run')}</span>
           ${via?`<span class="via">${via}</span>`:''}</div>
         <div class="meta-row trend" style="color:#64748b">${techLine}${typeof d.technicals==='string'?' · '+d.technicals:''}</div>
       </div>
-      <div class="card pad gcard"><div class="lbl">Sentiment ${qh('ai','0–100 for THIS name — contrarian at the extremes')}</div>${gauge(d.sentiment_score,d.sentiment_label)}
-        <div class="gsub">AI read for ${d.symbol} · 0–100</div></div>
+      <div class="card pad gcard"><div class="lbl">${tr('Sentiment')} ${qh('ai','0–100 for THIS name — contrarian at the extremes')}</div>${gauge(d.sentiment_score,d.sentiment_label)}
+        <div class="gsub">${ZHM?`AI 对 ${d.symbol} 的读数 · 0–100`:`AI read for ${d.symbol} · 0–100`}</div></div>
     </div>
-    <div class="sec-h" style="margin-top:18px">Sniper Levels ${qh('ai','Four levels with reasons — they also feed the confluence ladder')}</div>
+    <div class="sec-h" style="margin-top:18px">${tr('Sniper Levels')} ${qh('ai','Four levels with reasons — they also feed the confluence ladder')}</div>
     <div class="levels">
-      <div class="lv buy"><div class="k">Ideal Buy</div><div class="v">${e.ideal_buy||'—'}</div></div>
-      <div class="lv sec"><div class="k">Secondary Buy</div><div class="v">${e.secondary_buy||'—'}</div></div>
-      <div class="lv stop"><div class="k">Stop Loss</div><div class="v">${e.stop_loss||'—'}</div></div>
-      <div class="lv tgt"><div class="k">Take Profit</div><div class="v">${e.take_profit||'—'}</div></div>
+      <div class="lv buy"><div class="k">${tr('Ideal Buy')}</div><div class="v">${e.ideal_buy||'—'}</div></div>
+      <div class="lv sec"><div class="k">${tr('Secondary Buy')}</div><div class="v">${e.secondary_buy||'—'}</div></div>
+      <div class="lv stop"><div class="k">${tr('Stop Loss')}</div><div class="v">${e.stop_loss||'—'}</div></div>
+      <div class="lv tgt"><div class="k">${tr('Take Profit')}</div><div class="v">${e.take_profit||'—'}</div></div>
     </div>
     <div class="stack">
-      ${d.sectors&&d.sectors.length?`<div class="card pad"><div class="lbl">Related Sectors</div><div class="tags">${d.sectors.map(s=>`<span class="tag">${s}</span>`).join('')}</div></div>`:''}
-      ${d.risks&&d.risks.length?`<div class="card pad"><div class="lbl">Risk Alerts</div><ul class="risks">${d.risks.map(r=>`<li>${r}</li>`).join('')}</ul></div>`:''}
-      ${d.advice?`<div class="card pad"><div class="lbl">Operation Advice</div><div class="summary">${d.advice}</div></div>`:''}
+      ${d.sectors&&d.sectors.length?`<div class="card pad"><div class="lbl">${tr('Related Sectors')}</div><div class="tags">${d.sectors.map(s=>`<span class="tag">${s}</span>`).join('')}</div></div>`:''}
+      ${d.risks&&d.risks.length?`<div class="card pad"><div class="lbl">${tr('Risk Alerts')}</div><ul class="risks">${d.risks.map(r=>`<li>${r}</li>`).join('')}</ul></div>`:''}
+      ${d.advice?`<div class="card pad"><div class="lbl">${tr('Operation Advice')}</div><div class="summary">${d.advice}</div></div>`:''}
     </div>`;
   loadFusion(d.symbol);
 }
@@ -730,25 +793,25 @@ async function loadCones(tk){
   const el=$('#desk-cones'); if(!el) return;
   const q=await fetch(`/api/quant?ticker=${encodeURIComponent(tk)}`).then(r=>r.json()).catch(()=>null);
   if(CHART.tk!==tk) return;
-  let h=`<div class="lbl">Forecast cones ${qh('cones','Quant logistic + empirical cone; TimesFM foundation model')} <span style="color:#cbd5e1">· 5 sessions</span></div>`;
+  let h=`<div class="lbl">${tr('Forecast cones')} ${qh('cones','Quant logistic + empirical cone; TimesFM foundation model')} <span style="color:#cbd5e1">· ${ZHM?'5 个交易日':'5 sessions'}</span></div>`;
   if(q&&!q.error){
     const edge=(q.p_up-q.base_rate_up).toFixed(1);
     h+=`<div style="display:flex;align-items:baseline;gap:10px;margin-top:4px">
       <span class="mono" style="font-size:24px;font-weight:800;color:${q.p_up>=55?'var(--up)':q.p_up<=45?'var(--down)':'#334155'}">${q.p_up}%</span>
-      <span style="font-size:12px;color:#64748b">P(up) · edge ${edge>0?'+':''}${edge}pt vs base · oos hit ${q.oos_hit_rate??'—'}%</span></div>`;
-    h+=coneBar(q.cone,q.last,'Quant — empirical (keyless)',`n=${q.n_train}`);
-  } else h+='<div class="d" style="margin-top:8px;color:#94a3b8">quant unavailable'+(q&&q.error?': '+q.error:'')+'</div>';
-  el.innerHTML=h+'<div class="d" id="tfm-slot" style="margin-top:10px;color:#94a3b8">checking TimesFM…</div>';
+      <span style="font-size:12px;color:#64748b">${ZHM?`P(上涨) · 相对基率 ${edge>0?'+':''}${edge}pt · 样本外命中 ${q.oos_hit_rate??'—'}%`:`P(up) · edge ${edge>0?'+':''}${edge}pt vs base · oos hit ${q.oos_hit_rate??'—'}%`}</span></div>`;
+    h+=coneBar(q.cone,q.last,ZHM?'量化 — 经验分位（免密钥）':'Quant — empirical (keyless)',`n=${q.n_train}`);
+  } else h+=`<div class="d" style="margin-top:8px;color:#94a3b8">${ZHM?'量化模型不可用':'quant unavailable'}${q&&q.error?': '+q.error:''}</div>`;
+  el.innerHTML=h+`<div class="d" id="tfm-slot" style="margin-top:10px;color:#94a3b8">${ZHM?'正在检查 TimesFM…':'checking TimesFM…'}</div>`;
   loadFusion(tk);
   const f=await fetch(`/api/forecast?ticker=${encodeURIComponent(tk)}`).then(r=>r.json()).catch(()=>null);
   if(CHART.tk!==tk) return;
   const slot=$('#tfm-slot'); if(!slot) return;
   if(f&&f.available){
-    slot.outerHTML=coneBar(f.cone,f.last,'TimesFM — foundation model',f.model||'')+
-      `<div class="d" style="margin-top:8px;color:#94a3b8">two independent cones agreeing = a real range; disagreeing = uncertainty is the signal</div>`;
+    slot.outerHTML=coneBar(f.cone,f.last,ZHM?'TimesFM — 基础模型':'TimesFM — foundation model',f.model||'')+
+      `<div class="d" style="margin-top:8px;color:#94a3b8">${ZHM?'两个独立预测锥一致 = 真实区间；分歧 = 不确定性本身就是信号':'two independent cones agreeing = a real range; disagreeing = uncertainty is the signal'}</div>`;
     loadFusion(tk);
   } else {
-    slot.textContent=f&&f.hint?('TimesFM: '+f.hint):'TimesFM: opt-in — bash install.sh --with-forecast';
+    slot.textContent=f&&f.hint?('TimesFM: '+f.hint):(ZHM?'TimesFM：可选模块 — bash install.sh --with-forecast':'TimesFM: opt-in — bash install.sh --with-forecast');
   }
 }
 
@@ -767,52 +830,52 @@ async function loadFusion(tk){
 }
 function renderConsensus(d){
   const el=$('#consensus'); if(!el) return;
-  const c=d.consensus||{}, names={engine:'Engine',quant:'Quant',timesfm:'TimesFM',ai:'AI',debate:'Debate'};
+  const c=d.consensus||{}, names=ZHM?{engine:'引擎',quant:'量化',timesfm:'TimesFM',ai:'AI',debate:'辩论'}:{engine:'Engine',quant:'Quant',timesfm:'TimesFM',ai:'AI',debate:'Debate'};
   const chips=(c.chips||[]).map(x=>`<div class="cchip ${x.tilt}"><span class="s">${names[x.src]||x.src}</span><span class="d">${x.detail||'—'}</span></div>`).join('');
   const missing=Object.entries(d.sources||{}).filter(([k,v])=>!v&&k!=='gex').map(([k])=>names[k]||k);
-  const V={CONSENSUS_LONG:['long','CONSENSUS LONG'],CONSENSUS_SHORT:['short','CONSENSUS SHORT'],
+  const V=ZHM?{CONSENSUS_LONG:['long','共识看多'],CONSENSUS_SHORT:['short','共识看空'],
+    STAND_ASIDE:['aside','⚠ 观望 — 模型分歧'],NEUTRAL:['','中性'],THIN:['','样本不足 — 先运行更多分析']}:{CONSENSUS_LONG:['long','CONSENSUS LONG'],CONSENSUS_SHORT:['short','CONSENSUS SHORT'],
     STAND_ASIDE:['aside','⚠ STAND ASIDE — models disagree'],NEUTRAL:['','NEUTRAL'],THIN:['','THIN — run more analysts']};
   const [vc,vt]=V[c.verdict]||['','—'];
-  el.innerHTML=`<span style="font-size:10px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px">Desk<br>consensus ${qh('consensus','One chip per analyst; STAND ASIDE when they split')}</span>
-    ${chips||'<span style="font-size:12px;color:#94a3b8">no analyst reads yet</span>'}
-    ${missing.length?`<span style="font-size:10.5px;color:#cbd5e1">idle: ${missing.join(' · ')}</span>`:''}
-    <span class="cverdict ${vc}" title="agreement ${c.agreement??'—'}% across ${c.chips?c.chips.length:0} analysts">${vt}</span>`;
+  el.innerHTML=`<span style="font-size:10px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px">${ZHM?'台面<br>共识':'Desk<br>consensus'} ${qh('consensus','One chip per analyst; STAND ASIDE when they split')}</span>
+    ${chips||`<span style="font-size:12px;color:#94a3b8">${ZHM?'还没有分析读数':'no analyst reads yet'}</span>`}
+    ${missing.length?`<span style="font-size:10.5px;color:#cbd5e1">${ZHM?'待运行：':'idle: '}${missing.join(' · ')}</span>`:''}
+    <span class="cverdict ${vc}" title="${ZHM?`一致度 ${c.agreement??'—'}%（${c.chips?c.chips.length:0} 个分析模块）`:`agreement ${c.agreement??'—'}% across ${c.chips?c.chips.length:0} analysts`}">${vt}</span>`;
 }
 function renderLadder(d){
   const el=$('#ladder'); if(!el) return;
   const rows=d.ladder||[];
-  if(!rows.length){el.innerHTML='<div class="lbl">Confluence ladder</div><div class="d" style="color:#94a3b8;font-size:12px">no levels within ±25% of price yet — run the desk analysts.</div>';return;}
+  if(!rows.length){el.innerHTML=`<div class="lbl">${tr('Confluence ladder')}</div><div class="d" style="color:#94a3b8;font-size:12px">${ZHM?'±25% 价格范围内暂无价位 — 先运行各分析模块。':'no levels within ±25% of price yet — run the desk analysts.'}</div>`;return;}
   let html='',placed=false;
   for(const r of rows){
-    if(!placed&&r.price<d.last){html+=`<div class="lnow">last ${fmt(d.last)}</div>`;placed=true;}
+    if(!placed&&r.price<d.last){html+=`<div class="lnow">${tr('last')} ${fmt(d.last)}</div>`;placed=true;}
     const badges=r.sources.map(s=>`<span class="lsrc ${s}">${s}</span>`).join(' ');
-    const what=r.items.map(i=>i.label).join(' · ');
+    const what=r.items.map(i=>ZHM?(ZH[i.label]||i.label):i.label).join(' · ');
     html+=`<div class="lrow${r.confluence>=2?' hit':''}">
       <span class="px mono">${fmt(r.price)}</span>
-      <span class="conf" title="${r.confluence} independent source${r.confluence>1?'s':''}">×${r.confluence}</span>
+      <span class="conf" title="${ZHM?`${r.confluence} 个独立来源`:`${r.confluence} independent source${r.confluence>1?'s':''}`}">×${r.confluence}</span>
       ${badges}<span class="what">${what}</span></div>`;
   }
-  if(!placed) html+=`<div class="lnow">last ${fmt(d.last)}</div>`;
-  el.innerHTML=`<div class="lbl" style="display:flex;gap:8px;align-items:baseline">Confluence ladder ${qh('ladder','Every level, one axis — ×2+ = independent methods on the same line')}
-      <span style="color:#cbd5e1;font-weight:600;text-transform:none;letter-spacing:0">every level the desk emits, clustered — <b>×2+</b> = independent methods naming the SAME line</span>
+  if(!placed) html+=`<div class="lnow">${tr('last')} ${fmt(d.last)}</div>`;
+  el.innerHTML=`<div class="lbl" style="display:flex;gap:8px;align-items:baseline">${tr('Confluence ladder')} ${qh('ladder','Every level, one axis — ×2+ = independent methods on the same line')}
+      <span style="color:#cbd5e1;font-weight:600;text-transform:none;letter-spacing:0">${ZHM?'研判台给出的所有价位，聚类后 — <b>×2+</b> = 多个独立方法指向同一条线':'every level the desk emits, clustered — <b>×2+</b> = independent methods naming the SAME line'}</span>
       <span class="rerun" style="margin-left:auto" onclick="loadFusion('${d.ticker}')">↻</span></div>${html}
-    <div class="d" style="margin-top:8px;color:#94a3b8;font-size:11px">agreement between a statistical cone and a dealer wall is tradeable structure neither shows alone — the ×2+ rows are the only levels that matter</div>`;
+    <div class="d" style="margin-top:8px;color:#94a3b8;font-size:11px">${ZHM?'统计锥与做市商墙的一致，是二者单独都给不出的可交易结构 — 只有 ×2+ 的行才真正重要':'agreement between a statistical cone and a dealer wall is tradeable structure neither shows alone — the ×2+ rows are the only levels that matter'}</div>`;
 }
 function renderDebateInvite(tk){
   const el=$('#desk-debate'); if(!el) return;
-  el.innerHTML=`<div class="lbl">Bull vs Bear — the research desk ${qh('debate','Adversarial debate on different engines; the judge commits')}</div>
+  el.innerHTML=`<div class="lbl">${tr('Bull vs Bear — the research desk')} ${qh('debate','Adversarial debate on different engines; the judge commits')}</div>
     <div style="text-align:center;padding:14px 6px 8px">
-      <button class="aibtn" onclick="runDebate('${tk}',false)">⚔️ Run the debate</button>
-      <div class="aihint">3 LLM calls: bull and bear argue on different engines, the judge commits —
-        5-tier verdict · entry · invalidation · time stop. ~1–2 min; journaled to <b>ot reflect</b>. Cached until ↻.</div></div>`;
+      <button class="aibtn" onclick="runDebate('${tk}',false)">${tr('Run the debate')}</button>
+      <div class="aihint">${ZHM?'3 次 LLM 调用：多方与空方在不同引擎上辩论，裁判做出承诺 — 5 档判决 · 入场 · 失效价 · 时间止损。约1–2分钟；写入 <b>ot reflect</b>。缓存直到 ↻。':'3 LLM calls: bull and bear argue on different engines, the judge commits — 5-tier verdict · entry · invalidation · time stop. ~1–2 min; journaled to <b>ot reflect</b>. Cached until ↻.'}</div></div>`;
 }
 let DBTIMER=null;
 function runDebate(tk,fresh){
   const el=$('#desk-debate'); if(!el) return;
-  const stages=['building the evidence pack (quote · macro · odds · quant · news · lessons)…',
+  const stages=ZHM?['正在构建证据包（行情 · 宏观 · 赔率 · 量化 · 新闻 · 教训）…','多方陈述中…','空方正在攻击多方…','裁判裁决中…']:['building the evidence pack (quote · macro · odds · quant · news · lessons)…',
     'bull is arguing…','bear is attacking the bull…','the judge is deciding…'];
   const t0=Date.now();
-  el.innerHTML=`<div class="lbl">Bull vs Bear — the research desk</div><div class="prog" style="margin:10px auto 6px">
+  el.innerHTML=`<div class="lbl">${tr('Bull vs Bear — the research desk')}</div><div class="prog" style="margin:10px auto 6px">
     <div class="stage" id="db-stage">${stages[0]}</div>
     <div class="bar"><div class="fill"></div></div>
     <div class="el" id="db-el">0.0s</div></div>`;
@@ -820,7 +883,7 @@ function runDebate(tk,fresh){
   DBTIMER=setInterval(()=>{const s=(Date.now()-t0)/1000;
     $('#db-el')&&($('#db-el').textContent=s.toFixed(1)+'s');
     $('#db-stage')&&($('#db-stage').textContent=stages[s<25?0:s<50?1:s<75?2:3]);},150);
-  fetch(`/api/debate?ticker=${encodeURIComponent(tk)}${fresh?'&fresh=1':''}`)
+  fetch(`/api/debate?ticker=${encodeURIComponent(tk)}${langQS()}${fresh?'&fresh=1':''}`)
     .then(r=>r.json()).then(d=>{clearInterval(DBTIMER);
       if(CHART.tk!==tk) return;
       if(!d||d.error){el.innerHTML=`<div class="lbl">Bull vs Bear</div><div class="banner">${d&&d.error||'Debate failed.'}</div>`;return;}
@@ -830,23 +893,23 @@ function runDebate(tk,fresh){
 function renderDebate(tk,d){
   const el=$('#desk-debate'); if(!el) return;
   const vc={STRONG_BUY:'buy',BUY:'buy',HOLD:'hold',SELL:'sell',STRONG_SELL:'sell'}[d.verdict]||'mixed';
-  el.innerHTML=`<div class="lbl" style="display:flex;gap:8px;align-items:center">Bull vs Bear — verdict ${qh('debate','Verdict + entry + invalidation + time stop — how to read it')}
-      ${d.cached?'<span class="cachetag">cached</span>':''}
-      <span class="rerun" style="margin-left:auto" onclick="runDebate('${tk}',true)">↻ Re-run</span></div>
+  el.innerHTML=`<div class="lbl" style="display:flex;gap:8px;align-items:center">${tr('Bull vs Bear — verdict')} ${qh('debate','Verdict + entry + invalidation + time stop — how to read it')}
+      ${d.cached?`<span class="cachetag">${tr('cached')}</span>`:''}
+      <span class="rerun" style="margin-left:auto" onclick="runDebate('${tk}',true)">↻ ${tr('Re-run')}</span></div>
     <div style="display:flex;align-items:center;gap:12px;margin-top:4px">
-      <span class="chip ${vc}" style="font-size:14px;padding:6px 14px">${(d.verdict||'').replace('_',' ')}</span>
-      <span style="font-size:13px;color:#64748b">confidence <b class="mono">${d.confidence}/100</b></span></div>
+      <span class="chip ${vc}" style="font-size:14px;padding:6px 14px">${trv(d.verdict)}</span>
+      <span style="font-size:13px;color:#64748b">${tr('confidence')} <b class="mono">${d.confidence}/100</b></span></div>
     <div class="summary" style="margin-top:10px">${d.rationale||''}</div>
     <div class="levels" style="grid-template-columns:repeat(3,1fr);margin-top:12px">
-      <div class="lv sec"><div class="k">Entry</div><div class="v">${d.entry||'—'}</div></div>
-      <div class="lv stop"><div class="k">Invalidation</div><div class="v mono">${fmt(d.invalidation)}</div></div>
-      <div class="lv tgt"><div class="k">Time stop</div><div class="v">${d.time_stop_days??'—'}d</div></div></div>
+      <div class="lv sec"><div class="k">${tr('Entry')}</div><div class="v">${d.entry||'—'}</div></div>
+      <div class="lv stop"><div class="k">${tr('Invalidation')}</div><div class="v mono">${fmt(d.invalidation)}</div></div>
+      <div class="lv tgt"><div class="k">${tr('Time stop')}</div><div class="v">${d.time_stop_days??'—'}d</div></div></div>
     <div style="margin-top:12px;font-size:12.5px;line-height:1.6;color:#334155">
-      <div><b style="color:var(--up)">Bull</b> <span style="color:#94a3b8">(${d.engines?.bull||''})</span> — ${d.bull?.strongest_point||''}</div>
-      <div style="margin-top:6px"><b style="color:var(--down)">Bear</b> <span style="color:#94a3b8">(${d.engines?.bear||''})</span> — ${d.bear?.strongest_point||''}</div>
-      <div style="margin-top:6px;color:#64748b"><b>Bear on bull:</b> ${d.bear?.attack_on_bull||''}</div>
-      ${d.weakest_link?`<div style="margin-top:6px;color:#64748b"><b>Weakest link:</b> ${d.weakest_link}</div>`:''}</div>
-    <div class="d" style="margin-top:10px;color:#94a3b8">judge ${d.engines?.judge||''} · ${d.elapsed_s?d.elapsed_s+'s':''} ${d.finished_at?'· '+d.finished_at:''} · journaled to ot reflect — educational only</div>`;
+      <div><b style="color:var(--up)">${ZHM?'多方':'Bull'}</b> <span style="color:#94a3b8">(${d.engines?.bull||''})</span> — ${d.bull?.strongest_point||''}</div>
+      <div style="margin-top:6px"><b style="color:var(--down)">${ZHM?'空方':'Bear'}</b> <span style="color:#94a3b8">(${d.engines?.bear||''})</span> — ${d.bear?.strongest_point||''}</div>
+      <div style="margin-top:6px;color:#64748b"><b>${ZHM?'空方驳多方：':'Bear on bull:'}</b> ${d.bear?.attack_on_bull||''}</div>
+      ${d.weakest_link?`<div style="margin-top:6px;color:#64748b"><b>${ZHM?'最薄弱环节：':'Weakest link:'}</b> ${d.weakest_link}</div>`:''}</div>
+    <div class="d" style="margin-top:10px;color:#94a3b8">${ZHM?'裁判':'judge'} ${d.engines?.judge||''} · ${d.elapsed_s?d.elapsed_s+'s':''} ${d.finished_at?'· '+d.finished_at:''} · ${ZHM?'已写入 ot reflect — 仅供学习，非投资建议':'journaled to ot reflect — educational only'}</div>`;
   loadFusion(tk);
 }
 
@@ -894,7 +957,7 @@ function tapeRead(){
     <div class="stage">reading the last ${WINS[+$('#nwin').value]}h of tape with ${engName()}…</div>
     <div class="bar"><div class="fill"></div></div><div class="el" id="n-el">0.0s</div></div></div>`;
   const tick=setInterval(()=>{$('#n-el')&&($('#n-el').textContent=((Date.now()-t0)/1000).toFixed(1)+'s');},100);
-  fetch(`/api/news_analysis?minutes=${winMinutes()}${engQS()}`).then(r=>r.json()).then(d=>{
+  fetch(`/api/news_analysis?minutes=${winMinutes()}${engQS()}${langQS()}`).then(r=>r.json()).then(d=>{
     clearInterval(tick);
     if(!d||d.error){$('#nai').innerHTML=`<div class="banner">${d&&d.error||'Tape read failed.'}</div>`;return;}
     const via=`${nice(d.engine.engine,d.engine.model)} · ${d.headline_count} headlines · ${d.elapsed}s · ${d.finished_at}`;
@@ -924,9 +987,9 @@ async function loadRank(fresh){
       <span class="e" style="color:var(--accent)">${r.ticker}</span>
       <span class="gbadge">${r.grade}</span>
       <span class="d mono" title="grade ${r.components.grade} · quant ${r.components.quant_edge} · cone ${r.components.cone_tilt} · zone ${r.components.proximity} · debate ${r.components.debate} · event ${r.components.event}">${r.score}</span>
-      <span class="away ${r.in_zone?'high':'low'}" style="${r.in_zone?'background:var(--upbg);color:var(--up)':''}">${r.in_zone?'IN ZONE':'wait '+r.zone}</span>
-      ${r.held?'<span class="heldtag">held</span>':''}</div>`;
-  }).join('')+`<div class="cal"><span class="e" style="color:#94a3b8;font-weight:600;font-size:11.5px">${d.rows.length} scored · ${d.as_of||''}${d.cached?' · cached':''} — hover a score for its components</span></div>`;
+      <span class="away ${r.in_zone?'high':'low'}" style="${r.in_zone?'background:var(--upbg);color:var(--up)':''}">${r.in_zone?tr('IN ZONE'):tr('wait')+' '+r.zone}</span>
+      ${r.held?`<span class="heldtag">${tr('held')}</span>`:''}</div>`;
+  }).join('')+`<div class="cal"><span class="e" style="color:#94a3b8;font-weight:600;font-size:11.5px">${ZHM?`已评分 ${d.rows.length} 个名字`:`${d.rows.length} scored`} · ${d.as_of||''}${d.cached?(ZHM?' · 缓存':' · cached'):''} — ${ZHM?'悬停分数可看构成':'hover a score for its components'}</span></div>`;
   orderCardsByRank();
 }
 function orderCardsByRank(){
@@ -939,52 +1002,52 @@ function orderCardsByRank(){
 async function runDesk(){
   const held=STRATCARDS.filter(c=>c.held&&!c.error).map(c=>c.ticker);
   const el=$('#deskrun'); if(!el) return;
-  if(!held.length){el.innerHTML='<div class="banner">No held names on the board yet — load the strategy board first.</div>';return;}
+  if(!held.length){el.innerHTML=`<div class="banner">${ZHM?'看板上还没有持仓名 — 先加载策略看板。':'No held names on the board yet — load the strategy board first.'}</div>`;return;}
   const rows={};
   const paint=()=>{el.innerHTML=`<div class="card pad"><table style="width:100%;border-collapse:collapse;font-size:12.5px">
     <tr style="color:#94a3b8;font-size:10.5px;text-transform:uppercase;text-align:left">
-      <th>name</th><th>verdict</th><th>conf</th><th>entry</th><th>invalidation</th><th>time stop</th><th></th></tr>
+      <th>${tr('name')}</th><th>${tr('verdict')}</th><th>${tr('conf')}</th><th>${tr('Entry')}</th><th>${tr('Invalidation')}</th><th>${tr('Time stop')}</th><th></th></tr>
     ${held.map(t=>{const d=rows[t];
-      if(d===undefined) return `<tr><td class="tk" style="font-weight:700">${t}</td><td colspan="6" style="color:#94a3b8">queued…</td></tr>`;
-      if(d===null) return `<tr><td class="tk" style="font-weight:700">${t}</td><td colspan="6" style="color:#94a3b8">debating… (bull → bear → judge, ~1–2 min)</td></tr>`;
+      if(d===undefined) return `<tr><td class="tk" style="font-weight:700">${t}</td><td colspan="6" style="color:#94a3b8">${tr('queued…')}</td></tr>`;
+      if(d===null) return `<tr><td class="tk" style="font-weight:700">${t}</td><td colspan="6" style="color:#94a3b8">${tr('debating…')}</td></tr>`;
       if(d.error) return `<tr><td class="tk" style="font-weight:700">${t}</td><td colspan="6" style="color:var(--down)">${d.error}</td></tr>`;
       const vc={STRONG_BUY:'buy',BUY:'buy',HOLD:'hold',SELL:'sell',STRONG_SELL:'sell'}[d.verdict]||'mixed';
       return `<tr><td class="tk" style="font-weight:700;cursor:pointer" onclick="location.hash='${t}'">${t}</td>
-        <td><span class="chip ${vc}">${(d.verdict||'').replace('_',' ')}</span>${d.cached?' <span class="cachetag">cached</span>':''}</td>
+        <td><span class="chip ${vc}">${trv(d.verdict)}</span>${d.cached?` <span class="cachetag">${tr('cached')}</span>`:''}</td>
         <td class="mono">${d.confidence??'—'}</td><td style="max-width:280px">${d.entry||'—'}</td>
         <td class="mono">${fmt(d.invalidation)}</td><td class="mono">${d.time_stop_days??'—'}d</td>
         <td><span class="rerun" onclick="reDesk('${t}')">↻</span></td></tr>`;}).join('')}
-  </table><div class="d" style="margin-top:8px;color:#94a3b8">verdicts auto-journal to ot reflect · educational only — not financial advice</div></div>`;};
+  </table><div class="d" style="margin-top:8px;color:#94a3b8">${ZHM?'判决自动写入 ot reflect · 仅供学习 — 非投资建议':'verdicts auto-journal to ot reflect · educational only — not financial advice'}</div></div>`;};
   paint();
   for(const t of held){
     rows[t]=null;paint();
-    rows[t]=await fetch(`/api/debate?ticker=${encodeURIComponent(t)}`).then(r=>r.json()).catch(()=>({error:'failed'}));
+    rows[t]=await fetch(`/api/debate?ticker=${encodeURIComponent(t)}${langQS()}`).then(r=>r.json()).catch(()=>({error:'failed'}));
     paint();
   }
 }
 async function reDesk(t){
   const el=$('#deskrun');
   el.querySelectorAll('tr').forEach(tr=>{if(tr.firstChild&&tr.firstChild.textContent===t)tr.lastChild.innerHTML='…';});
-  await fetch(`/api/debate?ticker=${encodeURIComponent(t)}&fresh=1`).then(r=>r.json()).catch(()=>null);
+  await fetch(`/api/debate?ticker=${encodeURIComponent(t)}&fresh=1${langQS()}`).then(r=>r.json()).catch(()=>null);
   runDesk();
 }
 function renderStratCards(scores){
   $('#sgrid').innerHTML=STRATCARDS.map(c=>{
     if(c.error) return `<div class="scard watch" onclick="location.hash='${c.ticker}'">
-      <div class="h"><span class="tk">${c.ticker}</span>${c.held?'<span class="heldtag">held</span>':''}
-        <span class="sbadge watch">Wait</span></div>
+      <div class="h"><span class="tk">${c.ticker}</span>${c.held?`<span class="heldtag">${tr('held')}</span>`:''}
+        <span class="sbadge watch">${tr('Wait')}</span></div>
       <div class="why">${c.error}</div></div>`;
-    const side=(c.side||'watch').toLowerCase(), dir=side==='long'?'Long':side==='short'?'Short':'Wait';
+    const side=(c.side||'watch').toLowerCase(), dir=side==='long'?tr('Long'):side==='short'?tr('Short'):tr('Wait');
     const badge=side==='long'?'long':side==='short'?'short':'watch';
-    const rk=scores&&scores[c.ticker]!=null?`<span class="cat" title="ot rank composite score" style="background:#eef2f7;color:#475569">rank ${scores[c.ticker]}</span>`:'';
+    const rk=scores&&scores[c.ticker]!=null?`<span class="cat" title="ot rank composite score" style="background:#eef2f7;color:#475569">${ZHM?'评分':'rank'} ${scores[c.ticker]}</span>`:'';
     return `<div class="scard ${badge}" onclick="location.hash='${c.ticker}'">
-      <div class="h"><span class="tk">${c.ticker}</span>${c.held?'<span class="heldtag">held</span>':''}
+      <div class="h"><span class="tk">${c.ticker}</span>${c.held?`<span class="heldtag">${tr('held')}</span>`:''}
         <span class="sbadge ${badge}">${side==='watch'&&c.action&&c.action!=='NO-ACTION'?c.action:dir}</span>
         ${c.grade?`<span class="gbadge">${c.grade}</span>`:''}${rk}
         ${c.event?`<span class="cat" style="background:var(--downbg);color:var(--down)">${c.event}</span>`:''}
         <span class="px mono">${fmt(c.price)}</span></div>
-      <div class="zones">buy <b>${zfmt(c.buy_zone)}</b> (core <b>${fmt(c.core)}</b>) · add <b>${zfmt(c.add_zone)}</b><br>
-        trim <b>${zfmt(c.trim_zone)}</b> · stop <b>&lt;${fmt(c.stop)}</b>${c.horizon?` · ${c.horizon}`:''}</div>
+      <div class="zones">${tr('buy')} <b>${zfmt(c.buy_zone)}</b> (${ZHM?'核心':'core'} <b>${fmt(c.core)}</b>) · ${tr('add')} <b>${zfmt(c.add_zone)}</b><br>
+        ${tr('trim')} <b>${zfmt(c.trim_zone)}</b> · ${tr('stop')} <b>&lt;${fmt(c.stop)}</b>${c.horizon?` · ${c.horizon}`:''}</div>
       ${c.reason?`<div class="why">${c.reason}</div>`:''}
       ${c.scenario?`<div class="why">⚠ ${c.scenario}</div>`:''}</div>`;
   }).join('');
@@ -1018,7 +1081,7 @@ async function loadCalibration(){
         <tr style="color:#94a3b8;font-size:10.5px;text-transform:uppercase;text-align:left">
           <th></th><th>n</th><th>hit</th><th>avg ret</th><th>α</th></tr>${rows}</table></div>`;};
   el.innerHTML=(s?`<div style="display:flex;gap:26px;flex-wrap:wrap">
-      ${group('By action',s.by_action)}${group('By grade',s.by_grade)}${group('By market',s.by_market)}</div>
+      ${group(tr('By action'),s.by_action)}${group(tr('By grade'),s.by_grade)}${group(tr('By market'),s.by_market)}</div>
     <div class="d" style="margin-top:8px;color:#94a3b8">${s.total} graded calls · hit-rate near 50% means no edge — the judge is told to weigh this</div>`:'')+
     (d.lessons?`<div class="lbl" style="margin-top:14px">Recent lessons (injected into every debate)</div>
       <pre style="font-size:11.5px;line-height:1.6;color:#334155;white-space:pre-wrap;margin:4px 0 0;font-family:ui-monospace,monospace">${d.lessons.replace(/</g,'&lt;')}</pre>`:'');
@@ -1104,16 +1167,81 @@ In the META debate the judge explicitly cited “hawkish crowd odds (77.6% zero 
 <div class="case"><div class="ct">How to read the table</div>
 <b>Hit-rate near 50% = no edge</b> — the judge is told so explicitly. <b>Alpha</b> matters more than raw return (being right in a rally is beta). <b>n is tiny for now</b> — single-digit cells are anecdotes, not statistics; that’s why F4 waits for ~30 calls before trusting the weights.</div>`},
 ];
+const LEARN_ZH={
+pipeline:{mod:'全局',title:'研判台如何协同',html:()=>`
+<p>每个个股页都跑同一条管线：多个<b>独立预测者</b>各自从不同的信息里给出观点 — 规则引擎（<code>ot decide</code>）、统计模型（<code>ot quant</code>）、时序基础模型（TimesFM）${R('tfm')}、做市商持仓数据（GEX）、一个 LLM 分析师、以及人群（Polymarket）${R('arrow')} — 然后<b>融合层</b>（共识条、共振价位梯、多空辩论）把它们组合起来，最后<b>学习环</b>（<code>ot reflect</code>）给每一次落地的判断事后打分${R('tetlock')}。</p>
+<p>设计铁律是<i>确定性 SOP</i>：脚本抓取并计算证据，冻结成一段文本证据包，然后 LLM 才开始读。任何环节都不允许模型中途"自由行动"；同样的输入永远给出同样的证据包。集成的价值来自<b>独立性</b> — 五个共用一个大脑的分析师等于一个分析师${R('crowd')}，所以各模块刻意使用不同的数学、不同的数据、（辩论里）不同厂商的模型。</p>
+<div class="case"><div class="ct">个股页从上到下的阅读顺序</div>
+1. <b>共识条</b> — 分析师们到底同不同意？&nbsp;2. <b>K线 + 墙 + 锥</b> — 价格在结构里的什么位置？&nbsp;3. <b>预测锥</b> — 未来 5 个交易日什么区间是现实的？&nbsp;4. <b>辩论判决</b> — 落地的判断：方向、入场、失效价、时间止损。&nbsp;5. <b>共振价位梯</b> — 各方法在哪些精确价位上叠加。&nbsp;6. <b>AI 分析</b> — 用来压力测试整个故事的第二意见。</div>`},
+consensus:{mod:'融合 · F2',title:'台面共识 — 一致性读条',html:()=>`
+<p><b>是什么。</b>每个分析模块一枚芯片 — 引擎（<code>ot decide</code>）、量化、TimesFM、AI、辩论 — 按倾向着色（绿=看多，红=看空，灰=中性），再加一个由投票算出的结论：2 个以上同向且无反对时 <b>共识看多/看空</b>；无多数时<b>中性</b>；不足两个模块报数时<b>样本不足</b>；只要有两个模块方向相反，立即 <b>⚠ 观望</b>。</p>
+<p><b>为什么"观望"是信号而不是失败。</b>一组独立且胜率略高于随机的投票者，只有在同向投票时才比其最强成员更可靠${R('crowd')}。当查看<i>不同</i>信息的方法互相矛盾时，诚实的解读是"局面真的模糊"，而模糊局面的正确仓位就是零。共识条把这种感觉变成了规则。</p>
+<figure><img src="/assets/learn/meta-consensus.png" alt="META 台面共识条与带墙、锥的K线图">
+<figcaption>META，2026-07-05 — 引擎 CALL·B、量化 68.6% 与辩论 BUY 同向（AI 以"观察"弃权）：共识看多，一致度 75%。下方K线带做市商墙（650/550）和 5 日量化锥。</figcaption></figure>
+<div class="case"><div class="ct">真实案例 — 相邻两天的两种结论</div>
+<b>META（7/05）：</b>三个看多、一个弃权 → 共识看多，剩下的问题只是<i>在哪买</i> — 由价位梯和裁判的入场价回答。<br>
+<b>MU（7/05）：</b>量化说 80% 上涨、引擎说 PUT、TimesFM 走平、裁判说 SELL — 真正的分裂。观望：模型们在告诉你这个名字当天不可预测。分歧<i>本身</i>就是信息。</div>
+<p><b>注意。</b>目前芯片是等权投票。日志（<code>ot reflect</code>）正在积累每个分析模块的战绩；约 30 次打分后，芯片将按真实命中率加权${R('tetlock')}（计划项 F4）。</p>`},
+ladder:{mod:'融合 · F1',title:'共振价位梯 — 一根价格轴放下所有方法',html:()=>`
+<p><b>是什么。</b>研判台给出的每一个价位 — 引擎的买/加/减仓区与止损、量化锥 P10/P50/P90、TimesFM 锥、做市商 Call/Put 墙、AI 狙击价位、裁判的入场与失效价、MA20 和真实 52 周高低点 — 投影到同一根轴上。相距 <b>0.7%</b> 以内的价位聚成一档；<b>×N 徽章统计有多少个独立来源</b>点名了这一档。</p>
+<p><b>为什么共振重要。</b>任何单一方法都能随手画线。但统计分位、做市商对冲墙和规则引擎区间来自互不相关的输入 — 当它们落在同一个价位上，那条线反映的是多类市场参与者都会真实反应的结构${R('murphy')}。×1 的档是观点；×2+ 的档是结构。</p>
+<figure><img src="/assets/learn/meta-ladder.png" alt="META 共振价位梯">
+<figcaption>META，2026-07-05。价上：651 = Call 墙 + 减仓区（×2）— 止盈货架。价下：576.84 = 买入区 + MA20 + 判决入场（×3），550.41 = Put 墙 + 量化 P10（×2），533.27 = 引擎止损 + 判决失效价（×2）。</figcaption></figure>
+<div class="case"><div class="ct">交易者怎么用这些档位</div>
+<b>入场</b>选 ×2+ 的支撑档（META 576.84 — 裁判的限价单就放在那里，"不要追价"）。<b>止损</b>放在 ×2+ 档位之外一点，而不是里面（533.27：如果"那条线"破了，论点就错了）。<b>目标</b>看对面第一个 ×2+ 档（626 量化 P90 + AI 止盈；651 墙）。<b>仓位</b>：入场到止损的距离 = 每股风险；价位梯直接把 R 倍数的三个数字递到你手上。</div>
+<p><b>一个细节：</b>价位梯标注的是<i>线</i>，不是方向。ORCL 的 140.19 同时是 AI 的"理想买点"、裁判的<i>做空</i>入场和量化 P50 — 三个方法都同意这是枢轴，却对突破方向有分歧。要读档位的标签，不能只看徽章。</p>`},
+cones:{mod:'预测者',title:'预测锥 — 量化回归与 TimesFM',html:()=>`
+<p>两个<i>互相独立</i>的 5 日预测，画成 P10–P90 区间，让不确定性可见，而不是藏在一个点估计后面。</p>
+<h3>量化 — 逻辑回归 + 经验分位锥（免密钥）</h3>
+<p>一个小而全透明的模型，用每个名字约 2 年日线逐一重训：六个特征（5日/20日动量、居中 RSI、MA10−MA20 价差、20日波动、区间位置），z 标准化，L2 正则逻辑回归 → <b>P(5 日内上涨)</b>。锥是<i>经验的</i>：历史 5 日前瞻收益的真实分布套在最新价上 — 不做高斯假设，因为真实收益尾部是肥的${R('cont')}。</p>
+<p><b>诚实仪表：</b>全量拟合前，先用前 70% 训练、留出的后 30% 检验 — 即 <b>OOS（样本外）命中率</b>${R('fpp')}。读法：<b>&lt;55% ≈ 抛硬币 — 无视 P(up)</b>；55–62% 尚可；≥62% 认真对待。它印在每个 P(up) 旁边，正是为了不让一个自信的数字掩盖一个弱模型。</p>
+<h3>TimesFM — 时序基础模型（可选模块）</h3>
+<p>Google Research 的 2 亿参数 decoder-only 模型，预训练于约 1000 亿真实时间点，用最近约 500 根收盘价零样本外推${R('tfm')} — 无需逐名训练，分位头直接给锥。它没见过新闻、基本面或其他模块：一个真正独立的证人。</p>
+<div class="case"><div class="ct">真实案例 — META，2026-07-05</div>
+量化：P(up) 68.6% 但 OOS 43% → 68.6% 当噪音处理；用锥（550.8–623.7）。TimesFM：P50 582.71 对现价 582.90 — 完全走平，锥 539.6–628.6。<b>两个锥在区间上一致、P50 都贴着现价</b>：基准情形就是在两堵墙之间震荡 5 天。这正是裁判拒绝追价、把限价挂在 576.90 的原因。两锥一致 = 真实区间；分歧（MU：量化向上、TimesFM 向下）= 不确定性本身就是信号。</div>
+<p><b>用它定仓位，不定方向：</b>P10 是现实的最大不利波动（止损必须在它外面，否则会被噪音扫掉）；P90 封顶了本周"止盈"的诚实含义；锥宽是波动率状态 — 锥宽时减半仓。</p>`},
+debate:{mod:'融合 · 落地判断',title:'多空辩论 — 有裁判的对抗式合议',html:()=>`
+<p><b>是什么。</b>完整证据包（decide 计划 · 宏观评分 · 财报闸门 · 人群赔率 · 双锥 · 48小时新闻 · 历史教训）交给<b>多方</b>和<b>空方</b>辩论，两者跑在<i>不同厂商</i>的模型上，空方被明确命令攻击多方最强论点，然后第三个模型 — <b>裁判</b> — 必须落地：5 档判决、置信度、入场价、数值<b>失效价</b>、<b>时间止损</b>。不许骑墙；HOLD 只留给证据真正均衡的情形。</p>
+<p><b>为什么要对抗、为什么要不同厂商。</b>单个模型被问"你怎么看"时，会模式匹配到最顺滑的叙事。强制结构化的分歧，能在承诺之前逼出最强的反证${R('debate')}；多空放在不同厂商上，让盲区互不相关${R('crowd')}。裁判是独立的第三次调用，因此判决权衡的是论据，而不是顺着某一方接着写${R('judge')}。</p>
+<figure><img src="/assets/learn/meta-desk.png" alt="META 多空辩论与预测锥">
+<figcaption>META，2026-07-05 — BUY 55/100，但有条件：只在 576.90（×3 档位）入场，533.27 失效，5 天无进展即离场。注意空方（GLM）用量化模型自己的 44.8% OOS 攻击多方（Gemini）— 诚实仪表被当成武器使用，正是设计意图。</figcaption></figure>
+<div class="case"><div class="ct">怎么读判决卡</div>
+<b>方向 + 置信度</b> — 55/100 的意思是"行动，但小仓位"。<b>三个数字就是这笔交易</b>：入场（允许进场的位置）、失效价（承认自己错了的位置 — 硬性离场，不许摊平）、时间止损（"没亏但也没对"开始变成错误的时刻 — 资金有机会成本）。<b>最薄弱环节</b> — 裁判点名了能杀死论点的假设；盯它，别盯浮动盈亏。每个判决自动写入 <code>ot reflect</code>，日后被打分${R('tetlock')}。</div>`},
+ai:{mod:'第二意见',title:'AI 分析、狙击价位与情绪表',html:()=>`
+<p><b>是什么。</b>一个 LLM（自选 — Gemini、任意 OpenRouter 模型、Claude Code 或 Codex，后两者走订阅、免密钥）读取一份有据的快照 — 价格、MA10/MA20、RSI、20日区间、市场恐贪指数${R('fng')}、最新新闻 — 输出结构化笔记：摘要、固定 8 词表里的操作（买入…回避）、带时间框架的趋势、2–4 条风险、以及<b>狙击价位</b>：理想买点、次级买点、止损、止盈，每个都带价格<i>和理由</i>。</p>
+<p><b>不是什么。</b>它是一个声音，不是整个研判台。它在管线里的角色是<i>第二意见</i>：向共识条投一枚芯片、向价位梯投四个狙击位 — 或者与其他方法叠加（META：它的止损 $538 与引擎、TimesFM P10 聚在 540.20 档），或者明显孤立。</p>
+<p><b>情绪表。</b>0–100 的<i>个股</i>读数（不是大盘恐贪）：约 35 以下 = 被洗透，约 65 以上 = 拥挤。和大盘表一样，极端处反向最有用，中间段基本可以忽略${R('fng')}。</p>
+<div class="case"><div class="ct">真实案例 — 第二意见弃权的时候</div>
+META 7/05：台面说共识看多，AI 却说"观察 — 耐心胜过激进，等价格回到 $567/MA10"。这不是矛盾；它和裁判"不要追 582.90 现价"是同一结论，只是从不同证据推出。当 AI 主动反对辩论判决时，把它当作裁判"最薄弱环节"警报响了 — 行动前先复查。</div>`},
+gex:{mod:'预测者 · 持仓结构',title:'做市商 Gamma — Call 墙、Put 墙与期权用法',html:()=>`
+<p><b>机制。</b>卖出期权的做市商需要持续对冲。当他们净<i>多</i> gamma（GEX 为正），对冲行为<b>逆着</b>价格走 — 涨了卖、跌了买，压制波动。净<i>空</i> gamma（GEX 为负）则反过来：对冲会<b>放大</b>波动${R('gexwp')}。<code>ot options</code> 用 CBOE 期权链逐行计算带符号的 gamma × 未平仓量${R('cboe')}。</p>
+<p><b>墙。</b><b>Call 墙</b>是做市商正 gamma 最大的行权价 — 价格逼近时对冲卖压增强：阻力。<b>Put 墙</b>是最负的那档 — 跌破后对冲压力转为去稳定化：不能破的地板。正 gamma 时价格倾向于在两墙之间钉住并均值回归。</p>
+<div class="case"><div class="ct">真实案例 + 期权交易者的玩法</div>
+META 7/05：Call 墙 650、Put 墙 550 — 而 Put 墙恰好落在量化锥的 P10 上（550.41，价位梯 ×2）：统计与做市商资金流独立地点名了同一个地板。<br><br>
+<b>打法：</b>正 GEX 里，向墙回归的反向操作胜过追突破 — 在 Put 墙附近做多、止损放在墙下一点，是有结构背书的交易；对着 Call 墙买 call 等于付 theta 与对冲盘对打。卖权利金的人用墙做短腿锚（比如 550/650 之外的信用价差）。负 GEX 里，墙是加速器不是磁铁 — 砍仓位。墙在临近 OPEX 时最强，因为集中在这些行权价上的 gamma 将到期。</div>
+<p><b>注意。</b>GEX 假设做市商做空客户买入的期权 — 是近似${R('gexwp')}；未平仓量滚动后墙会移动，大波动日之后要刷新。</p>`},
+odds:{mod:'事件闸门',title:'宏观评分与人群赔率 — 什么已被定价',html:()=>`
+<p><b>宏观评分</b>（<code>ot macro</code>）读取利率与流动性管道 — SOFR、2Y/10Y、TGA、RRP — 汇总成一个看跌/看涨倾向：每笔个股交易都泡在这股潮水里。<b>人群赔率</b>（<code>ot poly</code>）拉取 Polymarket 对 Step-0 问题的定价 — P(按兵不动)、P(降25bp)、P(年内加息)、P(零降息)、P(衰退)。流动性充足的预测市场价格，是实时可得的最好概率估计 — 真金白银在持续押注、持续更新${R('arrow')}。</p>
+<p><b>唯一规则：</b>落在已定价赔率<i>之内</i>的数据是非事件；交易只存在于赔率<i>之外</i>。如果人群已把"零降息"定价到 77.6%，一条鹰派美联储新闻就不是新闻 — 为它建仓等于追已在价内的东西。</p>
+<div class="case"><div class="ct">真实案例 — 赔率给置信度封顶</div>
+META 辩论里，裁判明确引用"鹰派人群赔率（77.6% 零降息、10Y 钉在 4.50%）"作为置信度停在 55、仓位保持小的原因 — 人群的宏观读数给一个看多的个股判决封了顶。这就是事件闸门在工作：宏观第一，形态第二，仓位第三。</div>`},
+calibration:{mod:'学习环',title:'研判台校准 — ot reflect 给每次判断打分',html:()=>`
+<p><b>是什么。</b>每个辩论判决自动入日志（代码、操作、置信度、入场、失效价、论点）。几天后 <code>ot reflect grade</code> 用真实走势打分：对/错、相对 SPY 的收益（alpha）、最大不利波动（MAE）、失效价是否被触发。策略页展示按操作/评级/市场的命中率 — 以及<b>教训块</b>：最近几次被打分的判断原文，会注入未来每一次辩论的裁判提示词。</p>
+<p><b>为什么这是终局。</b>预测者只有记分才会进步${R('tetlock')} — 市场上绝大多数观点从未被对照结果检验。一个给自己打分的研判台可以 (a) 羞辱自己的过度自信（META 空方引用"3 次 B 级判断错了 2 次"<i>就是</i>这个环在开火），(b) 最终按真实战绩给分析模块加权，而不是等权投票 — 校准加权融合，约 30 次打分后解锁。</p>
+<div class="case"><div class="ct">怎么读校准表</div>
+<b>命中率接近 50% = 没有优势</b> — 裁判被明确告知这一点。<b>alpha</b> 比原始收益更重要（大涨里做对只是 beta）。<b>目前 n 很小</b> — 个位数的格子是轶事不是统计；这正是 F4 等满约 30 次打分才信任权重的原因。</div>`},
+};
 let LEARNBUILT=false;
 function renderLearn(sec){
   const el=$('#view-learn');
   if(!LEARNBUILT){
+    const S=LEARN.map(x=>ZHM&&LEARN_ZH[x.id]?Object.assign({},x,LEARN_ZH[x.id]):x);
     el.innerHTML=`<div class="learn">
-      <div class="sec-h" style="margin-top:18px">Learn — how the desk works <span class="sub">concepts · models · how to read every module, with real cases</span></div>
-      <div class="toc">${LEARN.map(s=>`<a href="#/learn/${s.id}">${s.title.split('—')[0].replace(/&amp;/g,'&')}</a>`).join('')}</div>
-      ${LEARN.map(s=>`<h2 id="learn-${s.id}"><span class="mod">${s.mod}</span>${s.title}<a class="qhelp" style="visibility:hidden">?</a></h2>${s.html()}`).join('')}
-      <div class="refs" id="learn-refs"><b>References</b><ol>${REFS.map(r=>`<li>${r[1]}</li>`).join('')}</ol>
-      <p style="font-size:11.5px;color:#94a3b8">Screenshots are real desk output (META, Jul 5 2026 — public market data only). Educational only — not financial advice.</p></div>
+      <div class="sec-h" style="margin-top:18px">${ZHM?'学习 — 研判台的工作原理':'Learn — how the desk works'} <span class="sub">${ZHM?'概念 · 模型 · 每个模块怎么读，配真实案例':'concepts · models · how to read every module, with real cases'}</span></div>
+      <div class="toc">${S.map(s=>`<a href="#/learn/${s.id}">${s.title.split('—')[0].replace(/&amp;/g,'&')}</a>`).join('')}</div>
+      ${S.map(s=>`<h2 id="learn-${s.id}"><span class="mod">${s.mod}</span>${s.title}<a class="qhelp" style="visibility:hidden">?</a></h2>${s.html()}`).join('')}
+      <div class="refs" id="learn-refs"><b>${ZHM?'参考文献（保留英文原文）':'References'}</b><ol>${REFS.map(r=>`<li>${r[1]}</li>`).join('')}</ol>
+      <p style="font-size:11.5px;color:#94a3b8">${ZHM?'截图为真实台面输出（META，2026-07-05 — 仅公开市场数据）。仅供学习 — 非投资建议。':'Screenshots are real desk output (META, Jul 5 2026 — public market data only). Educational only — not financial advice.'}</p></div>
     </div>`;
     LEARNBUILT=true;
   }
@@ -1148,6 +1276,8 @@ $('#q').addEventListener('keydown',e=>{if(e.key==='Enter'){const v=e.target.valu
 $('#nwin').addEventListener('input',()=>{$('#nwinlbl').textContent=winLbl(WINS[+$('#nwin').value]);});
 $('#nwin').addEventListener('change',loadNews);
 
+zhStatic();
+$('#langsw').onclick=()=>{localStorage.setItem('ot_lang',ZHM?'en':'zh');location.reload();};
 (async()=>{
   await loadEngines();
   loadDash();

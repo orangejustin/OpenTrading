@@ -403,6 +403,11 @@ def macro_flow() -> dict:
     return out
 
 
+ZH_PROMPT_NOTE = ("\n\nLANGUAGE: write every free-text field in fluent Simplified Chinese "
+                  "(简体中文). Keep tickers, prices, and JSON keys/enums (action, macro_bias, "
+                  "trend keywords) exactly as-is; entries values keep the $ level but the "
+                  "reason phrase is Chinese.")
+
 NEWS_SCHEMA = {
     "type": "object",
     "properties": {
@@ -421,7 +426,8 @@ def catalysts() -> dict:
     return ot_json(ROOT / "tools/catalysts/catalysts.py") or {"events": []}
 
 
-def news_analysis(minutes: int, engine: str | None, model: str | None) -> dict:
+def news_analysis(minutes: int, engine: str | None, model: str | None,
+                  lang: str = "en") -> dict:
     if not (llm and llm.any_ok()):
         return {"error": "no LLM engine configured"}
     items, _ = _news_for(None, minutes)
@@ -438,6 +444,8 @@ HEADLINES:
 {heads}
 
 Return JSON: a 2-4 sentence summary of what the tape is really saying; macro_bias (RISK-ON / RISK-OFF / MIXED); 3-5 concrete drivers (each one line, tied to specific headlines); a one-paragraph portfolio_tilt (what a risk-first swing trader should tilt toward/away from — sectors, factors, hedges — respecting the event gate above); and 2-4 watch items (upcoming catalysts or confirmations to look for, with dates where known). Educational only, not financial advice."""
+    if lang == "zh":
+        prompt += ZH_PROMPT_NOTE
     try:
         t0 = time.time()
         data, meta = llm.generate_json(prompt, NEWS_SCHEMA, engine=engine, model=model)
@@ -555,10 +563,10 @@ _CACHE_TTL = 24 * 3600
 
 
 def analyze(ticker: str, engine: str | None = None, model: str | None = None,
-            fresh: bool = False, mode: str = "auto") -> dict:
+            fresh: bool = False, mode: str = "auto", lang: str = "en") -> dict:
     """mode=auto → cached analysis if one exists, else the INSTANT keyless data
     view (price/technicals/news — no LLM). mode=ai → run the LLM on demand."""
-    key = (ticker.upper(), engine or "", model or "")
+    key = (ticker.upper(), engine or "", model or "", lang)
     if not fresh:
         with _CACHE_LOCK:
             hit = _CACHE.get(key)
@@ -583,7 +591,10 @@ def analyze(ticker: str, engine: str | None = None, model: str | None = None,
     ctx["market_fng"] = _extract_fng(smart)
     try:
         t0 = time.time()
-        ai, meta = llm.generate_json(_analysis_prompt(ctx), ANALYSIS_SCHEMA,
+        prompt = _analysis_prompt(ctx)
+        if lang == "zh":
+            prompt += ZH_PROMPT_NOTE
+        ai, meta = llm.generate_json(prompt, ANALYSIS_SCHEMA,
                                      engine=engine, model=model)
         ctx.update(ai)
         ctx["ai"] = True
@@ -658,11 +669,11 @@ def forecast_view(ticker: str) -> dict:
 
 
 def debate_view(ticker: str, fresh: bool, bull: str | None, bear: str | None,
-                judge: str | None, peek: bool = False) -> dict:
+                judge: str | None, peek: bool = False, lang: str = "en") -> dict:
     """The bull/bear/judge desk — 3 LLM calls, so cached until ↻ (24h TTL).
     peek=True never runs the desk — it only reports a cached verdict (the
     ticker page uses this on load so a visit can't silently burn 3 LLM calls)."""
-    key = ("debate", ticker.upper())
+    key = ("debate", ticker.upper(), lang)
     if not fresh:
         with _CACHE_LOCK:
             hit = _DESK_CACHE.get(key)
@@ -670,7 +681,8 @@ def debate_view(ticker: str, fresh: bool, bull: str | None, bear: str | None,
             return dict(hit[1], cached=True)
     if peek:
         return {"cached": False}
-    cmd = [PY, str(ROOT / "tools/llm/debate.py"), ticker, "--format", "json", "--log"]
+    cmd = [PY, str(ROOT / "tools/llm/debate.py"), ticker, "--format", "json", "--log",
+           "--lang", ("zh" if lang == "zh" else "en")]
     for flag, val in (("--bull", bull), ("--bear", bear), ("--judge", judge)):
         if val:
             cmd += [flag, val]
@@ -730,7 +742,7 @@ def _peek_part(key, ttl: int):
 def _ai_peek(ticker: str) -> dict | None:
     """Any cached AI analysis for this name (whatever engine produced it)."""
     with _CACHE_LOCK:
-        for (tk, _e, _m), (ts, ctx) in _CACHE.items():
+        for (tk, *_rest), (ts, ctx) in _CACHE.items():
             if tk == ticker and ctx.get("ai") and time.time() - ts < _CACHE_TTL:
                 return ctx
     return None
@@ -765,7 +777,8 @@ def fusion_view(ticker: str) -> dict:
         ot_json(ROOT / "tools/options/opt.py", T, "--dte", "30"))) or {}
     marks = _cached_part(("marks", T), 1800, lambda: _marks(T)) or {}
     tfm = _peek_part(("tfm", T), 21600)
-    debate = _peek_part(("debate", T), _CACHE_TTL)
+    debate = _peek_part(("debate", T, "en"), _CACHE_TTL) or \
+        _peek_part(("debate", T, "zh"), _CACHE_TTL)
     ai = _ai_peek(T)
     plan = (decide or {}).get("plan") or {}
     last = ((quant or {}).get("last") or (decide or {}).get("price")
@@ -971,7 +984,8 @@ class Handler(BaseHTTPRequestHandler):
             if u.path == "/api/news_analysis":
                 minutes = max(60, min(int(qs.get("minutes", ["720"])[0] or 720), 10080))
                 return self._send(200, json.dumps(news_analysis(
-                    minutes, qs.get("engine", [None])[0], qs.get("model", [None])[0])))
+                    minutes, qs.get("engine", [None])[0], qs.get("model", [None])[0],
+                    lang=(qs.get("lang", ["en"])[0] or "en"))))
             if u.path == "/api/catalysts":
                 return self._send(200, json.dumps(catalysts()))
             if u.path == "/api/strategy":
@@ -995,7 +1009,8 @@ class Handler(BaseHTTPRequestHandler):
                 mdl = (qs.get("model", [None])[0] or None)
                 fresh = qs.get("fresh", ["0"])[0] in ("1", "true")
                 mode = (qs.get("mode", ["auto"])[0] or "auto")
-                return self._send(200, json.dumps(analyze(tk, eng, mdl, fresh, mode)))
+                return self._send(200, json.dumps(analyze(
+                    tk, eng, mdl, fresh, mode, lang=(qs.get("lang", ["en"])[0] or "en"))))
             if u.path == "/api/engines":
                 return self._send(200, json.dumps({
                     "engines": llm.engines() if llm else [],
@@ -1021,7 +1036,8 @@ class Handler(BaseHTTPRequestHandler):
                     tk, qs.get("fresh", ["0"])[0] in ("1", "true"),
                     qs.get("bull", [None])[0], qs.get("bear", [None])[0],
                     qs.get("judge", [None])[0],
-                    peek=qs.get("peek", ["0"])[0] in ("1", "true"))))
+                    peek=qs.get("peek", ["0"])[0] in ("1", "true"),
+                    lang=(qs.get("lang", ["en"])[0] or "en"))))
             if u.path == "/api/fusion":
                 tk = (qs.get("ticker", [""])[0] or "").strip()
                 if not tk:

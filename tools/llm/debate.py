@@ -207,17 +207,24 @@ def _pick_engines(bull: str | None, bear: str | None, judge: str | None):
     return b, r, j
 
 
+ZH_NOTE = ("\nLANGUAGE: write every free-text field (strongest_point, attack_on_bull, "
+           "rationale, weakest_link, entry, risks) in fluent Simplified Chinese (简体中文). "
+           "Keep tickers, prices and the JSON keys/enums (verdict etc.) exactly as-is.")
+
+
 def run_debate(ticker: str, dte: int, market: str,
-               bull_eng: str | None, bear_eng: str | None, judge_eng: str | None) -> dict:
+               bull_eng: str | None, bear_eng: str | None, judge_eng: str | None,
+               lang: str = "en") -> dict:
     t = ticker.upper()
     t0 = time.time()
     pack = build_pack(t, dte, market)
     ev = _pack_text(t, pack)
     b_eng, r_eng, j_eng = _pick_engines(bull_eng, bear_eng, judge_eng)
+    zh = ZH_NOTE if lang == "zh" else ""
 
     base = (f"{ev}\n\nYou are one analyst on a two-sided research desk for {t}. "
             "Argue ONLY from the evidence pack above — no outside facts. "
-            "Short-term swing horizon (days to ~4 weeks). Educational only.")
+            "Short-term swing horizon (days to ~4 weeks). Educational only." + zh)
 
     def tag(meta: dict) -> str:
         return f"{meta.get('engine')}:{meta.get('model')}"
@@ -240,7 +247,7 @@ def run_debate(ticker: str, dte: int, market: str,
         "gate — if a Tier-1 event or this name's earnings are imminent, say so in the "
         "rationale and prefer patience over initiation; (4) weigh the PAST-CALL LESSONS: "
         "if this desk has been wrong on this name or this setup type, demand more evidence. "
-        "Educational only — not financial advice.")
+        "Educational only — not financial advice." + zh)
     verdict, jmeta = llm.generate_json(judge_prompt, JUDGE_SCHEMA, engine=j_eng)
 
     price = (pack.get("decide") or {}).get("price")
@@ -347,11 +354,13 @@ def main(argv=None):
     p.add_argument("--bear", help="engine for the bear")
     p.add_argument("--judge", help="engine for the judge (default: claude if available)")
     p.add_argument("--log", action="store_true", help="journal the verdict via ot reflect")
+    p.add_argument("--lang", choices=["en", "zh"], default="en",
+                   help="language for the free-text fields (zh = 简体中文)")
     p.add_argument("--format", choices=["text", "json"], default="text")
     a = p.parse_args(argv)
 
     try:
-        r = run_debate(a.ticker, a.dte, a.market, a.bull, a.bear, a.judge)
+        r = run_debate(a.ticker, a.dte, a.market, a.bull, a.bear, a.judge, a.lang)
     except Exception as e:  # noqa: BLE001
         print(f"debate: {e}", file=sys.stderr)
         return 1
