@@ -11,7 +11,7 @@ It degrades cleanly: if the `claude` binary isn't on PATH the caller shows the
 keyless data panels without this engine (see `have_cli()`).
 
 Model: the CLI's default (your session model), or pass an alias — sonnet /
-opus / haiku — via the `model` argument or `OT_CLAUDE_MODEL`.
+opus / haiku / fable — via the `model` argument or `OT_CLAUDE_MODEL`.
 
 Educational only — not financial advice.
 """
@@ -25,7 +25,7 @@ import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-MODELS = ["default", "sonnet", "opus", "haiku"]
+MODELS = ["default", "sonnet", "opus", "haiku", "fable"]
 
 # The exact model id the CLI actually used on the last run (e.g.
 # "claude-opus-4-8"), parsed from the result envelope — aliases like

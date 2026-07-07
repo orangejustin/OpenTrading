@@ -801,13 +801,15 @@ def debate_view(ticker: str, fresh: bool, bull: str | None, bear: str | None,
     """The bull/bear/judge desk — 3 LLM calls, so cached until ↻ (24h TTL).
     peek=True never runs the desk — it only reports a cached verdict (the
     ticker page uses this on load so a visit can't silently burn 3 LLM calls).
-    engine (from the header dropdown, "single" mode): run ALL three roles on
-    that one engine instead of the default cross-engine diversity — honored
-    only when no explicit --bull/--bear/--judge override is given."""
+    All role specs are 'engine[:model]' (debate.py splits them).
+    engine (header dropdown, "single" mode): run ALL three roles on that one
+    engine·model instead of the default cross-engine diversity — honored only
+    when no explicit bull/bear/judge override ("custom" mode) is given."""
     if engine and not (bull or bear or judge):
         bull = bear = judge = engine
-    # cache single-engine and diverse runs separately so a mode switch re-runs
-    key = ("debate", ticker.upper(), lang, engine or "diverse")
+    # cache each role assignment separately so a mode/model switch re-runs
+    roles = f"{bull or ''}|{bear or ''}|{judge or ''}" if (bull or bear or judge) else "diverse"
+    key = ("debate", ticker.upper(), lang, roles)
     if not fresh:
         with _CACHE_LOCK:
             hit = _DESK_CACHE.get(key)

@@ -123,6 +123,7 @@
   .dbmode:hover{color:var(--accent)} .dbmode b{color:var(--accent)}
   .dtewrap{font-size:11px;font-weight:700;color:#94a3b8;display:inline-flex;gap:4px;align-items:center;white-space:nowrap}
   .dtesel{font-size:11px;font-weight:700;color:var(--accent);background:transparent;border:1px solid #d7dde6;border-radius:6px;padding:1px 4px;cursor:pointer}
+  .dbrolesel{font-size:10.5px;font-weight:600;color:#334155;background:transparent;border:1px solid #d7dde6;border-radius:6px;padding:1px 3px;cursor:pointer;max-width:150px}
   .via{font-size:11.5px;color:#94a3b8;margin-left:auto}
   .cachetag{font-size:10.5px;font-weight:700;background:#eef2f7;color:#64748b;
     padding:2px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.3px}
@@ -527,20 +528,42 @@ async function loadEngines(){
 }
 const engQS=()=>ENG.engine?`&engine=${encodeURIComponent(ENG.engine)}&model=${encodeURIComponent(ENG.model||'')}`:'';
 const engName=()=>{const e=ENG.list.find(x=>x.id===ENG.engine);return e?(ENG.model&&ENG.model!=='default'?nice(ENG.engine,ENG.model):e.label):'AI';};
-/* debate engine mode: 'diverse' (default cross-engine) or 'single' (all 3 roles on the header engine) */
+/* debate engine mode: 'diverse' (cross-engine auto) · 'single' (all 3 roles on the
+   header engine·model) · 'custom' (pick engine·model per role). Role specs travel
+   as 'engine[:model]' — debate.py splits on the first colon. */
 let DBMODE=localStorage.getItem('ot_debate_mode')||'diverse';
-const dbEngQS=()=>DBMODE==='single'&&ENG.engine?`&engine=${encodeURIComponent(ENG.engine)}`:'';
+let DBROLES=JSON.parse(localStorage.getItem('ot_debate_roles')||'{}');
+const roleSpec=v=>{if(!v)return'';const[e,...r]=v.split('|');const m=r.join('|');return m&&m!=='default'?e+':'+m:e;};
+const dbEngQS=()=>{
+  if(DBMODE==='single'&&ENG.engine) return `&engine=${encodeURIComponent(roleSpec(ENG.engine+'|'+(ENG.model||'')))}`;
+  if(DBMODE==='custom'){let q='';for(const k of['bull','bear','judge']){const s=roleSpec(DBROLES[k]||'');if(s)q+=`&${k}=${encodeURIComponent(s)}`;}return q;}
+  return '';
+};
+function roleOpts(cur){
+  const custom=JSON.parse(localStorage.getItem('ot_custom_models')||'[]');
+  return ENG.list.filter(e=>e.ok).map(e=>{
+    let ms=e.models||[]; if(e.id==='openrouter') ms=ms.concat(custom.filter(m=>!ms.includes(m)));
+    return `<optgroup label="${e.label}">`+ms.map(m=>`<option value="${e.id}|${m}"${(e.id+'|'+m)===cur?' selected':''}>${nice(e.id,m)}</option>`).join('')+'</optgroup>';
+  }).join('');
+}
+const roleSel=(role,lbl)=>`<select class="dbrolesel" title="${lbl}" onchange="setDbRole('${role}',this.value)"><option value=""${!DBROLES[role]?' selected':''}>${lbl} · auto</option>${roleOpts(DBROLES[role]||'')}</select>`;
+function setDbRole(role,v){if(v)DBROLES[role]=v;else delete DBROLES[role];localStorage.setItem('ot_debate_roles',JSON.stringify(DBROLES));}
 function debateModeChip(tk){
-  const single=DBMODE==='single';
-  const lbl=single?(ZHM?'单引擎 · '+engName():'single · '+engName()):(ZHM?'多引擎':'diverse');
-  const tip=single?(ZHM?'三个角色都在你选的引擎上运行 — 点击切换为多引擎（下次运行生效）':'all three roles run on your selected engine — click for cross-engine diversity (applies on next run)')
-                  :(ZHM?'多方/空方/裁判在不同引擎上，视角更多样 — 点击改为单引擎（下次运行生效）':'bull/bear/judge on different engines for perspective diversity — click to run all on your pick (applies on next run)');
-  return `<span class="dbmode" id="dbmodechip" title="${tip}" onclick="toggleDebateMode('${tk}')">⚙︎ ${ZHM?'引擎':'engines'}: <b>${lbl}</b></span>`;
+  const lbl=DBMODE==='single'?(ZHM?'单引擎 · ':'single · ')+engName()
+          :DBMODE==='custom'?(ZHM?'自选角色':'custom roles')
+          :(ZHM?'多引擎':'diverse');
+  const tip=DBMODE==='single'
+    ?(ZHM?'三个角色都在你选的引擎·模型上运行 — 点击进入自选（每个角色单独选，下次运行生效）':'all three roles run on your header engine·model — click for per-role custom picks (applies on next run)')
+    :DBMODE==='custom'
+    ?(ZHM?'为多方/空方/裁判分别选引擎·模型，留 auto 则自动分配 — 点击切回多引擎（下次运行生效）':'pick an engine·model per role; auto = desk default — click to cycle back to diverse (applies on next run)')
+    :(ZHM?'多方/空方/裁判在不同引擎上，视角更多样 — 点击改为单引擎（下次运行生效）':'bull/bear/judge on different engines for perspective diversity — click to run all on your pick (applies on next run)');
+  const sels=DBMODE==='custom'?roleSel('bull',ZHM?'多方':'bull')+roleSel('bear',ZHM?'空方':'bear')+roleSel('judge',ZHM?'裁判':'judge'):'';
+  return `<span id="dbmodewrap" style="display:inline-flex;gap:5px;align-items:center;flex-wrap:wrap"><span class="dbmode" title="${tip}" onclick="toggleDebateMode('${tk}')">⚙︎ ${ZHM?'引擎':'engines'}: <b>${lbl}</b></span>${sels}</span>`;
 }
 function toggleDebateMode(tk){
-  DBMODE=DBMODE==='single'?'diverse':'single';
+  DBMODE=DBMODE==='diverse'?'single':DBMODE==='single'?'custom':'diverse';
   localStorage.setItem('ot_debate_mode',DBMODE);
-  const c=$('#dbmodechip'); if(c) c.outerHTML=debateModeChip(tk);  // update label in place; next Run/↻ applies it
+  const c=$('#dbmodewrap'); if(c) c.outerHTML=debateModeChip(tk);  // update label in place; next Run/↻ applies it
 }
 
 /* ---------- dashboard ---------- */
