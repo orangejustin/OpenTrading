@@ -1,0 +1,14 @@
+{
+  "version.label": {
+    "message": "Next",
+    "description": "The label for version current"
+  },
+  "sidebar.docsSidebar.category.Tutorial": {
+    "message": "教程",
+    "description": "The label for category 'Tutorial' in sidebar 'docsSidebar'"
+  },
+  "sidebar.docsSidebar.category.Concepts": {
+    "message": "概念",
+    "description": "The label for category 'Concepts' in sidebar 'docsSidebar'"
+  }
+}

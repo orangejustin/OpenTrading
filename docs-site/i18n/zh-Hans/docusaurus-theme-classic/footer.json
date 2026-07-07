@@ -1,0 +1,38 @@
+{
+  "link.title.Docs": {
+    "message": "文档",
+    "description": "The title of the footer links column with title=Docs in the footer"
+  },
+  "link.title.Project": {
+    "message": "项目",
+    "description": "The title of the footer links column with title=Project in the footer"
+  },
+  "link.item.label.Introduction": {
+    "message": "简介",
+    "description": "The label of footer link with label=Introduction linking to /docs/intro"
+  },
+  "link.item.label.Getting started": {
+    "message": "快速开始",
+    "description": "The label of footer link with label=Getting started linking to /docs/getting-started"
+  },
+  "link.item.label.The prediction desk": {
+    "message": "预测台",
+    "description": "The label of footer link with label=The prediction desk linking to /docs/prediction-desk"
+  },
+  "link.item.label.Methodology": {
+    "message": "方法论",
+    "description": "The label of footer link with label=Methodology linking to /docs/methodology"
+  },
+  "link.item.label.GitHub": {
+    "message": "GitHub",
+    "description": "The label of footer link with label=GitHub linking to https://github.com/orangejustin/OpenTrading"
+  },
+  "link.item.label.Report an issue": {
+    "message": "反馈问题",
+    "description": "The label of footer link with label=Report an issue linking to https://github.com/orangejustin/OpenTrading/issues"
+  },
+  "copyright": {
+    "message": "仅供教育用途 —— 非投资建议。使用 Docusaurus 构建。© 2026 OpenTrading.",
+    "description": "The footer copyright"
+  }
+}
