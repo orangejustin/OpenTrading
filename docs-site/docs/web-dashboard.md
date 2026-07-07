@@ -38,19 +38,25 @@ degrades gracefully to keyless data panels when no LLM engine is configured.
 The header has a **model dropdown**. It controls the AI Analysis and News
 Analysis panels; results are cached per (ticker, engine, model).
 
-The **debate** has its own `engines` chip — click it to cycle three modes:
+The **debate** has its own `engines` pill — click it to open a small picker
+with three modes:
 
 - **diverse** (default) — bull and bear run on *different* engines for
   perspective diversity; the judge on Claude.
-- **single** — all three roles run on the header engine·model you selected.
-- **custom roles** — three small dropdowns appear: pick an engine·model for
-  the bull, the bear and the judge independently (leave any on *auto* for the
-  desk default). Great for A/B-ing judges or pitting two models against each
-  other.
+- **single** — all three roles run on the header engine·model you selected
+  (the pill mirrors it live as you change the header).
+- **custom roles** — three dropdowns appear: pick an engine·model for the
+  bull, the bear and the judge independently (leave any on *auto* for the desk
+  default). Great for A/B-ing judges or pitting two models against each other.
 
 Switching costs no tokens; the new assignment applies on the next run. Note
 that `Claude Code · default` (and Codex `default`) means *your CLI's own
 default model* — change it with `/model` in the CLI, or pin one here.
+
+Your verdict is **cached one-per-(ticker, language)** and mirrored to
+`data/debate-cache.json`, so it never disappears when you change the engine
+picker and it survives an `ot web` restart — hit **↻** to re-run with the
+current engines.
 
 ## English / 中文
 
