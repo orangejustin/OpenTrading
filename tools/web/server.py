@@ -896,19 +896,21 @@ def _marks(ticker: str) -> dict:
             "hi52": q.get("hi52"), "lo52": q.get("lo52")}
 
 
-def fusion_view(ticker: str) -> dict:
+def fusion_view(ticker: str, dte: int = 30) -> dict:
     """F1+F2: merge every level the desk already emits into ONE price ladder
     (2+ independent sources = confluence) and read the analysts' tilts into a
     consensus row. Combines cached parts — the only compute it may trigger is
     decide / per-name GEX / quant (seconds, then cached); TimesFM, the debate
-    and the AI analysis are peek-only so this never burns an LLM call."""
+    and the AI analysis are peek-only so this never burns an LLM call.
+    dte tunes the dealer-wall expiry window (0DTE .. swing); GEX is cached per
+    (ticker, dte) so switching windows recomputes only the walls."""
     T = ticker.upper()
     quant = quant_view(T)
     decide = _cached_part(("decide", T), 1800,
                           lambda: ot_json(ROOT / "tools/sim/decide.py", T) or {})
-    gex = _cached_part(("gex", T), 1800, lambda: (
+    gex = _cached_part(("gex", T, dte), 1800, lambda: (
         lambda o: o[0] if isinstance(o, list) and o else None)(
-        ot_json(ROOT / "tools/options/opt.py", T, "--dte", "30"))) or {}
+        ot_json(ROOT / "tools/options/opt.py", T, "--dte", str(dte)))) or {}
     marks = _cached_part(("marks", T), 1800, lambda: _marks(T)) or {}
     tfm = _peek_part(("tfm", T), 21600)
     debate = _peek_part(("debate", T, "en"), _CACHE_TTL) or \
@@ -1031,7 +1033,12 @@ def fusion_view(ticker: str) -> dict:
         "ladder": ladder,
         "consensus": {"chips": chips, "verdict": verdict, "agreement": agreement},
         "overlay": {"cone": cone, "call_wall": _num(gex.get("call_wall")),
-                    "put_wall": _num(gex.get("put_wall"))},
+                    "put_wall": _num(gex.get("put_wall")), "dte": dte,
+                    "gex_net_bn": (round(gex["net_gex_usd_per_1pct"] / 1e9, 2)
+                                   if isinstance(gex.get("net_gex_usd_per_1pct"), (int, float))
+                                   else None),
+                    "gex_sign": gex.get("gex_sign"), "spot": gex.get("spot")},
+        "dte": dte,
         "sources": {"engine": bool(decide and decide.get("ticker")),
                     "quant": bool(quant and not quant.get("error")),
                     "timesfm": bool(tfm and tfm.get("available")),
@@ -1236,7 +1243,12 @@ class Handler(BaseHTTPRequestHandler):
                 tk = (qs.get("ticker", [""])[0] or "").strip()
                 if not tk:
                     return self._send(400, json.dumps({"error": "ticker required"}))
-                return self._send(200, json.dumps(fusion_view(tk)))
+                try:
+                    dte = int(qs.get("dte", ["30"])[0])
+                except (ValueError, TypeError):
+                    dte = 30
+                dte = max(0, min(365, dte))
+                return self._send(200, json.dumps(fusion_view(tk, dte)))
             if u.path == "/api/hl":
                 return self._send(200, json.dumps(hl_view()))
             if u.path == "/api/whales":

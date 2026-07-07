@@ -121,6 +121,8 @@
   .rerun:hover{text-decoration:underline}
   .dbmode{font-size:11px;font-weight:700;color:#64748b;cursor:pointer;user-select:none;white-space:nowrap}
   .dbmode:hover{color:var(--accent)} .dbmode b{color:var(--accent)}
+  .dtewrap{font-size:11px;font-weight:700;color:#94a3b8;display:inline-flex;gap:4px;align-items:center;white-space:nowrap}
+  .dtesel{font-size:11px;font-weight:700;color:var(--accent);background:transparent;border:1px solid #d7dde6;border-radius:6px;padding:1px 4px;cursor:pointer}
   .via{font-size:11.5px;color:#94a3b8;margin-left:auto}
   .cachetag{font-size:10.5px;font-weight:700;background:#eef2f7;color:#64748b;
     padding:2px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.3px}
@@ -780,9 +782,10 @@ function drawChart(el,rows,ov){
     const inR=v=>v!=null&&v>=lo&&v<=hi;
     const wall=(v,col,lbl)=>inR(v)?`<line x1="0" x2="${cw}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="${col}" stroke-width="1" stroke-dasharray="6 4" opacity=".6"/>
       <text x="4" y="${(y(v)-3).toFixed(1)}" font-size="9.5" fill="${col}" font-weight="700">${lbl} ${fmt(v,v>1000?0:2)}</text>`:'';
-    // walls here are ≤30 DTE (swing horizon) — the Macro&Flow card is ≤7 DTE,
-    // so the same name can show a different wall; label the window to make that clear.
-    s+=wall(ov.call_wall,'#b45309',(ZHM?'Call 墙':'call wall')+' ≤30D')+wall(ov.put_wall,'#15803d',(ZHM?'Put 墙':'put wall')+' ≤30D');
+    // wall DTE is tunable on the ticker page (default ≤30D swing); the Macro&Flow
+    // card is ≤7D — so the same name can show a different wall; label the window.
+    const dl=(ov.dte===0?'0DTE':'≤'+(ov.dte??30)+'D');
+    s+=wall(ov.call_wall,'#b45309',(ZHM?'Call 墙':'call wall')+' '+dl)+wall(ov.put_wall,'#15803d',(ZHM?'Put 墙':'put wall')+' '+dl);
     const c=ov.cone;
     if(c&&inR(c.p50)){
       const x0=cw*0.82, yT=y(Math.min(c.p90,hi)), yB=y(Math.max(c.p10,lo));
@@ -927,8 +930,18 @@ async function loadCones(tk){
 
 /* ---------- fusion: consensus row + confluence ladder (F1+F2) ---------- */
 let FUSION=null;
-async function loadFusion(tk){
-  const d=await fetch(`/api/fusion?ticker=${encodeURIComponent(tk)}`).then(r=>r.json()).catch(()=>null);
+let FUSIONDTE=+(localStorage.getItem('ot_wall_dte')||30);  // dealer-wall DTE window (tunable on the ticker page)
+function wallDteSel(tk){
+  const opts=[0,5,7,14,30,45,60,90].map(v=>`<option value="${v}"${v===FUSIONDTE?' selected':''}>${v===0?'0DTE':v+'D'}</option>`).join('');
+  return `<span class="dtewrap" title="${ZHM?'做市商墙的到期窗口（DTE）— 0DTE 当日、5D 波段、30D 摆动':'dealer-wall expiry window (DTE) — 0DTE intraday, 5D short swing, 30D swing'}">${ZHM?'墙窗口':'walls'} <select class="dtesel" onchange="setWallDte('${tk}',this.value)">${opts}</select></span>`;
+}
+function setWallDte(tk,v){
+  FUSIONDTE=+v; localStorage.setItem('ot_wall_dte',FUSIONDTE);
+  loadFusion(tk,FUSIONDTE);
+}
+async function loadFusion(tk,dte){
+  if(dte==null) dte=FUSIONDTE;
+  const d=await fetch(`/api/fusion?ticker=${encodeURIComponent(tk)}&dte=${dte}`).then(r=>r.json()).catch(()=>null);
   if(CHART.tk!==tk) return;
   if(!d||d.error){
     const el=$('#consensus'); if(el) el.innerHTML=`<span style="font-size:12px;color:#94a3b8">Desk consensus unavailable${d&&d.error?' — '+d.error:''}</span>`;
@@ -967,9 +980,12 @@ function renderLadder(d){
       ${badges}<span class="what">${what}</span></div>`;
   }
   if(!placed) html+=`<div class="lnow">${tr('last')} ${fmt(d.last)}</div>`;
+  const ov=d.overlay||{};
+  const dteL=ov.dte===0?'0DTE':'≤'+(ov.dte??30)+'D';
+  const gexLine=(ov.call_wall!=null||ov.put_wall!=null)?`<div class="d" style="margin:3px 0 6px;color:#64748b;font-size:11.5px">${ZHM?'做市商墙':'dealer walls'} <b>${dteL}</b> — Call <b class="mono">${ov.call_wall??'—'}</b> · Put <b class="mono">${ov.put_wall??'—'}</b>${ov.gex_net_bn!=null?` · ${ZHM?'净':'net'} GEX <b>$${ov.gex_net_bn}bn</b>/1% <span class="${ov.gex_sign==='positive'?'up':'down'}">${ov.gex_sign==='positive'?(ZHM?'正·压制波动':'positive · dampens'):(ZHM?'负·放大波动':'negative · amplifies')}</span>`:''}</div>`:'';
   el.innerHTML=`<div class="lbl" style="display:flex;gap:8px;align-items:baseline">${tr('Confluence ladder')} ${qh('ladder','Every level, one axis — ×2+ = independent methods on the same line')}
       <span style="color:#cbd5e1;font-weight:600;text-transform:none;letter-spacing:0">${ZHM?'研判台给出的所有价位，聚类后 — <b>×2+</b> = 多个独立方法指向同一条线':'every level the desk emits, clustered — <b>×2+</b> = independent methods naming the SAME line'}</span>
-      <span class="rerun" style="margin-left:auto" onclick="loadFusion('${d.ticker}')">↻</span></div>${html}
+      <span style="margin-left:auto;display:flex;gap:10px;align-items:center">${wallDteSel(d.ticker)}<span class="rerun" onclick="loadFusion('${d.ticker}')">↻</span></span></div>${gexLine}${html}
     <div class="d" style="margin-top:8px;color:#94a3b8;font-size:11px">${ZHM?'统计锥与做市商墙的一致，是二者单独都给不出的可交易结构 — 只有 ×2+ 的行才真正重要':'agreement between a statistical cone and a dealer wall is tradeable structure neither shows alone — the ×2+ rows are the only levels that matter'}</div>`;
 }
 function renderDebateInvite(tk){
