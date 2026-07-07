@@ -30,17 +30,54 @@ open /tmp/brief.html
 
 ## Sending
 
-Email goes out over SMTP using credentials in your git-ignored `.env`. Gmail is
-the simplest — you'll need a 16-character **app password** (Google account →
-2-Step Verification → App passwords). Set these four keys in `.env` (start from
-`.env.example`):
+Email goes out over SMTP using credentials in your git-ignored `.env` (copy
+`.env.example` first). Pick **one** provider — the preset sets host/port/security
+automatically. Two easy, free options:
+
+### Option A — Gmail (email *anyone*, incl. overseas)
+
+Recommended: it delivers to any address (including qq.com / overseas). You need a
+Google **app password**, not your login password:
+
+1. Turn on **2-Step Verification** on your Google account.
+2. Open **[myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)** and create a 16-character app password.
+3. Set these in `.env`:
 
 | Key | Value |
 |---|---|
 | `OT_SMTP_PROVIDER` | `gmail` |
-| `OT_SMTP_USER` | your Gmail address |
-| `OT_SMTP_APP_PASSWORD` | the 16-character app password |
+| `OT_SMTP_USER` | your full Gmail address |
+| `OT_SMTP_PASS` | the 16-char app password |
+| `OT_EMAIL_FROM` | your Gmail address |
 | `OT_EMAIL_TO` | where the brief is delivered |
+
+### Option B — Resend (email *yourself*, zero SMTP fuss)
+
+Easiest if you only need your own inbox. The free tier sends from
+`onboarding@resend.dev` and delivers **only to your Resend-account email** — to
+reach other people you verify a domain at [resend.com/domains](https://resend.com/domains).
+
+1. Sign up at **[resend.com](https://resend.com)**, then create an API key at **[resend.com/api-keys](https://resend.com/api-keys)** (starts with `re_`).
+2. Set these in `.env`:
+
+| Key | Value |
+|---|---|
+| `OT_SMTP_PROVIDER` | `resend` |
+| `OT_SMTP_USER` | the literal `resend` |
+| `OT_SMTP_PASS` | your API key (`re_…`) |
+| `OT_EMAIL_FROM` | `onboarding@resend.dev` (or your verified domain) |
+| `OT_EMAIL_TO` | your Resend-account email |
+
+Then send a one-off:
+
+```bash
+ot email                 # sends the current report to OT_EMAIL_TO
+```
+
+:::note Outlook / personal Microsoft
+Microsoft disabled app-password SMTP for personal accounts, so the
+`outlook`/`office365` presets won't work for personal mail — use Gmail or Resend.
+:::
 
 ## Scheduling
 
