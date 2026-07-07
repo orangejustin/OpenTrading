@@ -21,6 +21,7 @@ and the judge defaults to the Claude Code CLI when present.
     ot debate NVDA --format json         # machine-readable row
     ot debate NVDA --log                 # also journal the verdict (ot reflect)
     ot debate NVDA --bull gemini --bear openrouter --judge claude
+    ot debate NVDA --bear openrouter:z-ai/glm-5.2 --judge claude:opus   # engine[:model]
 
 Educational only — not financial advice.
 """
@@ -195,16 +196,34 @@ def _pack_text(t: str, pack: dict) -> str:
     return "\n".join(L)
 
 
+def _split_spec(spec: str | None):
+    """'engine[:model]' → (engine, model). Split on the FIRST colon only —
+    model slugs may themselves contain ':' (e.g. openrouter '…:free')."""
+    if not spec:
+        return None, None
+    eng, _, mdl = spec.partition(":")
+    return (eng or None), (mdl or None)
+
+
 def _pick_engines(bull: str | None, bear: str | None, judge: str | None):
+    """Each role spec is 'engine[:model]'. An unknown/missing engine falls back
+    to the auto-pick (and drops its model override — it belonged to that engine).
+    Returns three (engine, model|None) pairs."""
     avail = [e["id"] for e in llm.engines() if e.get("ok")]
     if not avail:
         raise RuntimeError("no LLM engine configured (GEMINI_API_KEY / OPENROUTER_API_KEY / claude CLI)")
-    b = bull if bull in avail else avail[0]
+    b, bm = _split_spec(bull)
+    r, rm = _split_spec(bear)
+    j, jm = _split_spec(judge)
+    if b not in avail:
+        b, bm = avail[0], None
     # perspective diversity: bear takes a DIFFERENT engine when one exists
-    others = [e for e in avail if e != b]
-    r = bear if bear in avail else (others[0] if others else b)
-    j = judge if judge in avail else ("claude" if "claude" in avail else avail[0])
-    return b, r, j
+    if r not in avail:
+        others = [e for e in avail if e != b]
+        r, rm = (others[0] if others else b), None
+    if j not in avail:
+        j, jm = ("claude" if "claude" in avail else avail[0]), None
+    return (b, bm), (r, rm), (j, jm)
 
 
 ZH_NOTE = ("\nLANGUAGE: write every free-text field (strongest_point, attack_on_bull, "
@@ -219,7 +238,7 @@ def run_debate(ticker: str, dte: int, market: str,
     t0 = time.time()
     pack = build_pack(t, dte, market)
     ev = _pack_text(t, pack)
-    b_eng, r_eng, j_eng = _pick_engines(bull_eng, bear_eng, judge_eng)
+    (b_eng, b_mdl), (r_eng, r_mdl), (j_eng, j_mdl) = _pick_engines(bull_eng, bear_eng, judge_eng)
     zh = ZH_NOTE if lang == "zh" else ""
 
     base = (f"{ev}\n\nYou are one analyst on a two-sided research desk for {t}. "
@@ -230,12 +249,12 @@ def run_debate(ticker: str, dte: int, market: str,
         return f"{meta.get('engine')}:{meta.get('model')}"
 
     bull, bmeta = llm.generate_json(base + "\n\nROLE: BULL. Make the strongest honest LONG case.",
-                                    BULL_SCHEMA, engine=b_eng)
+                                    BULL_SCHEMA, engine=b_eng, model=b_mdl)
     bear, rmeta = llm.generate_json(
         base + "\n\nROLE: BEAR. Make the strongest honest SHORT/avoid case. "
                f"The bull's strongest point was: \"{bull.get('strongest_point', '')}\" — "
                "you MUST directly engage and attack it in `attack_on_bull`.",
-        BEAR_SCHEMA, engine=r_eng)
+        BEAR_SCHEMA, engine=r_eng, model=r_mdl)
 
     judge_prompt = (
         f"{ev}\n\nBULL CASE ({tag(bmeta)}):\n{json.dumps(bull, ensure_ascii=False)}\n\n"
@@ -248,7 +267,7 @@ def run_debate(ticker: str, dte: int, market: str,
         "rationale and prefer patience over initiation; (4) weigh the PAST-CALL LESSONS: "
         "if this desk has been wrong on this name or this setup type, demand more evidence. "
         "Educational only — not financial advice." + zh)
-    verdict, jmeta = llm.generate_json(judge_prompt, JUDGE_SCHEMA, engine=j_eng)
+    verdict, jmeta = llm.generate_json(judge_prompt, JUDGE_SCHEMA, engine=j_eng, model=j_mdl)
 
     price = (pack.get("decide") or {}).get("price")
     return {
@@ -350,9 +369,9 @@ def main(argv=None):
     p.add_argument("ticker")
     p.add_argument("--dte", type=int, default=5)
     p.add_argument("--market", choices=["US", "A", "HK"], default="US")
-    p.add_argument("--bull", help="engine for the bull (gemini|openrouter|claude)")
-    p.add_argument("--bear", help="engine for the bear")
-    p.add_argument("--judge", help="engine for the judge (default: claude if available)")
+    p.add_argument("--bull", help="engine[:model] for the bull (e.g. gemini, openrouter:z-ai/glm-5.2)")
+    p.add_argument("--bear", help="engine[:model] for the bear")
+    p.add_argument("--judge", help="engine[:model] for the judge (default: claude if available)")
     p.add_argument("--log", action="store_true", help="journal the verdict via ot reflect")
     p.add_argument("--lang", choices=["en", "zh"], default="en",
                    help="language for the free-text fields (zh = 简体中文)")
