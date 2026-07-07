@@ -21,8 +21,11 @@ degrades gracefully to keyless data panels when no LLM engine is configured.
    **CONSENSUS LONG/SHORT** when 2+ agree and none oppose, **NEUTRAL** with no
    majority, **THIN** when too few have reported, and **⚠ STAND ASIDE** the moment
    any two analysts point in opposite directions.
-2. **Chart + walls + cones** — price with the dealer **call/put walls** (≤30 DTE)
-   and the forecast cones overlaid.
+2. **Chart + walls + cones** — price with the dealer **call/put walls** and the
+   forecast cones overlaid. The wall **DTE window is tunable** from the
+   Confluence-ladder header (`0DTE / 5 / 7 / 14 / 30 / 45 / 60 / 90`) — pick 0DTE
+   for intraday pin risk, longer windows for swing structure. The ladder shows
+   the net GEX at that window, which shifts as you widen it.
 3. **Bull vs Bear** — the committed call: a 5-tier verdict with entry,
    invalidation and a time stop. See [the debate](./prediction-desk.md).
 4. **Confluence ladder** — every price level the desk emits on one axis; the rows
