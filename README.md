@@ -6,7 +6,7 @@
 
 **A local-first trading copilot — macro-first, risk-first, zero API keys.**
 
-📖 **[Documentation & tutorial site →](docs-site/)** &nbsp;·&nbsp; built with Docusaurus, deploy free to Vercel / Cloudflare Pages / GitHub Pages
+📖 **[Documentation & tutorial →](https://open-trading-one.vercel.app)**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-blue.svg)](#requirements)
@@ -272,8 +272,7 @@ uv with `OT_NO_UV=1`, inspect with `ot doctor`.
 ## Credits & disclaimer
 
 Built by [@orangejustin](https://github.com/orangejustin). The multi-agent direction draws
-on [TradingAgents](https://github.com/TauricResearch/TradingAgents); the deploy-and-preview
-craft on [daily_stock_analysis](https://github.com/ZhuLinsen/daily_stock_analysis).
+on [TradingAgents](https://github.com/TauricResearch/TradingAgents).
 
 Analysis is for **educational purposes only** — **not financial advice**. Markets are
 risky; size accordingly and do your own research.
