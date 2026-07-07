@@ -119,11 +119,24 @@
   .trend{font-size:13px;color:#334155}.trend b{color:var(--ink)}
   .rerun{font-size:12px;font-weight:700;color:var(--accent);cursor:pointer;user-select:none}
   .rerun:hover{text-decoration:underline}
-  .dbmode{font-size:11px;font-weight:700;color:#64748b;cursor:pointer;user-select:none;white-space:nowrap}
-  .dbmode:hover{color:var(--accent)} .dbmode b{color:var(--accent)}
+  .dbpill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:#475569;cursor:pointer;user-select:none;white-space:nowrap;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:999px;padding:2px 10px;transition:background .12s,color .12s}
+  .dbpill:hover{background:#e8eef5;color:var(--accent)} .dbpill b{color:var(--accent);font-weight:800}
+  .dbpop{position:fixed;z-index:1000;width:290px;max-width:calc(100vw - 24px);background:#fff;border:1px solid #e2e8f0;border-radius:14px;box-shadow:0 14px 40px rgba(15,23,42,.18);padding:8px;font-size:12.5px;color:#1f2937;animation:dbpin .12s ease-out}
+  @keyframes dbpin{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+  .dbpop-h{font-weight:800;font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#94a3b8;padding:3px 8px 6px}
+  .dbopt{display:flex;gap:9px;align-items:flex-start;padding:7px 9px;border-radius:9px;cursor:pointer;transition:background .1s}
+  .dbopt:hover{background:#f6f8fb} .dbopt.on{background:#eef4ff}
+  .dbopt .rd{flex:none;width:14px;height:14px;margin-top:1px;border-radius:50%;border:2px solid #cbd5e1;position:relative;transition:border-color .1s}
+  .dbopt.on .rd{border-color:var(--accent)} .dbopt.on .rd:after{content:'';position:absolute;inset:2px;border-radius:50%;background:var(--accent)}
+  .dbopt .tt{font-weight:700;display:block} .dbopt .dd{font-size:11px;color:#94a3b8;font-weight:500;line-height:1.35;display:block;margin-top:1px}
+  .dbroles{border-top:1px solid #eef2f7;margin-top:6px;padding:8px 3px 2px;display:flex;flex-direction:column;gap:7px}
+  .dbrow{display:flex;align-items:center;gap:9px} .dbrow .rl{flex:none;width:42px;font-weight:800;font-size:11px;color:#64748b;text-align:right}
+  .dbsel2{flex:1;min-width:0;font-size:11.5px;border:1px solid #d7dde6;border-radius:8px;padding:4px 7px;background:#fff;color:#1f2937;cursor:pointer}
+  .dbsel2:focus{outline:none;border-color:var(--accent)}
+  .dbpop-f{display:flex;align-items:center;justify-content:space-between;margin-top:7px;padding:7px 8px 2px;border-top:1px solid #eef2f7;font-size:10.5px;color:#94a3b8}
+  .dbdone{font-weight:800;color:#fff;background:var(--accent);cursor:pointer;padding:3px 14px;border-radius:8px} .dbdone:hover{filter:brightness(1.06)}
   .dtewrap{font-size:11px;font-weight:700;color:#94a3b8;display:inline-flex;gap:4px;align-items:center;white-space:nowrap}
   .dtesel{font-size:11px;font-weight:700;color:var(--accent);background:transparent;border:1px solid #d7dde6;border-radius:6px;padding:1px 4px;cursor:pointer}
-  .dbrolesel{font-size:10.5px;font-weight:600;color:#334155;background:transparent;border:1px solid #d7dde6;border-radius:6px;padding:1px 3px;cursor:pointer;max-width:150px}
   .via{font-size:11.5px;color:#94a3b8;margin-left:auto}
   .cachetag{font-size:10.5px;font-weight:700;background:#eef2f7;color:#64748b;
     padding:2px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.3px}
@@ -523,14 +536,17 @@ async function loadEngines(){
       en='openrouter';m=s;sel.value='openrouter|'+s;
     }
     ENG.engine=en;ENG.model=m;localStorage.setItem('ot_llm',en+'|'+m);
+    refreshDebateChip();  // single-mode pill mirrors the header engine·model live
   };
   $('#engctl').style.display='flex';
 }
 const engQS=()=>ENG.engine?`&engine=${encodeURIComponent(ENG.engine)}&model=${encodeURIComponent(ENG.model||'')}`:'';
 const engName=()=>{const e=ENG.list.find(x=>x.id===ENG.engine);return e?(ENG.model&&ENG.model!=='default'?nice(ENG.engine,ENG.model):e.label):'AI';};
-/* debate engine mode: 'diverse' (cross-engine auto) · 'single' (all 3 roles on the
-   header engine·model) · 'custom' (pick engine·model per role). Role specs travel
-   as 'engine[:model]' — debate.py splits on the first colon. */
+/* Debate engine picker — a popover with three modes:
+   diverse (cross-engine auto) · single (all 3 roles on the header engine·model)
+   · custom (pick engine·model per role). Specs travel as 'engine[:model]';
+   debate.py splits on the first colon. Selection only drives a fresh RUN — the
+   verdict is cached one-per-(ticker,lang) so it never vanishes when you switch. */
 let DBMODE=localStorage.getItem('ot_debate_mode')||'diverse';
 let DBROLES=JSON.parse(localStorage.getItem('ot_debate_roles')||'{}');
 const roleSpec=v=>{if(!v)return'';const[e,...r]=v.split('|');const m=r.join('|');return m&&m!=='default'?e+':'+m:e;};
@@ -546,25 +562,50 @@ function roleOpts(cur){
     return `<optgroup label="${e.label}">`+ms.map(m=>`<option value="${e.id}|${m}"${(e.id+'|'+m)===cur?' selected':''}>${nice(e.id,m)}</option>`).join('')+'</optgroup>';
   }).join('');
 }
-const roleSel=(role,lbl)=>`<select class="dbrolesel" title="${lbl}" onchange="setDbRole('${role}',this.value)"><option value=""${!DBROLES[role]?' selected':''}>${lbl} · auto</option>${roleOpts(DBROLES[role]||'')}</select>`;
 function setDbRole(role,v){if(v)DBROLES[role]=v;else delete DBROLES[role];localStorage.setItem('ot_debate_roles',JSON.stringify(DBROLES));}
+const dbPillLabel=()=>DBMODE==='single'?(ZHM?'单引擎 · ':'single · ')+engName():DBMODE==='custom'?(ZHM?'自选角色':'custom'):(ZHM?'多引擎':'diverse');
+/* the pill (trigger). tk kept in the signature for call-site symmetry. */
 function debateModeChip(tk){
-  const lbl=DBMODE==='single'?(ZHM?'单引擎 · ':'single · ')+engName()
-          :DBMODE==='custom'?(ZHM?'自选角色':'custom roles')
-          :(ZHM?'多引擎':'diverse');
-  const tip=DBMODE==='single'
-    ?(ZHM?'三个角色都在你选的引擎·模型上运行 — 点击进入自选（每个角色单独选，下次运行生效）':'all three roles run on your header engine·model — click for per-role custom picks (applies on next run)')
-    :DBMODE==='custom'
-    ?(ZHM?'为多方/空方/裁判分别选引擎·模型，留 auto 则自动分配 — 点击切回多引擎（下次运行生效）':'pick an engine·model per role; auto = desk default — click to cycle back to diverse (applies on next run)')
-    :(ZHM?'多方/空方/裁判在不同引擎上，视角更多样 — 点击改为单引擎（下次运行生效）':'bull/bear/judge on different engines for perspective diversity — click to run all on your pick (applies on next run)');
-  const sels=DBMODE==='custom'?roleSel('bull',ZHM?'多方':'bull')+roleSel('bear',ZHM?'空方':'bear')+roleSel('judge',ZHM?'裁判':'judge'):'';
-  return `<span id="dbmodewrap" style="display:inline-flex;gap:5px;align-items:center;flex-wrap:wrap"><span class="dbmode" title="${tip}" onclick="toggleDebateMode('${tk}')">⚙︎ ${ZHM?'引擎':'engines'}: <b>${lbl}</b></span>${sels}</span>`;
+  return `<span class="dbpill" id="dbpill" title="${ZHM?'选择辩论引擎':'choose the debate engines'}" onclick="openDbPop(event)">⚙︎ ${ZHM?'引擎':'engines'}: <b>${dbPillLabel()}</b> ▾</span>`;
 }
-function toggleDebateMode(tk){
-  DBMODE=DBMODE==='diverse'?'single':DBMODE==='single'?'custom':'diverse';
-  localStorage.setItem('ot_debate_mode',DBMODE);
-  const c=$('#dbmodewrap'); if(c) c.outerHTML=debateModeChip(tk);  // update label in place; next Run/↻ applies it
+function refreshDebateChip(){const p=$('#dbpill'); if(p&&CHART&&CHART.tk) p.outerHTML=debateModeChip(CHART.tk);}
+function dbOptRow(mode,tt,dd){
+  return `<div class="dbopt${DBMODE===mode?' on':''}" onclick="setDbMode('${mode}')"><span class="rd"></span><span><span class="tt">${tt}</span><span class="dd">${dd}</span></span></div>`;
 }
+function dbRoleRow(role,lbl){
+  return `<div class="dbrow"><span class="rl">${lbl}</span><select class="dbsel2" onchange="setDbRole('${role}',this.value)"><option value=""${!DBROLES[role]?' selected':''}>${ZHM?'自动':'auto'}</option>${roleOpts(DBROLES[role]||'')}</select></div>`;
+}
+function dbPopInner(){
+  return `<div class="dbpop-h">${ZHM?'辩论引擎':'Debate engines'}</div>
+    ${dbOptRow('diverse',ZHM?'多引擎':'Diverse',ZHM?'多方与空方用不同引擎，裁判用 Claude':'bull &amp; bear on different engines · judge on Claude')}
+    ${dbOptRow('single',ZHM?'单引擎':'Single',(ZHM?'三个角色都用 ':'all three roles on ')+'<b>'+engName()+'</b>')}
+    ${dbOptRow('custom',ZHM?'自选角色':'Custom roles',ZHM?'为每个角色单独选引擎·模型':'pick an engine·model per role')}
+    <div class="dbroles" style="${DBMODE==='custom'?'':'display:none'}">
+      ${dbRoleRow('bull',ZHM?'多方':'Bull')}${dbRoleRow('bear',ZHM?'空方':'Bear')}${dbRoleRow('judge',ZHM?'裁判':'Judge')}</div>
+    <div class="dbpop-f"><span>${ZHM?'下次运行生效':'applies on the next run'}</span><span class="dbdone" onclick="closeDbPop()">${ZHM?'完成':'Done'}</span></div>`;
+}
+function setDbMode(m){
+  DBMODE=m; localStorage.setItem('ot_debate_mode',m);
+  const pop=$('#dbpop'); if(pop) pop.innerHTML=dbPopInner();  // keep it open, swap body
+  refreshDebateChip();
+}
+function openDbPop(ev){
+  if(ev) ev.stopPropagation();
+  closeDbPop();
+  const pill=$('#dbpill'); if(!pill) return;
+  const r=pill.getBoundingClientRect();
+  const pop=document.createElement('div');
+  pop.className='dbpop'; pop.id='dbpop';
+  pop.onclick=e=>e.stopPropagation();
+  pop.innerHTML=dbPopInner();
+  document.body.appendChild(pop);
+  const w=pop.offsetWidth||290;
+  pop.style.left=Math.max(12,Math.min(r.right-w,window.innerWidth-w-12))+'px';
+  pop.style.top=(r.bottom+6)+'px';
+  setTimeout(()=>{document.addEventListener('click',closeDbPop);document.addEventListener('keydown',dbPopEsc);},0);
+}
+function closeDbPop(){const p=$('#dbpop'); if(p)p.remove(); document.removeEventListener('click',closeDbPop); document.removeEventListener('keydown',dbPopEsc);}
+function dbPopEsc(e){if(e.key==='Escape')closeDbPop();}
 
 /* ---------- dashboard ---------- */
 async function loadDash(){
@@ -734,7 +775,7 @@ async function showTicker(tk){
   loadLiveQuote(tk);
   loadCones(tk);
   renderDebateInvite(tk);
-  fetch(`/api/debate?ticker=${encodeURIComponent(tk)}&peek=1${langQS()}${dbEngQS()}`).then(r=>r.json())
+  fetch(`/api/debate?ticker=${encodeURIComponent(tk)}&peek=1${langQS()}`).then(r=>r.json())
     .then(d=>{if(CHART.tk===tk&&d&&d.verdict)renderDebate(tk,d);}).catch(()=>{});
   const d=await fetch(`/api/analyze?ticker=${encodeURIComponent(tk)}&mode=auto${engQS()}${langQS()}`).then(r=>r.json()).catch(()=>null);
   if(!d){$('#ai-area').innerHTML='<div class="banner">Failed to load data.</div>';return;}

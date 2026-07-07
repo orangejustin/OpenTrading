@@ -740,6 +740,50 @@ def analyze(ticker: str, engine: str | None = None, model: str | None = None,
 # --------------------------------------------------------------------------- #
 _POLY_CACHE: dict = {}
 _DESK_CACHE: dict = {}
+_DESK_CACHE_FILE = ROOT / "data" / "debate-cache.json"
+
+
+def _desk_key(ticker: str, lang: str) -> tuple:
+    """ONE cache slot per (ticker, lang) — the latest debate wins and is shown
+    on any later visit regardless of the engine picker's current state, so a
+    verdict you ran never silently disappears when you switch engines."""
+    return ("debate", ticker.upper(), lang)
+
+
+def _load_desk_cache() -> None:
+    """Rehydrate cached debates from disk at startup so an `ot web` restart
+    doesn't discard verdicts that each cost 3 LLM calls. Best-effort; entries
+    past the TTL are dropped. (data/ is git-ignored — never published.)"""
+    try:
+        raw = json.loads(_DESK_CACHE_FILE.read_text())
+    except Exception:  # noqa: BLE001 — missing/corrupt file = start cold
+        return
+    now = time.time()
+    with _CACHE_LOCK:
+        for rec in raw.get("records", []):
+            try:
+                ts = float(rec["ts"])
+                if now - ts < _CACHE_TTL and rec.get("data"):
+                    _DESK_CACHE[_desk_key(rec["ticker"], rec.get("lang", "en"))] = (ts, rec["data"])
+            except Exception:  # noqa: BLE001 — skip any malformed record
+                continue
+
+
+def _save_desk_cache() -> None:
+    """Mirror the debate cache to data/ (atomic write, best-effort). Only the
+    (ticker, lang) debate slots are persisted — quant/tfm/gex entries share the
+    dict but are cheap to recompute, so they stay memory-only."""
+    try:
+        with _CACHE_LOCK:
+            recs = [{"ticker": k[1], "lang": k[2], "ts": v[0], "data": v[1]}
+                    for k, v in _DESK_CACHE.items()
+                    if isinstance(k, tuple) and len(k) == 3 and k[0] == "debate"]
+        _DESK_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        tmp = _DESK_CACHE_FILE.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps({"records": recs}, ensure_ascii=False))
+        tmp.replace(_DESK_CACHE_FILE)
+    except Exception:  # noqa: BLE001 — persistence is a nicety, never fatal
+        pass
 
 
 def poly_odds() -> dict:
@@ -804,12 +848,12 @@ def debate_view(ticker: str, fresh: bool, bull: str | None, bear: str | None,
     All role specs are 'engine[:model]' (debate.py splits them).
     engine (header dropdown, "single" mode): run ALL three roles on that one
     engine·model instead of the default cross-engine diversity — honored only
-    when no explicit bull/bear/judge override ("custom" mode) is given."""
+    when no explicit bull/bear/judge override ("custom" mode) is given.
+    The engine assignment only drives a fresh RUN; a peek/normal load returns
+    the last cached verdict for this (ticker, lang) whatever engines it used."""
     if engine and not (bull or bear or judge):
         bull = bear = judge = engine
-    # cache each role assignment separately so a mode/model switch re-runs
-    roles = f"{bull or ''}|{bear or ''}|{judge or ''}" if (bull or bear or judge) else "diverse"
-    key = ("debate", ticker.upper(), lang, roles)
+    key = _desk_key(ticker, lang)
     if not fresh:
         with _CACHE_LOCK:
             hit = _DESK_CACHE.get(key)
@@ -832,6 +876,7 @@ def debate_view(ticker: str, fresh: bool, bull: str | None, bear: str | None,
     d["finished_at"] = _now_et()
     with _CACHE_LOCK:
         _DESK_CACHE[key] = (time.time(), d)
+    _save_desk_cache()  # survive an `ot web` restart (3 LLM calls each)
     return d
 
 
@@ -1305,6 +1350,7 @@ def main(argv=None):
         if envkey:
             os.environ[envkey] = a.model
 
+    _load_desk_cache()  # bring back debates from a previous run (data/, git-ignored)
     srv = ThreadingHTTPServer((a.host, a.port), Handler)
     url = f"http://{a.host}:{a.port}"
     ai = llm.status_line() if llm else "off (tools/llm missing)"

@@ -26,6 +26,8 @@ data/manifests/*
 data/whales/*
 !data/whales/.gitkeep
 data/wallets.json
+data/debate-cache.json
+data/debate-cache.json.tmp
 
 # Personal watchlist + per-user rosters (private holdings) — commit watchlist.example.json only
 watchlist.json
