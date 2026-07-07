@@ -34,7 +34,11 @@ const config = {
 
   i18n: {
     defaultLocale: 'en',
-    locales: ['en'],
+    locales: ['en', 'zh-Hans'],
+    localeConfigs: {
+      en: {label: 'English'},
+      'zh-Hans': {label: '中文'},
+    },
   },
 
   presets: [
@@ -79,6 +83,10 @@ const config = {
             to: '/docs/getting-started',
             label: 'Tutorial',
             position: 'left',
+          },
+          {
+            type: 'localeDropdown',
+            position: 'right',
           },
           {
             href: 'https://github.com/orangejustin/OpenTrading',
