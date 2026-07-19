@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 import time
@@ -465,7 +466,7 @@ def _split_spec(spec: str | None):
 # The same logic applies to reasoning depth, and depth is the cheaper lever: the
 # judge is the only call that weighs two cases against six evidence blocks and a
 # track record, so it gets the deep think and the debaters stay fast.
-JUDGE_EFFORT = "high"
+JUDGE_EFFORT = os.environ.get("OT_JUDGE_EFFORT") or "high"
 
 
 def _pick_engines(bull: str | None, bear: str | None, judge: str | None):

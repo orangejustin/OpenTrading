@@ -505,7 +505,9 @@ const NICE={'z-ai/glm-5.2':'GLM 5.2','deepseek/deepseek-v4-pro':'DeepSeek v4 Pro
   'openai/gpt-5.5':'GPT-5.5','openai/gpt-4o':'GPT-4o','google/gemini-3.5-flash':'Gemini 3.5 Flash',
   'anthropic/claude-sonnet-5':'Claude Sonnet 5','anthropic/claude-fable-5':'Claude Fable 5',
   'x-ai/grok-4.3':'Grok 4.3','qwen/qwen3.7-max':'Qwen 3.7 Max'};
-const nice=(eng,m)=>eng==='claude'?('Claude Code · '+m):eng==='codex'?('Codex · '+m):(NICE[m]||m);
+const CODEX_NICE={'gpt-5.6-sol':'5.6 Sol','gpt-5.6-terra':'5.6 Terra',
+                  'gpt-5.6-luna':'5.6 Luna','gpt-5.5':'5.5'};
+const nice=(eng,m)=>eng==='claude'?('Claude Code · '+m):eng==='codex'?('Codex · '+(CODEX_NICE[m]||m)):(NICE[m]||m);
 function optionsFor(e,custom){
   let ms=e.models||[];
   if(e.id==='openrouter') ms=ms.concat(custom.filter(m=>!ms.includes(m)));
@@ -582,7 +584,8 @@ function effOpts(role){
   if(!eid) return `<option value="">${ZHM?'自动':'auto'}</option>`;
   if(!hasEffort(eid)) return `<option value="">${ZHM?'该引擎不支持':'n/a for this engine'}</option>`;
   /* The judge arbitrates, so it defaults deep — mark that rather than leaving it blank. */
-  const dflt=role==='judge'?(ZHM?'自动 (high)':'auto (high)'):(ZHM?'自动':'auto');
+  const dflt=role==='judge'?(ZHM?'自动 (high · 裁判加深)':'auto (high · judge arbitrates)')
+                          :(ZHM?'自动 (medium)':'auto (medium)');
   const cur=DBEFF[role]||'';
   return `<option value=""${!cur?' selected':''}>${dflt}</option>`+
     EFFORTS[eid].map(x=>`<option value="${x}"${x===cur?' selected':''}>${x}</option>`).join('');

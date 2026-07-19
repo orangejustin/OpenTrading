@@ -31,7 +31,10 @@ from pathlib import Path
 # Reuse the tolerant JSON extractor — same reply-parsing problem, same fix.
 import claude_cli
 
-MODELS = ["default"]
+# Probed against the real binary rather than taken from docs: each of these was
+# accepted by `codex exec -m <slug>`, and a deliberately bogus slug returns a 400
+# with "Model metadata not found", so acceptance here means something.
+MODELS = ["default", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-5.5"]
 # Codex has no --effort flag; the equivalent is a config override.
 EFFORTS = ["default", "minimal", "low", "medium", "high", "xhigh"]
 
@@ -41,11 +44,14 @@ def have_cli() -> bool:
 
 
 def default_model() -> str:
-    return os.environ.get("OT_CODEX_MODEL") or "default"
+    # `default` would defer to ~/.codex/config.toml, which is the user's own
+    # interactive setting — the desk pins its own so a config change cannot
+    # silently alter what the debate ran on.
+    return os.environ.get("OT_CODEX_MODEL") or "gpt-5.6-sol"
 
 
 def default_effort() -> str:
-    return os.environ.get("OT_CODEX_EFFORT") or "default"
+    return os.environ.get("OT_CODEX_EFFORT") or "medium"
 
 
 def _run(prompt: str, model: str | None, timeout: int, effort: str | None = None) -> str:

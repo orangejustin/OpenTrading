@@ -152,10 +152,16 @@ def generate_json(prompt: str, schema: dict, *, engine: str | None = None,
         # -> "claude-opus-4-8") so the UI can stamp the real model.
         if claude_cli.LAST_MODEL_ID:
             mdl = claude_cli.LAST_MODEL_ID
-    # Report the effort that was actually applied, not the one requested — a
-    # hosted engine silently ignoring it would otherwise look like it honoured it.
-    applied = effort if (eng in ("claude", "codex") and effort
-                         and effort != "default") else None
+    # Report the effort that was actually APPLIED, not the one requested. That
+    # cuts both ways: a hosted engine ignoring the knob must not look like it
+    # honoured it, and an engine falling back to its OWN default must not look
+    # like it ran at no depth at all — codex defaults to medium, and reporting
+    # nothing there under-states what the call actually did.
+    applied = None
+    if eng in ("claude", "codex"):
+        mod = codex_cli if eng == "codex" else claude_cli
+        eff = (effort or "").strip() or mod.default_effort()
+        applied = eff if eff and eff != "default" else None
     return data, {"engine": eng, "model": mdl, "effort": applied}
 
 
