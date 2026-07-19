@@ -180,6 +180,8 @@ case "$cmd" in
     pyrun "$ROOT/tools/trade/auto.py" "$@" ;;
   paper)
     pyrun "$ROOT/tools/trade/paper.py" "$@" ;;
+  conc|concentration)
+    pyrun "$ROOT/tools/trade/conc.py" "$@" ;;
   approve)
     pyrun "$ROOT/tools/trade/propose.py" approve "$@" ;;
   poly|predict)
