@@ -119,8 +119,14 @@ def status_line() -> str:
 
 
 def generate_json(prompt: str, schema: dict, *, engine: str | None = None,
-                  model: str | None = None) -> tuple[dict, dict]:
-    """Structured generation on the chosen engine. Returns (data, {engine, model})."""
+                  model: str | None = None,
+                  effort: str | None = None) -> tuple[dict, dict]:
+    """Structured generation on the chosen engine. Returns (data, {engine, model, effort}).
+
+    `effort` is reasoning depth, and only the CLI engines support it: Claude Code
+    takes --effort, Codex takes -c model_reasoning_effort=. The hosted APIs
+    (gemini, openrouter) have no equivalent knob, so it is ignored there rather
+    than faked — the returned meta reports what was actually applied."""
     eng = (engine or "").strip().lower() or default_engine()
     if not eng:
         raise RuntimeError("no LLM engine available — set GEMINI_API_KEY or "
@@ -139,14 +145,18 @@ def generate_json(prompt: str, schema: dict, *, engine: str | None = None,
     elif eng == "openrouter":
         data = openrouter.generate_json(prompt, schema, model=mdl)
     elif eng == "codex":
-        data = codex_cli.generate_json(prompt, schema, model=mdl)
+        data = codex_cli.generate_json(prompt, schema, model=mdl, effort=effort)
     else:
-        data = claude_cli.generate_json(prompt, schema, model=mdl)
+        data = claude_cli.generate_json(prompt, schema, model=mdl, effort=effort)
         # Surface the exact model the CLI resolved the alias to (e.g. "opus"
         # -> "claude-opus-4-8") so the UI can stamp the real model.
         if claude_cli.LAST_MODEL_ID:
             mdl = claude_cli.LAST_MODEL_ID
-    return data, {"engine": eng, "model": mdl}
+    # Report the effort that was actually applied, not the one requested — a
+    # hosted engine silently ignoring it would otherwise look like it honoured it.
+    applied = effort if (eng in ("claude", "codex") and effort
+                         and effort != "default") else None
+    return data, {"engine": eng, "model": mdl, "effort": applied}
 
 
 if __name__ == "__main__":

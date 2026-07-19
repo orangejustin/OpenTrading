@@ -32,6 +32,8 @@ from pathlib import Path
 import claude_cli
 
 MODELS = ["default"]
+# Codex has no --effort flag; the equivalent is a config override.
+EFFORTS = ["default", "minimal", "low", "medium", "high", "xhigh"]
 
 
 def have_cli() -> bool:
@@ -42,7 +44,11 @@ def default_model() -> str:
     return os.environ.get("OT_CODEX_MODEL") or "default"
 
 
-def _run(prompt: str, model: str | None, timeout: int) -> str:
+def default_effort() -> str:
+    return os.environ.get("OT_CODEX_EFFORT") or "default"
+
+
+def _run(prompt: str, model: str | None, timeout: int, effort: str | None = None) -> str:
     exe = shutil.which("codex")
     if not exe:
         raise RuntimeError("codex CLI not found on PATH (install Codex)")
@@ -54,6 +60,9 @@ def _run(prompt: str, model: str | None, timeout: int) -> str:
         mdl = (model or default_model()).strip()
         if mdl and mdl != "default":
             cmd += ["-m", mdl]
+        eff = (effort or default_effort()).strip()
+        if eff and eff != "default":
+            cmd += ["-c", f'model_reasoning_effort="{eff}"']
         cmd.append(prompt)
         out = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
         if out.returncode != 0:
@@ -70,12 +79,12 @@ def generate_text(prompt: str, *, model: str | None = None, timeout: int = 240) 
 
 
 def generate_json(prompt: str, schema: dict, *, model: str | None = None,
-                  timeout: int = 300) -> dict:
+                  timeout: int = 300, effort: str | None = None) -> dict:
     """Structured generation: schema goes in the prompt, output extracted robustly."""
     import json
     p = (prompt + "\n\nReturn ONLY one JSON object — no prose, no code fences, "
          "no preamble — matching exactly this JSON Schema:\n" + json.dumps(schema))
-    return claude_cli._extract_json(_run(p, model, timeout))
+    return claude_cli._extract_json(_run(p, model, timeout, effort))
 
 
 if __name__ == "__main__":

@@ -401,24 +401,35 @@ def _pack_text(t: str, pack: dict) -> str:
 
 
 def _split_spec(spec: str | None):
-    """'engine[:model]' → (engine, model). Split on the FIRST colon only —
-    model slugs may themselves contain ':' (e.g. openrouter '…:free')."""
+    """'engine[:model][@effort]' → (engine, model, effort).
+
+    Effort is split off the END first, because model slugs may contain ':' but
+    never '@'. Colon then splits on the FIRST occurrence only, so an openrouter
+    slug like 'z-ai/glm-5.2:free' survives intact."""
     if not spec:
-        return None, None
-    eng, _, mdl = spec.partition(":")
-    return (eng or None), (mdl or None)
+        return None, None, None
+    body, _, eff = spec.partition("@")
+    eng, _, mdl = body.partition(":")
+    return (eng or None), (mdl or None), (eff or None)
+
+
+# TradingAgents tiers by MODEL — cheap models argue, an expensive one arbitrates.
+# The same logic applies to reasoning depth, and depth is the cheaper lever: the
+# judge is the only call that weighs two cases against six evidence blocks and a
+# track record, so it gets the deep think and the debaters stay fast.
+JUDGE_EFFORT = "high"
 
 
 def _pick_engines(bull: str | None, bear: str | None, judge: str | None):
-    """Each role spec is 'engine[:model]'. An unknown/missing engine falls back
-    to the auto-pick (and drops its model override — it belonged to that engine).
-    Returns three (engine, model|None) pairs."""
+    """Each role spec is 'engine[:model][@effort]'. An unknown/missing engine falls
+    back to the auto-pick (and drops its model override — it belonged to that
+    engine). Returns three (engine, model|None, effort|None) triples."""
     avail = [e["id"] for e in llm.engines() if e.get("ok")]
     if not avail:
         raise RuntimeError("no LLM engine configured (GEMINI_API_KEY / OPENROUTER_API_KEY / claude CLI)")
-    b, bm = _split_spec(bull)
-    r, rm = _split_spec(bear)
-    j, jm = _split_spec(judge)
+    b, bm, be = _split_spec(bull)
+    r, rm, re_ = _split_spec(bear)
+    j, jm, je = _split_spec(judge)
     if b not in avail:
         b, bm = avail[0], None
     # perspective diversity: bear takes a DIFFERENT engine when one exists
@@ -427,7 +438,11 @@ def _pick_engines(bull: str | None, bear: str | None, judge: str | None):
         r, rm = (others[0] if others else b), None
     if j not in avail:
         j, jm = ("claude" if "claude" in avail else avail[0]), None
-    return (b, bm), (r, rm), (j, jm)
+    # Only the CLI engines have an effort knob; defaulting the judge on a hosted
+    # engine would report a depth it never applied.
+    if je is None and j in ("claude", "codex"):
+        je = JUDGE_EFFORT
+    return (b, bm, be), (r, rm, re_), (j, jm, je)
 
 
 ZH_NOTE = ("\nLANGUAGE: write every free-text field (strongest_point, attack_on_bull, "
@@ -442,7 +457,8 @@ def run_debate(ticker: str, dte: int, market: str,
     t0 = time.time()
     pack = build_pack(t, dte, market)
     ev = _pack_text(t, pack)
-    (b_eng, b_mdl), (r_eng, r_mdl), (j_eng, j_mdl) = _pick_engines(bull_eng, bear_eng, judge_eng)
+    (b_eng, b_mdl, b_eff), (r_eng, r_mdl, r_eff), (j_eng, j_mdl, j_eff) = \
+        _pick_engines(bull_eng, bear_eng, judge_eng)
     zh = ZH_NOTE if lang == "zh" else ""
 
     base = (f"{ev}\n\nYou are one analyst on a two-sided research desk for {t}. "
@@ -450,15 +466,16 @@ def run_debate(ticker: str, dte: int, market: str,
             "Short-term swing horizon (days to ~4 weeks). Educational only." + zh)
 
     def tag(meta: dict) -> str:
-        return f"{meta.get('engine')}:{meta.get('model')}"
+        eff = meta.get("effort")
+        return f"{meta.get('engine')}:{meta.get('model')}" + (f"@{eff}" if eff else "")
 
     bull, bmeta = llm.generate_json(base + "\n\nROLE: BULL. Make the strongest honest LONG case.",
-                                    BULL_SCHEMA, engine=b_eng, model=b_mdl)
+                                    BULL_SCHEMA, engine=b_eng, model=b_mdl, effort=b_eff)
     bear, rmeta = llm.generate_json(
         base + "\n\nROLE: BEAR. Make the strongest honest SHORT/avoid case. "
                f"The bull's strongest point was: \"{bull.get('strongest_point', '')}\" — "
                "you MUST directly engage and attack it in `attack_on_bull`.",
-        BEAR_SCHEMA, engine=r_eng, model=r_mdl)
+        BEAR_SCHEMA, engine=r_eng, model=r_mdl, effort=r_eff)
 
     judge_prompt = (
         f"{ev}\n\nBULL CASE ({tag(bmeta)}):\n{json.dumps(bull, ensure_ascii=False)}\n\n"
@@ -482,7 +499,8 @@ def run_debate(ticker: str, dte: int, market: str,
         "bite. `inverse_scenario` is the trade that becomes right if the invalidation "
         "breaks — plan for being wrong, do not merely stop out. "
         "Educational only — not financial advice." + zh)
-    verdict, jmeta = llm.generate_json(judge_prompt, JUDGE_SCHEMA, engine=j_eng, model=j_mdl)
+    verdict, jmeta = llm.generate_json(judge_prompt, JUDGE_SCHEMA, engine=j_eng,
+                                       model=j_mdl, effort=j_eff)
 
     price = (pack.get("decide") or {}).get("price")
     return {
