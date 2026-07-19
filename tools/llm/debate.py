@@ -179,6 +179,11 @@ def build_pack(ticker: str, dte: int, market: str) -> dict:
         # the sources disagree on is a data-quality fact the desk should argue
         # about, not silently average.
         "validate": _tool_json("tools/validate/validate.py", t),
+        # Live chart, only if TradingView Desktop happens to be up with CDP.
+        # Measured: a half-dead CDP port (socket listening, app gone) burned ~20s
+        # of a 23.5s pack build at timeout=25. This block is optional garnish and
+        # `ot auto` pays the cost once per ticker, so it fails fast instead.
+        "tv": _tool_json("tools/tradingview/tv.py", timeout=6),
     }
     # Optional power module: TimesFM cone, only when its venv exists (ot forecast).
     tfm_py = ROOT / ".venv-forecast/bin/python"
@@ -386,6 +391,34 @@ def _pack_text(t: str, pack: dict) -> str:
     if ev:
         L += ["", "[E] EVENTS & CALENDAR — the clock. A binary print inside the horizon"
                   " outranks any setup in blocks [A]-[D].", ""] + ev
+
+    tv = pack.get("tv") or {}
+    if tv.get("connected"):
+        # The chart symbol is whatever the user last looked at. Folding another
+        # name's VWAP into this debate would be worse than having no block at
+        # all, and silently retargeting their live chart mid-debate is not ours
+        # to do — so the block appears only on a genuine match.
+        csym = str(tv.get("symbol") or "")
+        bare = csym.split(":")[-1].upper()
+        if bare == t:
+            g = ["", "[G] LIVE CHART — intraday session context no other block carries.",
+                 "    Present only because TradingView Desktop is open on this name.", ""]
+            last, vw = tv.get("last"), tv.get("vwap")
+            dl = tv.get("vwap_delta_pct")
+            if isinstance(last, (int, float)):
+                g.append(f"  {bare} {tv.get('resolution')}m chart: last {last:.2f}")
+            if isinstance(vw, (int, float)) and isinstance(dl, (int, float)):
+                side = "BELOW" if dl < 0 else "ABOVE"
+                g.append(f"    VWAP {vw:.2f} — price is {side} VWAP by {abs(dl):.2f}%."
+                         " Session VWAP is where the average participant is filled:"
+                         " below it, rallies sell into trapped supply.")
+            mc = tv.get("macd") or {}
+            if isinstance(mc.get("histogram"), (int, float)):
+                g.append(f"    MACD {mc.get('macd')} / signal {mc.get('signal')} /"
+                         f" hist {mc.get('histogram')}"
+                         " — momentum only; this is block [A]'s information source,"
+                         " NOT independent corroboration of it.")
+            L += g
 
     own = []
     if pack.get("lessons"):

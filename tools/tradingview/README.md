@@ -114,3 +114,33 @@ So the empty-table path and the populated path are both exercised.
   focused one.
 
 Educational only — not financial advice.
+
+## Restarting TradingView (gotcha)
+
+The app can come back up **without** its debug port, and nothing about the
+window tells you: `/json/version` answers on the first try, then all CDP
+endpoints go empty and `ot tv` reports "cannot reach TradingView DevTools".
+It re-execs itself through LaunchServices when an old instance is still
+shutting down, and the `--remote-debugging-port` argument is dropped on the
+way through — the same reason the MCP's own launcher produces an empty
+`remote-debugging-port=`.
+
+What works:
+
+```bash
+pkill -9 -f TradingView && sleep 8
+nohup /Applications/TradingView.app/Contents/MacOS/TradingView \
+      --remote-debugging-port=9222 >/tmp/tv.log 2>&1 &
+```
+
+A soft `pkill` with a 3-second wait is what fails. After CDP answers there is
+still a warm-up window of roughly 6-12s during which the chart page exists but
+its JS globals have not initialised, so `ot tv` reports `connected: false`;
+poll rather than concluding it is broken.
+
+Measured timings, which set the debate pack's 6s budget for this feed:
+
+| state | `ot tv` |
+|---|---|
+| warm, chart loaded | **0.08s** |
+| port dead / half-dead | capped at the timeout (was burning ~20s at 25s) |
