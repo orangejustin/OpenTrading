@@ -31,7 +31,12 @@ from pathlib import Path
 # Reuse the tolerant JSON extractor — same reply-parsing problem, same fix.
 import claude_cli
 
-MODELS = ["default"]
+# Probed against the real binary rather than taken from docs: each of these was
+# accepted by `codex exec -m <slug>`, and a deliberately bogus slug returns a 400
+# with "Model metadata not found", so acceptance here means something.
+MODELS = ["default", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-5.5"]
+# Codex has no --effort flag; the equivalent is a config override.
+EFFORTS = ["default", "minimal", "low", "medium", "high", "xhigh"]
 
 
 def have_cli() -> bool:
@@ -39,10 +44,17 @@ def have_cli() -> bool:
 
 
 def default_model() -> str:
-    return os.environ.get("OT_CODEX_MODEL") or "default"
+    # `default` would defer to ~/.codex/config.toml, which is the user's own
+    # interactive setting — the desk pins its own so a config change cannot
+    # silently alter what the debate ran on.
+    return os.environ.get("OT_CODEX_MODEL") or "gpt-5.6-sol"
 
 
-def _run(prompt: str, model: str | None, timeout: int) -> str:
+def default_effort() -> str:
+    return os.environ.get("OT_CODEX_EFFORT") or "medium"
+
+
+def _run(prompt: str, model: str | None, timeout: int, effort: str | None = None) -> str:
     exe = shutil.which("codex")
     if not exe:
         raise RuntimeError("codex CLI not found on PATH (install Codex)")
@@ -54,6 +66,9 @@ def _run(prompt: str, model: str | None, timeout: int) -> str:
         mdl = (model or default_model()).strip()
         if mdl and mdl != "default":
             cmd += ["-m", mdl]
+        eff = (effort or default_effort()).strip()
+        if eff and eff != "default":
+            cmd += ["-c", f'model_reasoning_effort="{eff}"']
         cmd.append(prompt)
         out = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
         if out.returncode != 0:
@@ -70,12 +85,12 @@ def generate_text(prompt: str, *, model: str | None = None, timeout: int = 240) 
 
 
 def generate_json(prompt: str, schema: dict, *, model: str | None = None,
-                  timeout: int = 300) -> dict:
+                  timeout: int = 300, effort: str | None = None) -> dict:
     """Structured generation: schema goes in the prompt, output extracted robustly."""
     import json
     p = (prompt + "\n\nReturn ONLY one JSON object — no prose, no code fences, "
          "no preamble — matching exactly this JSON Schema:\n" + json.dumps(schema))
-    return claude_cli._extract_json(_run(p, model, timeout))
+    return claude_cli._extract_json(_run(p, model, timeout, effort))
 
 
 if __name__ == "__main__":

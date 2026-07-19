@@ -117,31 +117,54 @@ def _days(a_iso, b_iso):
     return (datetime.strptime(b_iso, "%Y-%m-%d") - datetime.strptime(a_iso, "%Y-%m-%d")).days
 
 
-def grade(min_days):
-    """Verify every ungraded call >= min_days old against the actual price + benchmark."""
+def grade(min_days, regrade=False):
+    """Verify every ungraded call >= min_days old against the actual price + benchmark.
+
+    Measured at a FIXED horizon of `min_days` sessions after the call — not "up to
+    today". Grading to the latest close gave a June call a 6-week window and a
+    last-Monday call a 5-day one, then averaged them together; in a trending tape
+    that manufactures skill (every PUT looks right when the tape only falls).
+
+    Returns are also recorded BOTH ways: `return_pct` is the underlying's move,
+    `trade_return_pct` is what the *position* made (a PUT profits when the
+    underlying drops), because only the latter may be averaged across directions.
+    """
     entries = _load()
     today = date.today().isoformat()
     bench_cache = {}
     n = 0
     for e in entries:
-        if e.get("outcome") or not e.get("entry_price") or _days(e["date"], today) < min_days:
+        if not e.get("entry_price") or _days(e["date"], today) < min_days:
+            continue
+        if e.get("outcome") and not regrade:
             continue
         mkt = e.get("market", "US")
         cs = closes_since(to_yahoo(e["ticker"], mkt), e["date"])
         if not cs:
             continue
-        cur, entry_px = cs[-1][1], float(e["entry_price"])
+        # Fixed horizon: the close `min_days` sessions on, or the last one we have.
+        hz = min(min_days, len(cs) - 1)
+        cur, entry_px = cs[hz][1], float(e["entry_price"])
         ret = (cur / entry_px - 1) * 100
         bsym = BENCH.get(mkt, "^GSPC")
-        if bsym not in bench_cache:
-            bench_cache[bsym] = closes_since(bsym, e["date"])
-        bcs = bench_cache[bsym]
-        bret = ((bcs[-1][1] / bcs[0][1] - 1) * 100) if len(bcs) >= 2 else None
-        alpha = (ret - bret) if bret is not None else None
+        # Cache on (symbol, date) — keyed by symbol alone, every entry after the
+        # first silently reused the FIRST entry's benchmark window.
+        bkey = (bsym, e["date"])
+        if bkey not in bench_cache:
+            bench_cache[bkey] = closes_since(bsym, e["date"])
+        bcs = bench_cache[bkey]
+        bhz = min(min_days, len(bcs) - 1)
+        bret = ((bcs[bhz][1] / bcs[0][1] - 1) * 100) if len(bcs) >= 2 else None
         act = (e.get("action") or "").upper()
+        # Direction-aware P&L: a PUT makes money when the underlying falls, so its
+        # trade return is the negated move. NO-ACTION took no position — no P&L.
+        sign = 1 if act == "CALL" else -1 if act == "PUT" else 0
+        tret = (ret * sign) if sign else None
+        alpha = (ret - bret) if bret is not None else None
+        talpha = (sign * (ret - bret)) if (bret is not None and sign) else None
         right = (ret > 0) if act == "CALL" else (ret < 0) if act == "PUT" else (abs(ret) < 3)
-        # Max adverse excursion (close basis) + did price cross the logged invalidation?
-        closes = [c for _, c in cs]
+        # Max adverse excursion + invalidation breach, over the HORIZON window only.
+        closes = [c for _, c in cs[:hz + 1]]
         adverse = (min(closes) if act != "PUT" else max(closes))
         mae = (adverse / entry_px - 1) * 100
         inval, breached = e.get("invalidation"), None
@@ -151,10 +174,15 @@ def grade(min_days):
                 breached = (min(closes) < iv) if act != "PUT" else (max(closes) > iv)
             except (TypeError, ValueError):
                 pass
-        e["outcome"] = {"graded": today, "days": _days(e["date"], today), "current_price": round(cur, 2),
-                        "return_pct": round(ret, 2), "bench": bsym,
+        e["outcome"] = {"graded": today, "horizon_days": min_days, "days": hz,
+                        "current_price": round(cur, 2),
+                        "return_pct": round(ret, 2),
+                        "trade_return_pct": round(tret, 2) if tret is not None else None,
+                        "bench": bsym,
                         "bench_return_pct": round(bret, 2) if bret is not None else None,
-                        "alpha_pct": round(alpha, 2) if alpha is not None else None, "was_right": right,
+                        "alpha_pct": round(alpha, 2) if alpha is not None else None,
+                        "trade_alpha_pct": round(talpha, 2) if talpha is not None else None,
+                        "was_right": right,
                         "mae_pct": round(mae, 2), "invalidation_breached": breached}
         n += 1
     _save(entries)
@@ -162,18 +190,26 @@ def grade(min_days):
 
 
 def _agg(entries, key):
+    """Aggregate on the POSITION's P&L, never the underlying's move — averaging a
+    long's +5% with a short's +5% requires both to carry the trade's sign. Rows with
+    no position (NO-ACTION) contribute a hit/miss but no return."""
     g = {}
     for e in entries:
         k = str(e.get(key) or "?")
-        b = g.setdefault(k, {"n": 0, "right": 0, "ret": 0.0, "alpha": 0.0, "na": 0})
+        b = g.setdefault(k, {"n": 0, "right": 0, "ret": 0.0, "alpha": 0.0,
+                             "na": 0, "flat": 0})
         o = e["outcome"]
         b["n"] += 1
         b["right"] += 1 if o["was_right"] else 0
-        b["ret"] += o["return_pct"]
-        if o.get("alpha_pct") is None:
+        tret = o.get("trade_return_pct")
+        if tret is None:
+            b["flat"] += 1          # NO-ACTION: correctness counts, P&L doesn't
+        else:
+            b["ret"] += tret
+        if o.get("trade_alpha_pct") is None:
             b["na"] += 1
         else:
-            b["alpha"] += o["alpha_pct"]
+            b["alpha"] += o["trade_alpha_pct"]
     return g
 
 
@@ -220,15 +256,29 @@ def _real_graded():
 
 
 def stats():
-    all_graded = [e for e in _load() if e.get("outcome")]
+    entries = _load()
+    all_graded = [e for e in entries if e.get("outcome")]
     graded = [e for e in all_graded if e.get("source") != "seed"]
     seed_n = len(all_graded) - len(graded)
+    # Staleness surface: a ledger nobody grades used to look identical to a
+    # ledger with nothing to grade. Both numbers make the difference visible.
+    today = date.today().isoformat()
+    pending = sum(1 for e in entries
+                  if not e.get("outcome") and e.get("entry_price")
+                  and _days(e.get("date") or today, today) >= 5)
+    last = max((e["outcome"].get("graded") or "" for e in all_graded), default="") or None
     if not graded:
-        return {"total": 0, "seed_excluded": seed_n,
-                "by_grade": {}, "by_action": {}, "by_market": {}}
-    return {"total": len(graded), "seed_excluded": seed_n,
+        return {"total": 0, "seed_excluded": seed_n, "pending_gradeable": pending,
+                "last_graded": last,
+                "by_grade": {}, "by_action": {}, "by_market": {}, "by_source": {}}
+    return {"total": len(graded), "seed_excluded": seed_n, "pending_gradeable": pending,
+            "last_graded": last,
             "by_grade": _agg(graded, "grade"),
-            "by_action": _agg(graded, "action"), "by_market": _agg(graded, "market")}
+            "by_action": _agg(graded, "action"), "by_market": _agg(graded, "market"),
+            # `decide` (the deterministic engine, auto-journaled daily) and `debate`
+            # (the LLM desk) are different predictors — pooling them would let the
+            # engine's volume drown out the desk's own record.
+            "by_source": _agg(graded, "source")}
 
 
 def _render_groups(title, g):
@@ -236,8 +286,10 @@ def _render_groups(title, g):
     for k, b in sorted(g.items(), key=lambda kv: -kv[1]["n"]):
         hit = 100 * b["right"] / b["n"]
         navg = b["n"] - b["na"]
+        npos = b["n"] - b.get("flat", 0)      # rows that actually held a position
         aa = f" · α {b['alpha'] / navg:+.1f}%" if navg else ""
-        L.append(f"    {k:<10} n={b['n']:<3} 命中 {hit:>3.0f}% · 均收益 {b['ret'] / b['n']:+.1f}%{aa}")
+        rr = f"均收益 {b['ret'] / npos:+.1f}%" if npos else "无持仓"
+        L.append(f"    {k:<10} n={b['n']:<3} 命中 {hit:>3.0f}% · {rr}{aa}")
     return "\n".join(L)
 
 
@@ -255,7 +307,10 @@ def main(argv=None):
     pl.add_argument("--analysts", help="JSON dict of per-analyst tilts at decision time "
                                        "(schema v3 — enables per-analyst calibration, F4)")
     pl.add_argument("--source", help="who logged this (manual | debate | decide …)")
-    sub.add_parser("grade").add_argument("--days", type=int, default=5)
+    pg = sub.add_parser("grade")
+    pg.add_argument("--days", type=int, default=5)
+    pg.add_argument("--regrade", action="store_true",
+                    help="recompute outcomes that were already graded (use after a scoring fix)")
     sub.add_parser("stats")
     pls = sub.add_parser("lessons")
     pls.add_argument("--ticker")
@@ -295,7 +350,7 @@ def main(argv=None):
         return 0
 
     if a.cmd == "grade":
-        print(f"graded {grade(a.days)} call(s) (>= {a.days}d old) vs actual price.")
+        print(f"graded {grade(a.days, a.regrade)} call(s) (>= {a.days}d old) vs actual price.")
         return 0
 
     if a.cmd == "lessons":
@@ -314,6 +369,11 @@ def main(argv=None):
     print(_render_groups("by grade", s["by_grade"]))
     print(_render_groups("by action", s["by_action"]))
     print(_render_groups("by market", s["by_market"]))
+    if s.get("by_source"):
+        print(_render_groups("by source (decide=engine · debate=desk)", s["by_source"]))
+    if s.get("pending_gradeable"):
+        print(f"  ⚠ {s['pending_gradeable']} call(s) are old enough to grade but still "
+              f"pending — run `ot reflect grade` (last graded: {s.get('last_graded') or 'never'})")
     print("  Educational only — not financial advice.")
     return 0
 

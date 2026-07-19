@@ -24,6 +24,9 @@
 #   ot debate   TICKER [--log]        bull/bear/judge desk: 3 LLM calls on a deterministic pack
 #   ot rank     [TICKERS] [--top 3]   composite desk score per name — the shared Top-3 (no LLM)
 #   ot validate [TICKERS]             cross-source quote sanity: yahoo q1 vs q2 vs cboe
+#   ot tv       [--symbol SYM]        live TradingView Desktop chart over CDP: symbol/resolution,
+#                                     every study's Data Window values, VWAP + price-vs-VWAP,
+#                                     MAs, MACD, Pine table text (needs --remote-debugging-port)
 #   ot hl       [BTC ETH SOL]         Hyperliquid perp funding/OI — the BTC-beta leverage bill
 #   ot whales                         labeled-wallet ETH balances + Δ (public RPC; data/wallets.json)
 #   ot cnpack   [--zt N] [--cost b s n]  A股: 涨停池 + 净成本计算 (for the CN roster email)
@@ -161,6 +164,26 @@ case "$cmd" in
     pyrun "$ROOT/tools/ibkr/ibkr.py" "$@" ;;
   reflect)
     pyrun "$ROOT/tools/reflect/reflect.py" "$@" ;;
+  propose)
+    # `ot propose TICKER ...` is the common path; list/show/risk/approve are
+    # subcommands of the same tool so every state change shares one audit log.
+    case "${1:-}" in
+      list|show|risk|approve|"") ;;
+      *) set -- new "$@" ;;
+    esac
+    pyrun "$ROOT/tools/trade/propose.py" "$@" ;;
+  risk)
+    pyrun "$ROOT/tools/trade/propose.py" risk "$@" ;;
+  decay)
+    pyrun "$ROOT/tools/trade/decay.py" "$@" ;;
+  auto)
+    pyrun "$ROOT/tools/trade/auto.py" "$@" ;;
+  paper)
+    pyrun "$ROOT/tools/trade/paper.py" "$@" ;;
+  conc|concentration)
+    pyrun "$ROOT/tools/trade/conc.py" "$@" ;;
+  approve)
+    pyrun "$ROOT/tools/trade/propose.py" approve "$@" ;;
   poly|predict)
     pyrun "$ROOT/tools/predict/poly.py" "$@" ;;
   debate)
@@ -171,6 +194,11 @@ case "$cmd" in
     pyrun "$ROOT/tools/rank/rank.py" "$@" ;;
   validate)
     pyrun "$ROOT/tools/validate/validate.py" "$@" ;;
+  tv|tradingview)
+    # Reads the LIVE TradingView Desktop chart over the Chrome DevTools Protocol.
+    # Needs TradingView launched with --remote-debugging-port=9222 (see the
+    # tools/tradingview/README.md); degrades to a launch hint when it is closed.
+    pyrun "$ROOT/tools/tradingview/tv.py" "$@" ;;
   hl|hyperliquid)
     pyrun "$ROOT/tools/crypto/hl.py" "$@" ;;
   whales)

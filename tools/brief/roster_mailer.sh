@@ -22,6 +22,11 @@ OT="$ROOT/bin/ot"
 MODEL_ARG=()
 [ -n "${OT_EMAIL_MODEL:-}" ] && MODEL_ARG=(--model "$OT_EMAIL_MODEL")
 
+# Close the learning loop FIRST: grade every call that has aged past the horizon,
+# so today's note (and every debate) reads a current track record. Without this the
+# journal grows forever and the calibration panel silently freezes at its first run.
+"$OT" reflect grade >/dev/null 2>&1 || true
+
 # Shared context (fetched once, reused for every roster).
 "$OT" news store --quiet >/dev/null 2>&1 || true
 NEWS7="$("$OT" news digest --days 7 2>/dev/null | head -90 || true)"
@@ -105,6 +110,13 @@ $("$OT" decide "$code" --market "$mkt" 2>/dev/null | grep -E "$GREP" || true)
   RANK=""
   [ -n "$USTICK" ] && RANK="$("$OT" rank $USTICK --top 3 2>/dev/null || true)"
 
+  # Concentration by COMPLEX — eight rows can be five bets, two of them levered on
+  # top of their own unleveraged version. OT_WATCHLIST scopes it to THIS roster, so
+  # no recipient can ever be shown another person's book. US-only: the complex map
+  # and the quote path are both US-listed.
+  CONC=""
+  [ "$GROUP" = "US" ] && CONC="$(OT_WATCHLIST="$ROSTER" "$OT" conc 2>/dev/null || true)"
+
   # Run manifest + freshness gate (P2-8): snapshot every feed's size, warn the
   # composer about thin/empty sections so it hedges instead of inventing.
   MANIFEST="$(OT_M_CATAL="$CATAL" OT_M_EARN="$EARN" OT_M_NEWS7="$NEWS7" \
@@ -139,6 +151,8 @@ $PLANS
 $ALPHA
 ### OPTIONS / DEALER GAMMA (US names only)
 $OPTS
+### CONCENTRATION BY COMPLEX (ot conc — grouped bets, not tickers; eff % = market value x daily-reset multiple)
+$CONC
 ### RUN MANIFEST (feed freshness — if a section is thin/EMPTY, say so, don't invent)
 $MANIFEST"
 
@@ -172,7 +186,7 @@ and classes: <p>, <h2>, <ul>/<li>, <strong>, <em>, <table>/<tr>/<th>/<td>, <span
 5. <h2>Strategy</h2> — a short <p>: the engine's top weights + cash; flag extended names to wait on.
 6. <h2>Hedge &amp; options — calls / puts / cash</h2> — a <ul> of 2-4 EXPLICIT, actionable lines grounded in the OPTIONS / DEALER GAMMA data and the event gate. Cover, as the tape warrants: (a) PUTS / hedge — name a concrete structure when downside risk is live (e.g. a short-dated QQQ/SPY put-spread near the put-wall through the next event) with the strike anchored to a real gamma wall; use <span class="watch">Hedge</span>. (b) CALLS — only when the regime is constructive AND a level holds; name the strike/expiry, use <span class="buy">Calls</span>; if it's NOT the day for calls, say "no calls today" and why. (c) CASH — if the tape is risk-off or a binary print is near, RAISING CASH or trimming high-beta to defense is a valid, first-class recommendation — say it plainly with <span class="trim">Raise cash</span>; do not default to "stay fully invested." Every line cites a wall price, VIX level, or the gate. (Omit only if there is genuinely no options data AND no risk to hedge.)
 7. <h2>The policy</h2> — a 2-col <table> (Principle | The rule): Selection &gt; timing · Ranges not points (never chase the green candle) · 0DTE QQQ done right · Risk governor · Apex lens · Event-aware. Tie one rule to today (name FOMC/CPI/PCE/OPEX if near, from the event gate).
-8. <h2>Risk — today</h2> — a <ul> of 3 points tied to today's numbers, incl. the hard gate (e.g. VIX&gt;30 = defense) and the next dated catalyst from the gate.
+8. <h2>Risk — today</h2> — a <ul> of 3 points tied to today's numbers, incl. the hard gate (e.g. VIX&gt;30 = defense) and the next dated catalyst from the gate. If the CONCENTRATION section shows a STACKED complex or an effective exposure above 100%, LEAD this list with it and name the numbers: a levered vehicle sitting on top of its own unleveraged version is ONE bet at higher leverage, not two positions, and effective exposure above 100% means leverage is carrying more market risk than there is capital. Say which name to cut first.
 9. <p class="disclaimer">Educational only — not financial advice.</p>
 
 Rules: every claim cites a real number from the data; mark moves up/down with a span; state the "so what"; no filler.

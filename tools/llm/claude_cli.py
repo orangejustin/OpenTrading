@@ -26,6 +26,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 MODELS = ["default", "sonnet", "opus", "haiku", "fable"]
+# Verified against the CLI's own --help: an unknown value only warns and falls
+# back to the default, so an unrecognised level degrades rather than failing.
+EFFORTS = ["default", "low", "medium", "high", "xhigh", "max"]
 
 # The exact model id the CLI actually used on the last run (e.g.
 # "claude-opus-4-8"), parsed from the result envelope — aliases like
@@ -75,7 +78,11 @@ def _extract_json(text: str) -> dict:
     raise ValueError("unbalanced JSON object in response")
 
 
-def _run(prompt: str, model: str | None, timeout: int) -> str:
+def default_effort() -> str:
+    return os.environ.get("OT_CLAUDE_EFFORT") or "default"
+
+
+def _run(prompt: str, model: str | None, timeout: int, effort: str | None = None) -> str:
     exe = shutil.which("claude")
     if not exe:
         raise RuntimeError("claude CLI not found on PATH (install Claude Code)")
@@ -83,6 +90,9 @@ def _run(prompt: str, model: str | None, timeout: int) -> str:
     mdl = (model or default_model()).strip()
     if mdl and mdl != "default":
         cmd += ["--model", mdl]
+    eff = (effort or default_effort()).strip()
+    if eff and eff != "default":
+        cmd += ["--effort", eff]
     out = subprocess.run(cmd, input=prompt, capture_output=True, text=True,
                          timeout=timeout, cwd=str(ROOT))
     if out.returncode != 0:
@@ -114,11 +124,11 @@ def generate_text(prompt: str, *, model: str | None = None, timeout: int = 180) 
 
 
 def generate_json(prompt: str, schema: dict, *, model: str | None = None,
-                  timeout: int = 240) -> dict:
+                  timeout: int = 240, effort: str | None = None) -> dict:
     """Structured generation: schema goes in the prompt, output is extracted robustly."""
     p = (prompt + "\n\nReturn ONLY one JSON object — no prose, no code fences, "
          "no preamble — matching exactly this JSON Schema:\n" + json.dumps(schema))
-    return _extract_json(_run(p, model, timeout))
+    return _extract_json(_run(p, model, timeout, effort))
 
 
 if __name__ == "__main__":
