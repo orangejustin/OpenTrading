@@ -175,6 +175,10 @@ def build_pack(ticker: str, dte: int, market: str) -> dict:
         "options": _tool_json("tools/options/opt.py", t, "--dte", str(max(dte, 7))),
         "smart": _tool_json("tools/smartmoney/sm.py"),
         "catalysts": _tool_json("tools/catalysts/catalysts.py", "--days", "10"),
+        # Ground truth: the same price from three independent sources. A quote
+        # the sources disagree on is a data-quality fact the desk should argue
+        # about, not silently average.
+        "validate": _tool_json("tools/validate/validate.py", t),
     }
     # Optional power module: TimesFM cone, only when its venv exists (ot forecast).
     tfm_py = ROOT / ".venv-forecast/bin/python"
@@ -198,9 +202,31 @@ def _pack_text(t: str, pack: dict) -> str:
     corroboration — it is one signal counted four times. Independent confirmation
     can only come from a different block.
     """
-    L = [f"EVIDENCE PACK — {t} (all data fetched just now by deterministic CLIs)",
-         "",
-         "HOW TO WEIGH THIS PACK — read before arguing:",
+    L = [f"EVIDENCE PACK — {t} (all data fetched just now by deterministic CLIs)", ""]
+
+    # [0] VERIFIED SNAPSHOT — the authoritative facts. TradingAgents' anti-
+    # hallucination pattern: a deterministic ground-truth block the model must
+    # defer to, and must FLAG conflicts against rather than quietly reconciling.
+    v = pack.get("validate") or {}
+    vrows = (v.get("rows") or []) if isinstance(v, dict) else []
+    vr = next((r for r in vrows if str(r.get("symbol", "")).upper() == t), None)
+    if vr:
+        srcs = []
+        for k in ("yahoo_q1", "yahoo_q2"):
+            if isinstance(vr.get(k), (int, float)):
+                srcs.append(f"{k} {vr[k]:.2f}")
+        cb = vr.get("cboe") or {}
+        if isinstance(cb.get("current_price"), (int, float)):
+            srcs.append(f"cboe {cb['current_price']:.2f}")
+        agree = "sources AGREE" if vr.get("ok") else \
+            f"sources DISAGREE — {'; '.join(vr.get('issues') or ['unspecified'])}"
+        L += ["[0] VERIFIED SNAPSHOT — authoritative. Any price you state must come",
+              "    from this pack. If a number elsewhere in the pack conflicts with this",
+              "    block, SAY SO explicitly; do not silently reconcile the two.",
+              "",
+              f"  {t} price: {' · '.join(srcs)}  ->  {agree}", ""]
+
+    L += ["HOW TO WEIGH THIS PACK — read before arguing:",
          "  Evidence is grouped [A]-[F] by INFORMATION SOURCE. Within a block the",
          "  items share one input, so they cannot confirm each other; treat a block",
          "  as ONE vote whose strength is its best member. A thesis backed by two",
@@ -497,7 +523,12 @@ def run_debate(ticker: str, dte: int, market: str,
         "improves'. `instrument` must name the vehicle and its leverage, preferring the "
         "unleveraged expression when the horizon is long enough for daily-reset decay to "
         "bite. `inverse_scenario` is the trade that becomes right if the invalidation "
-        "breaks — plan for being wrong, do not merely stop out. "
+        "breaks — plan for being wrong, do not merely stop out. (7) GROUND EVERY "
+        "PRICE — entry_price, invalidation and every target must be a level that "
+        "appears in this pack (a wall, a zone bound, a cone quantile, the last "
+        "price) or a stated arithmetic step from one. A round number you find "
+        "aesthetically pleasing is a hallucination; the desk checks these against "
+        "the pack after you answer. "
         "Educational only — not financial advice." + zh)
     verdict, jmeta = llm.generate_json(judge_prompt, JUDGE_SCHEMA, engine=j_eng,
                                        model=j_mdl, effort=j_eff)
@@ -517,8 +548,85 @@ def run_debate(ticker: str, dte: int, market: str,
         "bull": bull, "bear": bear,
         "engines": {"bull": tag(bmeta), "bear": tag(rmeta), "judge": tag(jmeta)},
         "analysts": _analyst_tilts(pack),
+        "grounding": _check_grounding(verdict, pack),
         "elapsed_s": round(time.time() - t0, 1),
     }
+
+
+def _pack_levels(pack: dict) -> list[float]:
+    """Every price level the pack actually contains — walls, zone bounds, cone
+    quantiles, the last price. The judge's numbers are checked against this."""
+    out: list[float] = []
+
+    def add(x):
+        if isinstance(x, (int, float)) and x > 0:
+            out.append(float(x))
+
+    d = pack.get("decide") or {}
+    add(d.get("price"))
+    plan = d.get("plan") or {}
+    for k in ("buy_zone", "trim_zone"):
+        z = plan.get(k)
+        if isinstance(z, (list, tuple)):
+            for x in z:
+                add(x)
+    add(plan.get("stop"))
+    q = pack.get("quant") or {}
+    for x in (q.get("cone") or {}).values():
+        add(x)
+    fc = pack.get("forecast") or {}
+    add(fc.get("point_end"))
+    for x in (fc.get("cone") or {}).values():
+        add(x)
+    opts = pack.get("options")
+    row = (opts[0] if isinstance(opts, list) and opts else opts) or {}
+    for k in ("spot", "call_wall", "put_wall"):
+        add(row.get(k))
+    return out
+
+
+def _check_grounding(verdict: dict, pack: dict, tol_pct: float = 0.75) -> dict:
+    """Did the judge's prices come from the evidence, or from thin air?
+
+    TradingAgents instructs its analysts to defer to a verified snapshot but never
+    checks whether they did. Instructing is cheap; verifying is the part that
+    catches a plausible invented level. Each numeric output is matched to the
+    nearest real level in the pack; anything further than `tol_pct` away is
+    reported as ungrounded rather than silently accepted.
+
+    KNOWN LIMIT — this is a smoke detector, not a proof. A pack carries ~19
+    levels across the plausible range, so some tolerance band around them is
+    unavoidably "grounded" by luck. Measured on a real TQQQ pack:
+
+        tol 0.5% -> 22% of the range passes    tol 1.5% -> 49%
+        tol 0.75% -> ~29%                      tol 3.0% -> 69%
+
+    1.5% made the check barely better than a coin flip for an arbitrary number,
+    so the default is 0.75%: tight enough to catch a round-number invention,
+    loose enough not to flag a judge writing 65 for a 65.0 wall. A PASS means
+    "nothing obviously fabricated", never "every level is justified"."""
+    levels = _pack_levels(pack)
+    if not levels:
+        return {"checked": 0, "grounded": 0, "ungrounded": [], "note": "no levels in pack"}
+    checked, grounded, bad = 0, 0, []
+    fields = [("entry_price", verdict.get("entry_price")),
+              ("invalidation", verdict.get("invalidation"))]
+    for i, tg in enumerate(verdict.get("targets") or []):
+        fields.append((f"target[{i}]", tg))
+    for name, val in fields:
+        if not isinstance(val, (int, float)) or val <= 0:
+            continue
+        checked += 1
+        near = min(levels, key=lambda L: abs(L - val))
+        drift = abs(near - val) / val * 100
+        if drift <= tol_pct:
+            grounded += 1
+        else:
+            bad.append({"field": name, "value": val,
+                        "nearest_pack_level": round(near, 2),
+                        "drift_pct": round(drift, 2)})
+    return {"checked": checked, "grounded": grounded, "ungrounded": bad,
+            "grounded_pct": round(100 * grounded / checked, 1) if checked else None}
 
 
 def _analyst_tilts(pack: dict) -> dict:
@@ -572,6 +680,17 @@ def render_text(r: dict) -> str:
           f"  judge     {r['rationale']}"]
     if r.get("weakest_link"):
         L.append(f"  weakest   {r['weakest_link']}")
+    g = r.get("grounding") or {}
+    if g.get("checked"):
+        if g.get("ungrounded"):
+            bits = ", ".join(f"{u['field']} {u['value']:g} (nearest real level "
+                             f"{u['nearest_pack_level']:g}, {u['drift_pct']:.1f}% off)"
+                             for u in g["ungrounded"])
+            L.append(f"  ⚠ levels   {g['grounded']}/{g['checked']} grounded in the evidence"
+                     f" — UNGROUNDED: {bits}")
+        else:
+            L.append(f"  levels    {g['grounded']}/{g['checked']} trace to real levels"
+                     " in the evidence")
     L += ["",
           f"  bull ({r['engines']['bull']}): {r['bull'].get('strongest_point')}",
           f"  bear ({r['engines']['bear']}): {r['bear'].get('strongest_point')}",
