@@ -367,18 +367,7 @@ def _pack_text(t: str, pack: dict) -> str:
                                if gsign == "negative" else "."))
             elif isinstance(row.get("call_wall"), (int, float)) and spot > row["call_wall"]:
                 flow.append(f"    ^ spot {spot:.2f} is ABOVE the call wall {row['call_wall']}.")
-    sm = pack.get("smart") or {}
-    eq = (sm.get("equity_fng") or {}) if isinstance(sm, dict) else {}
-    if eq.get("score") is not None:
-        comps = eq.get("components") or {}
-        cstr = " · ".join(f"{k} {v.get('score'):.0f}" for k, v in comps.items()
-                          if isinstance(v, dict) and v.get("score") is not None)
-        flow.append(f"  SENTIMENT (contrarian): equity Fear&Greed {eq.get('score'):.0f}"
-                    f" ({eq.get('rating')}), week ago {eq.get('week_ago'):.0f}"
-                    + (f"\n    components: {cstr}" if cstr else "")
-                    + "\n    Extremes are contrarian: <25 = fear (bullish tilt),"
-                      " >75 = greed (bearish tilt). BREADTH is the honest one —"
-                      " it says how many names actually participate.")
+    flow += _sentiment_read(pack)
     if flow:
         L += ["", "[D] FLOW & POSITIONING — what dealers and the crowd are actually"
                   " positioned for. Independent of both price history and news.", ""] + flow
@@ -551,6 +540,106 @@ def run_debate(ticker: str, dte: int, market: str,
         "grounding": _check_grounding(verdict, pack),
         "elapsed_s": round(time.time() - t0, 1),
     }
+
+
+def _sentiment_read(pack: dict) -> list[str]:
+    """Block [D]'s sentiment lines, with divergences computed HERE rather than
+    left for the model to eyeball.
+
+    TradingAgents' sentiment analyst is the strongest prompt in that repo, and
+    its real trick is not the prose — it pre-computes the bull/bear ratio in
+    Python and hands the model a number. Asking an LLM to spot a divergence is
+    how you get a confident description of one that isn't there. So every
+    tension below is measured, named, and given a magnitude; the model's job is
+    to weigh them, not to find them."""
+    sm = pack.get("smart") or {}
+    eq = (sm.get("equity_fng") or {}) if isinstance(sm, dict) else {}
+    score = eq.get("score")
+    if score is None:
+        return []
+    comps = {k: (v or {}).get("score") for k, v in (eq.get("components") or {}).items()
+             if isinstance(v, dict)}
+    L = []
+    # Contrarian bands, stated as thresholds instead of adjectives.
+    band = ("EXTREME FEAR (<25) — contrarian bullish, but only once price stops falling"
+            if score < 25 else
+            "fear (25-45) — mild contrarian tilt up; not a capitulation signal" if score < 45
+            else "neutral (45-55) — no contrarian edge" if score < 55
+            else "greed (55-75) — mild contrarian tilt down" if score < 75
+            else "EXTREME GREED (>75) — contrarian bearish")
+    L.append(f"  SENTIMENT: equity Fear&Greed {score:.0f} = {band}")
+    if comps:
+        L.append("    components: " + " · ".join(f"{k} {v:.0f}" for k, v in comps.items()
+                                                 if v is not None))
+
+    div = []
+    # 1. Headline vs breadth. Breadth is the honest component — it counts how many
+    #    names participate, so a headline well above it is a narrow tape.
+    br = comps.get("breadth")
+    if br is not None:
+        gap = score - br
+        if abs(gap) >= 10:
+            div.append(f"HEADLINE vs BREADTH: {score:.0f} vs {br:.0f} ({gap:+.0f}pt) — "
+                       + ("the headline flatters participation; the move is carried by few "
+                          "names, which is fragility, not washout" if gap >= 10 else
+                          "breadth is healthier than the headline; selling is concentrated "
+                          "in the index, not the average name"))
+    # 2. Equity vs crypto — two risk appetites that usually move together.
+    cf = (sm.get("crypto_fng") or {}).get("value")
+    if cf is not None:
+        gap = score - cf
+        if abs(gap) >= 15:
+            div.append(f"EQUITY vs CRYPTO: {score:.0f} vs {cf:.0f} ({gap:+.0f}pt) — risk "
+                       "appetite is SPLIT across asset classes; whichever is calmer is the "
+                       "one to doubt, since correlated risk-off usually arrives together")
+    # 3. Velocity. A level says where you are; the change says how fast you got there.
+    wk = eq.get("week_ago")
+    if wk is not None:
+        d = score - wk
+        if abs(d) >= 8:
+            div.append(f"VELOCITY: {wk:.0f} -> {score:.0f} ({d:+.0f}pt in a week) — sentiment "
+                       + ("deteriorated fast; fast moves overshoot, so a level reached this "
+                          "quickly is less reliable as a floor" if d < 0 else
+                          "improved fast; chasing a sentiment rebound this steep is late"))
+    # 4. Price vs sentiment — the one that separates washout from knife.
+    d5 = (pack.get("decide") or {}).get("prior5")
+    if isinstance(d5, (int, float)):
+        p5 = d5 * 100
+        # Tiered on the SAME boundaries as the contrarian band above (45 / 25), not
+        # on a tighter number: the knife warning applies throughout "fear", while
+        # only "extreme fear" upgrades it to a capitulation candidate. The first
+        # version required score<35 and so stayed silent on TQQQ at 37 with a
+        # -12.3% week — precisely the case it exists to flag.
+        if p5 <= -4 and score < 45:
+            tier = ("EXTREME fear" if score < 25 else "fear")
+            extra = (" — extreme fear plus a real drawdown IS the capitulation setup, but it "
+                     "still needs price to turn before it is tradeable"
+                     if score < 25 else
+                     " — falling price and fear together is a knife, not a washout. The "
+                     "contrarian trade needs price to stop falling FIRST")
+            div.append(f"PRICE vs SENTIMENT: price {p5:+.1f}% in 5d WITH {tier} "
+                       f"{score:.0f}{extra}")
+        elif p5 >= 4 and score > 65:
+            div.append(f"PRICE vs SENTIMENT: price {p5:+.1f}% in 5d WITH greed {score:.0f} — "
+                       "extension; late-cycle chase risk")
+    # 5. Standing positioning vs today's flow.
+    opts = pack.get("options")
+    row = (opts[0] if isinstance(opts, list) and opts else opts) or {}
+    poi, pv = row.get("pc_oi"), row.get("pc_vol")
+    if isinstance(poi, (int, float)) and isinstance(pv, (int, float)) and poi > 0:
+        if abs(pv - poi) / poi >= 0.25:
+            div.append(f"POSITIONING vs FLOW: put/call OI {poi:.2f} but today's volume "
+                       f"{pv:.2f} — the standing book and today's trade disagree; flow is "
+                       "the fresher signal, OI is the heavier one")
+    if div:
+        L.append("    DIVERGENCES (measured, not inferred — these are where the read is):")
+        L += [f"      - {x}" for x in div]
+    else:
+        L.append("    no measurable divergence — the sentiment sources agree, so this block "
+                 "is ONE vote, not several")
+    L.append(f"    confidence: {'high' if len(comps) >= 5 else 'low'} "
+             f"({len(comps)} of 7 sub-components present)")
+    return L
 
 
 def _pack_levels(pack: dict) -> list[float]:
