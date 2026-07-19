@@ -22,6 +22,11 @@ OT="$ROOT/bin/ot"
 MODEL_ARG=()
 [ -n "${OT_EMAIL_MODEL:-}" ] && MODEL_ARG=(--model "$OT_EMAIL_MODEL")
 
+# Close the learning loop FIRST: grade every call that has aged past the horizon,
+# so today's note (and every debate) reads a current track record. Without this the
+# journal grows forever and the calibration panel silently freezes at its first run.
+"$OT" reflect grade >/dev/null 2>&1 || true
+
 # Shared context (fetched once, reused for every roster).
 "$OT" news store --quiet >/dev/null 2>&1 || true
 NEWS7="$("$OT" news digest --days 7 2>/dev/null | head -90 || true)"
