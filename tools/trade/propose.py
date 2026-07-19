@@ -422,6 +422,9 @@ def main(argv=None) -> int:
     r = sub.add_parser("risk", help="run the gates")
     r.add_argument("id")
     r.add_argument("--max-loss-pct", dest="max_loss_pct", type=float)
+    # Also on the subparser: `ot risk ID --format json` puts the flag AFTER the
+    # subcommand, where the top-level parser can no longer see it.
+    r.add_argument("--format", choices=["text", "json"], default="text")
 
     p = sub.add_parser("approve", help="HUMAN ONLY — mark a passed proposal approved")
     p.add_argument("id")
@@ -429,6 +432,7 @@ def main(argv=None) -> int:
 
     l = sub.add_parser("list")
     l.add_argument("--status")
+    l.add_argument("--format", choices=["text", "json"], default="text")
     s = sub.add_parser("show")
     s.add_argument("id")
 

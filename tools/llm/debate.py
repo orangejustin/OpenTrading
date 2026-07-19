@@ -78,6 +78,10 @@ JUDGE_SCHEMA = {
         "verdict": {"type": "string", "enum": VERDICTS},
         "confidence": {"type": "integer", "minimum": 0, "maximum": 100},
         "entry": {"type": "string", "description": "$ level + one-phrase reason"},
+        "entry_price": {"type": "number",
+                        "description": "the SAME entry as a bare number, so the staging "
+                                       "pipeline can consume it. If the entry is a zone, "
+                                       "give the level you would actually transact at."},
         "invalidation": {"type": "number", "description": "the price that voids the thesis"},
         "time_stop_days": {"type": "integer"},
         "rationale": {"type": "string", "description": "2-4 sentences: which side won and why"},
@@ -124,8 +128,9 @@ JUDGE_SCHEMA = {
                            "to hold through it, or 'none inside the horizon'.",
         },
     },
-    "required": ["verdict", "confidence", "entry", "invalidation", "time_stop_days", "rationale",
-                 "blocks_supporting", "trigger", "instrument", "inverse_scenario"],
+    "required": ["verdict", "confidence", "entry", "entry_price", "invalidation",
+                 "time_stop_days", "rationale", "blocks_supporting", "trigger",
+                 "instrument", "inverse_scenario"],
 }
 
 
@@ -483,6 +488,7 @@ def run_debate(ticker: str, dte: int, market: str,
     return {
         "ticker": t, "price": price, "verdict": verdict.get("verdict"),
         "confidence": verdict.get("confidence"), "entry": verdict.get("entry"),
+        "entry_price": verdict.get("entry_price"),
         "invalidation": verdict.get("invalidation"), "time_stop_days": verdict.get("time_stop_days"),
         "rationale": verdict.get("rationale"), "weakest_link": verdict.get("weakest_link"),
         "blocks_supporting": verdict.get("blocks_supporting"),

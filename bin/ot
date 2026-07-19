@@ -176,6 +176,8 @@ case "$cmd" in
     pyrun "$ROOT/tools/trade/propose.py" risk "$@" ;;
   decay)
     pyrun "$ROOT/tools/trade/decay.py" "$@" ;;
+  auto)
+    pyrun "$ROOT/tools/trade/auto.py" "$@" ;;
   approve)
     pyrun "$ROOT/tools/trade/propose.py" approve "$@" ;;
   poly|predict)
