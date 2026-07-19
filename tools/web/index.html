@@ -133,6 +133,8 @@
   .dbrow{display:flex;align-items:center;gap:9px} .dbrow .rl{flex:none;width:42px;font-weight:800;font-size:11px;color:#64748b;text-align:right}
   .dbsel2{flex:1;min-width:0;font-size:11.5px;border:1px solid #d7dde6;border-radius:8px;padding:4px 7px;background:#fff;color:#1f2937;cursor:pointer}
   .dbsel2:focus{outline:none;border-color:var(--accent)}
+  /* engine picker takes the room; depth is a short enum next to it */
+  .dbeff{flex:0 0 96px;max-width:96px}
   .dbpop-f{display:flex;align-items:center;justify-content:space-between;margin-top:7px;padding:7px 8px 2px;border-top:1px solid #eef2f7;font-size:10.5px;color:#94a3b8}
   .dbdone{font-weight:800;color:#fff;background:var(--accent);cursor:pointer;padding:3px 14px;border-radius:8px} .dbdone:hover{filter:brightness(1.06)}
   .dtewrap{font-size:11px;font-weight:700;color:#94a3b8;display:inline-flex;gap:4px;align-items:center;white-space:nowrap}
@@ -549,10 +551,20 @@ const engName=()=>{const e=ENG.list.find(x=>x.id===ENG.engine);return e?(ENG.mod
    verdict is cached one-per-(ticker,lang) so it never vanishes when you switch. */
 let DBMODE=localStorage.getItem('ot_debate_mode')||'diverse';
 let DBROLES=JSON.parse(localStorage.getItem('ot_debate_roles')||'{}');
-const roleSpec=v=>{if(!v)return'';const[e,...r]=v.split('|');const m=r.join('|');return m&&m!=='default'?e+':'+m:e;};
+/* Reasoning depth per role. Only the CLI engines have the knob — claude takes
+   --effort, codex takes -c model_reasoning_effort=; gemini/openrouter have no
+   equivalent, so the UI greys it out rather than pretending it applied. */
+let DBEFF=JSON.parse(localStorage.getItem('ot_debate_effort')||'{}');
+const EFFORTS={claude:['low','medium','high','xhigh','max'],
+               codex:['minimal','low','medium','high','xhigh']};
+const hasEffort=eid=>!!EFFORTS[eid];
+const roleSpec=(v,eff)=>{if(!v)return'';const[e,...r]=v.split('|');const m=r.join('|');
+  let sp=m&&m!=='default'?e+':'+m:e;
+  if(eff&&hasEffort(e))sp+='@'+eff;   /* split off the END — slugs never contain '@' */
+  return sp;};
 const dbEngQS=()=>{
-  if(DBMODE==='single'&&ENG.engine) return `&engine=${encodeURIComponent(roleSpec(ENG.engine+'|'+(ENG.model||'')))}`;
-  if(DBMODE==='custom'){let q='';for(const k of['bull','bear','judge']){const s=roleSpec(DBROLES[k]||'');if(s)q+=`&${k}=${encodeURIComponent(s)}`;}return q;}
+  if(DBMODE==='single'&&ENG.engine) return `&engine=${encodeURIComponent(roleSpec(ENG.engine+'|'+(ENG.model||''),DBEFF.single))}`;
+  if(DBMODE==='custom'){let q='';for(const k of['bull','bear','judge']){const s=roleSpec(DBROLES[k]||'',DBEFF[k]);if(s)q+=`&${k}=${encodeURIComponent(s)}`;}return q;}
   return '';
 };
 function roleOpts(cur){
@@ -562,7 +574,19 @@ function roleOpts(cur){
     return `<optgroup label="${e.label}">`+ms.map(m=>`<option value="${e.id}|${m}"${(e.id+'|'+m)===cur?' selected':''}>${nice(e.id,m)}</option>`).join('')+'</optgroup>';
   }).join('');
 }
-function setDbRole(role,v){if(v)DBROLES[role]=v;else delete DBROLES[role];localStorage.setItem('ot_debate_roles',JSON.stringify(DBROLES));}
+function setDbRole(role,v){if(v)DBROLES[role]=v;else delete DBROLES[role];localStorage.setItem('ot_debate_roles',JSON.stringify(DBROLES));
+  const pop=$('#dbpop'); if(pop) pop.innerHTML=dbPopInner();}   /* engine change re-renders its effort list */
+function setDbEff(role,v){if(v)DBEFF[role]=v;else delete DBEFF[role];localStorage.setItem('ot_debate_effort',JSON.stringify(DBEFF));}
+function effOpts(role){
+  const eid=(DBROLES[role]||'').split('|')[0];
+  if(!eid) return `<option value="">${ZHM?'自动':'auto'}</option>`;
+  if(!hasEffort(eid)) return `<option value="">${ZHM?'该引擎不支持':'n/a for this engine'}</option>`;
+  /* The judge arbitrates, so it defaults deep — mark that rather than leaving it blank. */
+  const dflt=role==='judge'?(ZHM?'自动 (high)':'auto (high)'):(ZHM?'自动':'auto');
+  const cur=DBEFF[role]||'';
+  return `<option value=""${!cur?' selected':''}>${dflt}</option>`+
+    EFFORTS[eid].map(x=>`<option value="${x}"${x===cur?' selected':''}>${x}</option>`).join('');
+}
 const dbPillLabel=()=>DBMODE==='single'?(ZHM?'单引擎 · ':'single · ')+engName():DBMODE==='custom'?(ZHM?'自选角色':'custom'):(ZHM?'多引擎':'diverse');
 /* the pill (trigger). tk kept in the signature for call-site symmetry. */
 function debateModeChip(tk){
@@ -573,7 +597,10 @@ function dbOptRow(mode,tt,dd){
   return `<div class="dbopt${DBMODE===mode?' on':''}" onclick="setDbMode('${mode}')"><span class="rd"></span><span><span class="tt">${tt}</span><span class="dd">${dd}</span></span></div>`;
 }
 function dbRoleRow(role,lbl){
-  return `<div class="dbrow"><span class="rl">${lbl}</span><select class="dbsel2" onchange="setDbRole('${role}',this.value)"><option value=""${!DBROLES[role]?' selected':''}>${ZHM?'自动':'auto'}</option>${roleOpts(DBROLES[role]||'')}</select></div>`;
+  const eid=(DBROLES[role]||'').split('|')[0];
+  const dim=eid&&!hasEffort(eid)?' style="opacity:.45"':'';
+  return `<div class="dbrow"><span class="rl">${lbl}</span><select class="dbsel2" onchange="setDbRole('${role}',this.value)"><option value=""${!DBROLES[role]?' selected':''}>${ZHM?'自动':'auto'}</option>${roleOpts(DBROLES[role]||'')}</select>`+
+    `<select class="dbsel2 dbeff"${dim} onchange="setDbEff('${role}',this.value)" title="${ZHM?'推理深度':'reasoning depth'}">${effOpts(role)}</select></div>`;
 }
 function dbPopInner(){
   return `<div class="dbpop-h">${ZHM?'辩论引擎':'Debate engines'}</div>
@@ -582,7 +609,7 @@ function dbPopInner(){
     ${dbOptRow('custom',ZHM?'自选角色':'Custom roles',ZHM?'为每个角色单独选引擎·模型':'pick an engine·model per role')}
     <div class="dbroles" style="${DBMODE==='custom'?'':'display:none'}">
       ${dbRoleRow('bull',ZHM?'多方':'Bull')}${dbRoleRow('bear',ZHM?'空方':'Bear')}${dbRoleRow('judge',ZHM?'裁判':'Judge')}</div>
-    <div class="dbpop-f"><span>${ZHM?'下次运行生效':'applies on the next run'}</span><span class="dbdone" onclick="closeDbPop()">${ZHM?'完成':'Done'}</span></div>`;
+    <div class="dbpop-f"><span>${ZHM?'下次运行生效 · 深度只对 Claude/Codex 有效，裁判默认 high':'applies on the next run · depth is Claude/Codex only; the judge defaults to high'}</span><span class="dbdone" onclick="closeDbPop()">${ZHM?'完成':'Done'}</span></div>`;
 }
 function setDbMode(m){
   DBMODE=m; localStorage.setItem('ot_debate_mode',m);
