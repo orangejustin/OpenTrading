@@ -161,6 +161,18 @@ case "$cmd" in
     pyrun "$ROOT/tools/ibkr/ibkr.py" "$@" ;;
   reflect)
     pyrun "$ROOT/tools/reflect/reflect.py" "$@" ;;
+  propose)
+    # `ot propose TICKER ...` is the common path; list/show/risk/approve are
+    # subcommands of the same tool so every state change shares one audit log.
+    case "${1:-}" in
+      list|show|risk|approve|"") ;;
+      *) set -- new "$@" ;;
+    esac
+    pyrun "$ROOT/tools/trade/propose.py" "$@" ;;
+  risk)
+    pyrun "$ROOT/tools/trade/propose.py" risk "$@" ;;
+  approve)
+    pyrun "$ROOT/tools/trade/propose.py" approve "$@" ;;
   poly|predict)
     pyrun "$ROOT/tools/predict/poly.py" "$@" ;;
   debate)
