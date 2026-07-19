@@ -236,6 +236,32 @@ def run_gates(p: dict) -> list[dict]:
         g.append(_gate("G4 leverage", True, "unleveraged / not a known levered vehicle",
                        blocking=False))
 
+    # G4b — decay is a COST, so price it against the trade's own edge rather than
+    # warning about leverage in the abstract. The multiple is the weak term here:
+    # drag goes as the underlying's variance, so a 2x on a 100%-vol name bleeds an
+    # order of magnitude faster than a 3x on the index.
+    if abs(mult) > 1.0:
+        hold = p.get("dte") if p.get("dte") else 5
+        dec = _tool_json("tools/trade/decay.py", t, "--range", "3mo", timeout=60)
+        dec = dec[0] if isinstance(dec, list) and dec else dec
+        per_day = (dec or {}).get("theoretical_drag_pct_per_day")
+        if per_day is not None:
+            cost = abs(per_day) * hold
+            if entry and target:
+                edge = abs(target - entry) / entry * 100
+                share = cost / edge * 100 if edge else 0
+                g.append(_gate("G4b decay", share < 25,
+                               f"holding {hold}d costs ~{cost:.2f}% in daily-reset drag "
+                               f"({per_day:+.3f}%/day on {abs(mult):g}x over "
+                               f"{(dec or {}).get('underlying_daily_vol_pct')}%/day vol) = "
+                               f"{share:.0f}% of the {edge:.1f}% move you're playing for"
+                               + ("" if share < 25 else " — the vehicle eats too much of "
+                                  "the thesis; shorten the hold or go unleveraged")))
+            else:
+                g.append(_gate("G4b decay", cost < 2.0,
+                               f"holding {hold}d costs ~{cost:.2f}% in daily-reset drag "
+                               f"({per_day:+.3f}%/day)", blocking=False))
+
     # G5 — the event clock. Step 0 of the desk's own SOP.
     horizon = p.get("dte") if p.get("dte") is not None else 5
     cat = _tool_json("tools/catalysts/catalysts.py", "--days", str(max(horizon, 1)))
